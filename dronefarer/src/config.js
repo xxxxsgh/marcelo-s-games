@@ -96,6 +96,17 @@ export const CAMERA = {
     fovDamp: 3.4,           // easing do FOV
     fovSpeedRef: 34,        // m/s que corresponde ao fovMax
 
+    // Quanto o roll do drone contamina a camera. 0 = camera sempre no eixo do
+    // mundo. Um pouco de contaminacao da estilo; muito da enjoo.
+    rollInfluence: 0.14,
+    // Achatamento vertical do braco da camera: impede que num mergulho a
+    // camera va parar em cima do drone e perca a leitura do horizonte.
+    boomFlatten: 0.55,
+    // Teto duro de inclinacao do braco (graus). Sem isto, subir na vertical
+    // joga a camera POR BAIXO do drone e a tela vira so ceu — perde-se toda
+    // a referencia do mundo. E o limite, nao o achatamento, que resolve.
+    boomPitchLimit: 24,
+
     // Orbita com mouse (pointer lock)
     orbitSensitivity: 0.0022,
     orbitYawLimit: 165,     // graus pra cada lado
@@ -144,7 +155,7 @@ export const WORLD = {
     wireSag: 1.1,
   },
 
-  fogDensity: 0.0021,
+  fogDensity: 0.0011,
   fogColor: 0x9fb4cf,
 
   dust: {
@@ -226,9 +237,9 @@ export const QUALITY = {
       renderScale: 1.0,
       shadows: true, shadowMapSize: 2048, shadowCascades: 3, shadowDistance: 260,
       ssao: true, ssaoRadius: 0.55,
-      bloom: true, bloomStrength: 0.42, bloomRadius: 0.62, bloomThreshold: 0.82,
+      bloom: true, bloomStrength: 0.30, bloomRadius: 0.42, bloomThreshold: 1.9,
       ssr: true,
-      motionBlur: true, motionBlurStrength: 0.55,
+      motionBlur: true, motionBlurStrength: 0.34,
       volumetrics: true,
       antialias: 'smaa',
       anisotropy: 8,
@@ -241,9 +252,9 @@ export const QUALITY = {
       renderScale: 1.0,
       shadows: true, shadowMapSize: 1536, shadowCascades: 2, shadowDistance: 170,
       ssao: true, ssaoRadius: 0.5,
-      bloom: true, bloomStrength: 0.36, bloomRadius: 0.55, bloomThreshold: 0.85,
+      bloom: true, bloomStrength: 0.28, bloomRadius: 0.40, bloomThreshold: 1.9,
       ssr: false,
-      motionBlur: true, motionBlurStrength: 0.4,
+      motionBlur: true, motionBlurStrength: 0.26,
       volumetrics: false,
       antialias: 'smaa',
       anisotropy: 4,
@@ -256,7 +267,7 @@ export const QUALITY = {
       renderScale: 0.85,
       shadows: true, shadowMapSize: 1024, shadowCascades: 1, shadowDistance: 95,
       ssao: false, ssaoRadius: 0.4,
-      bloom: true, bloomStrength: 0.28, bloomRadius: 0.5, bloomThreshold: 0.9,
+      bloom: true, bloomStrength: 0.24, bloomRadius: 0.38, bloomThreshold: 2.0,
       ssr: false,
       motionBlur: false, motionBlurStrength: 0,
       volumetrics: false,
@@ -285,7 +296,9 @@ export const QUALITY = {
   // Render scale que o jogador pode forcar no menu (Fase 8): 0.5 .. 2.0
   renderScaleMin: 0.5,
   renderScaleMax: 2.0,
-  exposure: 1.02,           // tone mapping ACES
+  // Exposicao base. O environment map do ceu ja ilumina bastante; acima
+  // de ~0.9 as fachadas viradas pro sol estouram pra branco puro.
+  exposure: 0.48,           // tone mapping ACES
   toneMapping: 'aces',
 };
 
@@ -321,7 +334,9 @@ export const INPUT = {
   expo: 0.38,               // curva de expo dos sticks (0 = linear)
   keyboardRamp: 6.2,        // 1/s de rampa da tecla (digital -> analogico)
   keyboardRelease: 9.5,     // 1/s de volta ao centro
-  throttleRamp: 2.4,
+  // Rampa do throttle no teclado. Rapido o bastante pra W responder na hora;
+  // o spool-up do motor ainda impede que fique digital.
+  throttleRamp: 3.4,
   mouseSensitivity: 1.0,
   invertPitch: false,
   gamepadIndex: 0,
