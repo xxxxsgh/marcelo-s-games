@@ -2,7 +2,9 @@ name: Deploy DRONEFARER to GitHub Pages
 
 on:
   push:
-    branches: [main, master]
+    # O repo ainda nao tem main/master; incluir a branch de trabalho faz o
+    # deploy acontecer sozinho assim que o Pages for habilitado nas Settings.
+    branches: [main, master, 'claude/dronefarer-roadmap-55s9sp']
   workflow_dispatch:
 
 permissions:
