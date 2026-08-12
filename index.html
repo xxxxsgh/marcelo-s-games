@@ -104,7 +104,7 @@
 <div id="menu" class="overlay">
   <div class="panel">
     <h2>DRONE FPV</h2>
-    <div class="tag">FASE 1 — VOO LIVRE · MUNDO PROCEDURAL 4×4 km</div>
+    <div class="tag">FASE 2 — VOO LIVRE · MUNDO PROCEDURAL 4×4 km · VEGETAÇÃO E PÓS COMPLETO</div>
 
     <div class="modes" id="modes">
       <div class="mode sel" data-mode="free"><b>LIVRE</b><span>Explore o mapa sem timer. Bateria opcional.</span></div>
@@ -125,6 +125,9 @@
             <option value="dusk">Anoitecer</option>
             <option value="night">Noite</option>
           </select></div>
+        <div class="row"><label>Relógio <span id="lbl-hour">18:00</span></label>
+          <input id="opt-hour" type="range" min="0" max="24" step="0.05" value="18"></div>
+        <div class="row"><label>Ciclo automático</label><input id="opt-auto" type="checkbox"></div>
         <div class="row"><label>Vento</label><input id="opt-wind" type="range" min="0" max="12" step="0.5" value="3.5"></div>
       </div>
 
@@ -138,8 +141,20 @@
             <option value="ultra">Ultra</option>
           </select></div>
         <div class="row"><label>Bloom</label><input id="opt-bloom" type="checkbox" checked></div>
+        <div class="row"><label>SSAO</label><input id="opt-ssao" type="checkbox" checked></div>
+        <div class="row"><label>God rays</label><input id="opt-godrays" type="checkbox" checked></div>
+        <div class="row"><label>Motion blur</label><input id="opt-motion" type="checkbox" checked></div>
+        <div class="row"><label>Speed lines</label><input id="opt-speed" type="checkbox" checked></div>
         <div class="row"><label>Grão de filme</label><input id="opt-grain" type="checkbox" checked></div>
         <div class="row"><label>Exposição</label><input id="opt-exposure" type="range" min="0.4" max="2.0" step="0.05" value="1.0"></div>
+      </div>
+
+      <div class="card">
+        <h3>VEGETAÇÃO</h3>
+        <div class="row"><label>Densidade</label><input id="opt-veg" type="range" min="0" max="2" step="0.1" value="1"></div>
+        <div class="row"><label>Distância</label><input id="opt-vegdist" type="range" min="0.2" max="1.6" step="0.05" value="1"></div>
+        <div class="note" style="margin-top:6px">Grama, arbustos, árvores e rochas em <b>InstancedMesh</b>, com
+          sway pelo vento no vertex shader e dissolve dithered por distância.</div>
       </div>
 
       <div class="card">
@@ -200,6 +215,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass }      from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass }      from 'three/addons/postprocessing/OutputPass.js';
 import { SMAAPass }        from 'three/addons/postprocessing/SMAAPass.js';
+import { Pass, FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
 
 /* ==================================================================================
    1) CONFIG — todos os valores ajustáveis do jogo
@@ -310,28 +326,69 @@ const CONFIG = {
     lensFlare:       0.75,
   },
 
-  /* ---------- PRESETS DE QUALIDADE ---------- */
-  quality: {
-    low:   { pixelRatio:1.0, shadowMap:1024, shadowDist:14, lodBias:0.62, bloom:false, smaa:false, particles:0.3, waterQ:0 },
-    med:   { pixelRatio:1.25,shadowMap:2048, shadowDist:20, lodBias:0.82, bloom:true,  smaa:false, particles:0.6, waterQ:1 },
-    high:  { pixelRatio:1.5, shadowMap:3072, shadowDist:28, lodBias:1.00, bloom:true,  smaa:true,  particles:1.0, waterQ:1 },
-    ultra: { pixelRatio:2.0, shadowMap:4096, shadowDist:38, lodBias:1.30, bloom:true,  smaa:true,  particles:1.5, waterQ:2 },
+  /* ---------- VEGETAÇÃO E ROCHAS (InstancedMesh por célula) ----------
+     Cada camada é um tabuleiro de células quadradas; a célula é construída sob
+     demanda (determinística a partir da seed) e fica num cache LRU. */
+  scatter: {
+    grass: { cell:  32, perCell:2400, radius:  84, sway: 0.20, swayRef: 0.55, maxSlope: 0.55 },
+    bush:  { cell:  64, perCell: 110, radius: 175, sway: 0.10, swayRef: 0.95, maxSlope: 0.62 },
+    tree:  { cell: 128, perCell: 130, radius: 420, sway: 0.05, swayRef: 6.50, maxSlope: 0.52 },
+    rock:  { cell: 128, perCell:  60, radius: 340, sway: 0.00, swayRef: 1.00, maxSlope: 0.95 },
+    cellsPerFrame:  2,      // orçamento de construção por frame (evita engasgo)
+    shadowRadius:   95,     // até onde a vegetação projeta sombra
+    treeLineFrac:  0.55,    // fração de maxHeight onde a vegetação some (linha das árvores)
+    beachMargin:    2.5,    // não nasce nada abaixo de waterLevel + isto
+    clumpScale:  0.0016,    // ruído de agrupamento (clareiras e bosques)
   },
 
-  /* ---------- PRESETS DE HORA DO DIA ---------- */
+  /* ---------- PÓS-PROCESSAMENTO (Fase 2) ---------- */
+  // A contagem de amostras de cada pass é #define no shader (loops em GLSL ES
+  // precisam de limite constante), por isso não aparece aqui.
+  post: {
+    ssao:       { radius: 1.9, intensity: 0.95, bias: 0.03, fadeStart: 25, fadeEnd: 85 },
+    godrays:    { density: 0.75, weight: 0.34, decay: 0.960, strength: 0.50 },
+    motionBlur: { scale: 0.6, samples: 8, max: 0.028 },
+    dof:        { on: false, focus: 14, aperture: 1.0, maxBlur: 0.010 },
+    speedLines: { from: 95, to: 260, strength: 0.55 },   // km/h
+  },
+
+  /* ---------- CICLO DE DIA CONTÍNUO ---------- */
+  day: {
+    hour:       18.0,   // 0..24 (18h = golden hour)
+    auto:       false,  // avanço automático do tempo
+    speed:      0.30,   // horas de jogo por segundo real
+    rebakeDeg:  2.5,    // quanto o sol precisa andar (graus) para re-assar a máscara de sombra
+    rowsPerFrame: 16,   // linhas da máscara re-assadas por frame (amortiza o custo)
+  },
+
+  /* ---------- PRESETS DE QUALIDADE ---------- */
+  quality: {
+    low:   { pixelRatio:1.0, shadowMap:1024, shadowDist:14, lodBias:0.62, bloom:false, smaa:false, particles:0.3,
+             veg:0.0,  vegRadius:0.0,  ssao:false, godrays:false, motionBlur:false },
+    med:   { pixelRatio:1.25,shadowMap:2048, shadowDist:20, lodBias:0.82, bloom:true,  smaa:true,  particles:0.6,
+             veg:0.45, vegRadius:0.55, ssao:false, godrays:true,  motionBlur:false },
+    high:  { pixelRatio:1.5, shadowMap:3072, shadowDist:28, lodBias:1.00, bloom:true,  smaa:true,  particles:1.0,
+             veg:1.0,  vegRadius:1.0,  ssao:true,  godrays:true,  motionBlur:true  },
+    ultra: { pixelRatio:2.0, shadowMap:4096, shadowDist:38, lodBias:1.30, bloom:true,  smaa:true,  particles:1.5,
+             veg:1.6,  vegRadius:1.35, ssao:true,  godrays:true,  motionBlur:true  },
+  },
+
+  /* ---------- KEYFRAMES DE HORA DO DIA ----------
+     Na Fase 2 o tempo é CONTÍNUO: estes blocos viraram keyframes indexados pela
+     ELEVAÇÃO do sol, interpolados a cada frame. `hour` é o atalho do menu.
+     exp = exposição base do tone mapping (o shader do Sky é muito energético;
+     0.4–0.7 é o ponto certo com ACES). */
   timePresets: {
-    // exp = exposição BASE do tone mapping (o shader do Sky é muito energético;
-    //       valores em torno de 0.4–0.7 são o ponto certo com ACES).
-    dawn:   { name:'Amanhecer',   elev: 4.5, azim: 95,  turbidity: 6.0, rayleigh: 3.2, mieG:0.86, mie:0.010,
-              sun:0xffb377, sunI:2.6, ambI:0.45, envI:0.36, amb:0x2a3c52, fog:0x9fb0c4, fogD:1.55, exp:0.60, stars:0.35 },
-    noon:   { name:'Meio-dia',    elev: 62,  azim: 145, turbidity: 3.2, rayleigh: 1.5, mieG:0.80, mie:0.004,
-              sun:0xfff4e2, sunI:3.6, ambI:0.60, envI:0.30, amb:0x8fb4d8, fog:0xc9dcf0, fogD:0.80, exp:0.38, stars:0.0 },
-    golden: { name:'Golden Hour', elev: 11,  azim: 250, turbidity: 5.0, rayleigh: 2.4, mieG:0.87, mie:0.008,
-              sun:0xffc07a, sunI:3.2, ambI:0.45, envI:0.36, amb:0x40506e, fog:0xd9b78f, fogD:1.25, exp:0.62, stars:0.06 },
-    dusk:   { name:'Anoitecer',   elev: 1.2, azim: 268, turbidity: 8.0, rayleigh: 3.6, mieG:0.90, mie:0.014,
-              sun:0xff7a4d, sunI:1.6, ambI:0.38, envI:0.45, amb:0x2b3350, fog:0x6f6483, fogD:1.85, exp:0.76, stars:0.55 },
-    night:  { name:'Noite',       elev:-8,   azim: 300, turbidity: 2.0, rayleigh: 0.9, mieG:0.80, mie:0.003,
-              sun:0x9fc3ff, sunI:0.55, ambI:0.34, envI:0.85, amb:0x121c30, fog:0x101a2c, fogD:1.15, exp:1.30, stars:1.0 },
+    dawn:   { name:'Amanhecer',   hour: 7.1,  key:'dawn',   turbidity: 6.0, rayleigh: 3.2, mieG:0.86, mie:0.010,
+              sun:0xffb377, sunI:2.6, ambI:0.45, amb:0x2a3c52, fog:0x9fb0c4, fogD:1.55, exp:0.60, stars:0.35 },
+    noon:   { name:'Meio-dia',    hour: 12.75,key:'noon',   turbidity: 3.2, rayleigh: 1.5, mieG:0.80, mie:0.004,
+              sun:0xfff4e2, sunI:3.6, ambI:0.60, amb:0x8fb4d8, fog:0xc9dcf0, fogD:0.80, exp:0.38, stars:0.0 },
+    golden: { name:'Golden Hour', hour: 18.0, key:'golden', turbidity: 5.0, rayleigh: 2.4, mieG:0.87, mie:0.008,
+              sun:0xffc07a, sunI:3.2, ambI:0.45, amb:0x40506e, fog:0xd9b78f, fogD:1.25, exp:0.62, stars:0.06 },
+    dusk:   { name:'Anoitecer',   hour: 18.7, key:'dusk',   turbidity: 8.0, rayleigh: 3.6, mieG:0.90, mie:0.014,
+              sun:0xff7a4d, sunI:1.6, ambI:0.38, amb:0x2b3350, fog:0x6f6483, fogD:1.85, exp:0.76, stars:0.55 },
+    night:  { name:'Noite',       hour: 23.0, key:'night',  turbidity: 2.0, rayleigh: 0.9, mieG:0.80, mie:0.003,
+              sun:0x9fc3ff, sunI:0.55, ambI:0.34, amb:0x121c30, fog:0x101a2c, fogD:1.15, exp:1.30, stars:1.0 },
   },
 
   /* ---------- DRONE (visual) ---------- */
@@ -630,6 +687,7 @@ const GradeShader = {
     uSunColor:  { value: new THREE.Color(1,0.85,0.7) },
     uFlare:     { value: CONFIG.gfx.lensFlare },
     uAspect:    { value: 1 },
+    uSpeed:     { value: 0 },     // 0..1 — intensidade das speed lines
   },
   vertexShader: /* glsl */`
     varying vec2 vUv;
@@ -637,7 +695,7 @@ const GradeShader = {
   `,
   fragmentShader: /* glsl */`
     uniform sampler2D tDiffuse;
-    uniform float uTime, uVignette, uChroma, uGrain, uSunVis, uFlare, uAspect;
+    uniform float uTime, uVignette, uChroma, uGrain, uSunVis, uFlare, uAspect, uSpeed;
     uniform vec2  uSunScreen;
     uniform vec3  uSunColor;
     varying vec2 vUv;
@@ -689,6 +747,20 @@ const GradeShader = {
         col += flare(uv, sunUv) * uSunVis * uFlare;
       }
 
+      // speed lines: estrias radiais que nascem nas bordas em alta velocidade
+      if (uSpeed > 0.001){
+        vec2 d = c; d.x *= uAspect;
+        float ang = atan(d.y, d.x);
+        float rad = length(d);
+        // ruído angular estável + deslizamento radial para dar sensação de fluxo
+        float lines = hash12(vec2(floor(ang * 58.0), floor(rad * 3.0 - uTime * 5.0)));
+        lines = pow(lines, 9.0);
+        float mask = smoothstep(0.20, 0.62, rad) * uSpeed;
+        col += vec3(0.85, 0.93, 1.0) * lines * mask * 0.85;
+        // leve escurecimento no centro reforça o túnel
+        col *= 1.0 - mask * 0.12;
+      }
+
       // vinheta
       float vig = 1.0 - uVignette * smoothstep(0.18, 0.78, r2);
       col *= vig;
@@ -702,13 +774,303 @@ const GradeShader = {
   `
 };
 
+/* ---------- Trecho GLSL compartilhado: leitura do depth buffer ----------
+   Todos os passes de profundidade reconstroem a posição em VIEW SPACE a partir
+   do depth texture + inversa da projeção. Nada de re-renderizar a cena. */
+const GLSL_DEPTH = /* glsl */`
+  uniform sampler2D tDepth;
+  uniform mat4  uInvProj;
+  uniform float uNear, uFar;
+  float rawDepth(vec2 uv){ return texture2D(tDepth, uv).x; }
+  vec3 viewPosFromDepth(vec2 uv, float z){
+    vec4 ndc = vec4(uv * 2.0 - 1.0, z * 2.0 - 1.0, 1.0);
+    vec4 v = uInvProj * ndc;
+    return v.xyz / v.w;
+  }
+  vec3 viewPos(vec2 uv){ return viewPosFromDepth(uv, rawDepth(uv)); }
+  float linearDepth(vec2 uv){
+    float ndc = rawDepth(uv) * 2.0 - 1.0;
+    return (2.0 * uNear * uFar) / (uFar + uNear - ndc * (uFar - uNear));
+  }
+`;
+
+/* ---------- SSAO: oclusão de ambiente em espaço de tela ----------
+   Trabalha só sobre o depth buffer, então funciona com o terreno deslocado no
+   vertex shader (um SSAOPass tradicional re-renderiza com overrideMaterial e
+   perderia o deslocamento, produzindo AO errado). */
+const SSAOShader = {
+  uniforms: {
+    tDiffuse:{value:null}, tDepth:{value:null}, uInvProj:{value:new THREE.Matrix4()},
+    uProj:{value:new THREE.Matrix4()}, uNear:{value:0.1}, uFar:{value:1000},
+    uTexel:{value:new THREE.Vector2()}, uRadius:{value:1.9}, uIntensity:{value:0.95},
+    uBias:{value:0.03}, uFadeStart:{value:25}, uFadeEnd:{value:85}, uFrame:{value:0},
+  },
+  vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: /* glsl */`
+    uniform sampler2D tDiffuse;
+    uniform mat4 uProj;
+    uniform vec2 uTexel;
+    uniform float uRadius, uIntensity, uBias, uFadeStart, uFadeEnd, uFrame;
+    varying vec2 vUv;
+    ${GLSL_DEPTH}
+    #define SSAO_SAMPLES 12
+
+    // normal reconstruída pela menor diferença (não "vaza" nas silhuetas)
+    vec3 normalFromDepth(vec2 uv, vec3 p){
+      vec3 pR = viewPos(uv + vec2(uTexel.x, 0.0));
+      vec3 pL = viewPos(uv - vec2(uTexel.x, 0.0));
+      vec3 pU = viewPos(uv + vec2(0.0, uTexel.y));
+      vec3 pD = viewPos(uv - vec2(0.0, uTexel.y));
+      vec3 dx = abs(pR.z - p.z) < abs(p.z - pL.z) ? (pR - p) : (p - pL);
+      vec3 dy = abs(pU.z - p.z) < abs(p.z - pD.z) ? (pU - p) : (p - pD);
+      vec3 n = normalize(cross(dx, dy));
+      return dot(n, p) > 0.0 ? -n : n;      // sempre virada para a câmera
+    }
+
+    float hash12(vec2 p){
+      vec3 q = fract(vec3(p.xyx) * 0.1031);
+      q += dot(q, q.yzx + 33.33);
+      return fract((q.x + q.y) * q.z);
+    }
+
+    void main(){
+      vec4 src = texture2D(tDiffuse, vUv);
+      float z = rawDepth(vUv);
+      if (z >= 0.99999){ gl_FragColor = src; return; }   // céu não recebe AO
+
+      vec3 p = viewPosFromDepth(vUv, z);
+      float dist = -p.z;
+      float fade = 1.0 - smoothstep(uFadeStart, uFadeEnd, dist);
+      if (fade <= 0.001){ gl_FragColor = src; return; }
+
+      vec3 n = normalFromDepth(vUv, p);
+      // base ortonormal em torno da normal
+      vec3 up = abs(n.z) < 0.95 ? vec3(0.0,0.0,1.0) : vec3(1.0,0.0,0.0);
+      vec3 t  = normalize(cross(up, n));
+      vec3 b  = cross(n, t);
+
+      float rot = hash12(vUv * 1024.0 + uFrame) * 6.2831853;
+      float occ = 0.0;
+      for (int i = 0; i < SSAO_SAMPLES; i++){
+        float fi = float(i) + 0.5;
+        float r  = sqrt(fi / float(SSAO_SAMPLES));
+        float th = fi * 2.39996323 + rot;               // espiral de ângulo áureo
+        vec3 dir = vec3(cos(th)*r, sin(th)*r, sqrt(max(0.0, 1.0 - r*r)));
+        vec3 sp  = p + (t*dir.x + b*dir.y + n*dir.z) * uRadius * (0.35 + 0.65*r);
+
+        vec4 cp = uProj * vec4(sp, 1.0);
+        vec2 suv = cp.xy / cp.w * 0.5 + 0.5;
+        if (suv.x < 0.0 || suv.x > 1.0 || suv.y < 0.0 || suv.y > 1.0) continue;
+
+        float sz = viewPos(suv).z;
+        // amostra atrás de geometria => ocluída; range check evita halos ao longe
+        float range = smoothstep(0.0, 1.0, uRadius / max(0.001, abs(p.z - sz)));
+        occ += (sz >= sp.z + uBias ? 1.0 : 0.0) * range;
+      }
+      float ao = 1.0 - (occ / float(SSAO_SAMPLES)) * uIntensity * fade;
+      ao = clamp(ao, 0.0, 1.0);
+      gl_FragColor = vec4(src.rgb * ao, src.a);
+    }
+  `
+};
+
+/* ---------- God rays / light shafts (radial blur da máscara de céu) ---------- */
+const GodRaysShader = {
+  uniforms: {
+    tDiffuse:{value:null}, tDepth:{value:null}, uInvProj:{value:new THREE.Matrix4()},
+    uNear:{value:0.1}, uFar:{value:1000},
+    uSunUv:{value:new THREE.Vector2(-1,-1)}, uSunColor:{value:new THREE.Color(1,0.85,0.6)},
+    uDensity:{value:0.75}, uWeight:{value:0.34}, uDecay:{value:0.960}, uStrength:{value:0.50},
+    uSunVis:{value:0}, uAspect:{value:1},
+  },
+  vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: /* glsl */`
+    uniform sampler2D tDiffuse;
+    uniform vec2 uSunUv;
+    uniform vec3 uSunColor;
+    uniform float uDensity, uWeight, uDecay, uStrength, uSunVis, uAspect;
+    varying vec2 vUv;
+    ${GLSL_DEPTH}
+    #define GR_SAMPLES 24
+
+    void main(){
+      vec4 src = texture2D(tDiffuse, vUv);
+      if (uSunVis <= 0.001 || uStrength <= 0.001){ gl_FragColor = src; return; }
+
+      // O céu já ganha brilho do bloom e do lens flare; somar feixes nele também
+      // lavaria a imagem inteira. Os feixes caem sobre a GEOMETRIA.
+      if (rawDepth(vUv) >= 0.99995){ gl_FragColor = src; return; }
+
+      // Confina o efeito à vizinhança do sol — sem isto todo pixel cujo raio em
+      // direção ao sol encontra céu recebe um ganho constante, e a tela lava.
+      vec2 dv = vUv - uSunUv; dv.x *= uAspect;
+      float radial = 1.0 - smoothstep(0.18, 0.95, length(dv));
+      if (radial <= 0.001){ gl_FragColor = src; return; }
+
+      vec2 delta = (vUv - uSunUv) * (uDensity / float(GR_SAMPLES));
+      vec2 c = vUv;
+      float illum = 1.0, acc = 0.0;
+      for (int i = 0; i < GR_SAMPLES; i++){
+        c -= delta;
+        // só o céu emite: profundidade no limite do far plane
+        float sky = step(0.99995, rawDepth(clamp(c, 0.0, 1.0)));
+        acc += sky * illum * uWeight;
+        illum *= uDecay;
+      }
+      acc /= float(GR_SAMPLES);
+      gl_FragColor = vec4(src.rgb + uSunColor * acc * uStrength * uSunVis * radial, src.a);
+    }
+  `
+};
+
+/* ---------- Motion blur por velocidade de câmera (reprojeção) ---------- */
+const MotionBlurShader = {
+  uniforms: {
+    tDiffuse:{value:null}, tDepth:{value:null}, uInvProj:{value:new THREE.Matrix4()},
+    uNear:{value:0.1}, uFar:{value:1000},
+    uInvViewProj:{value:new THREE.Matrix4()}, uPrevViewProj:{value:new THREE.Matrix4()},
+    uScale:{value:0.6}, uMax:{value:0.028},
+  },
+  vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: /* glsl */`
+    uniform sampler2D tDiffuse;
+    uniform mat4 uInvViewProj, uPrevViewProj;
+    uniform float uScale, uMax;
+    varying vec2 vUv;
+    ${GLSL_DEPTH}
+    #define MB_SAMPLES 8
+
+    void main(){
+      float z = rawDepth(vUv);
+      vec4 cur = vec4(vUv * 2.0 - 1.0, z * 2.0 - 1.0, 1.0);
+      vec4 wp = uInvViewProj * cur;  wp /= wp.w;          // posição no mundo
+      vec4 pp = uPrevViewProj * wp;  pp /= pp.w;          // onde estava no frame anterior
+      vec2 vel = (cur.xy - pp.xy) * 0.5 * uScale;
+      vel = clamp(vel, vec2(-uMax), vec2(uMax));
+
+      if (dot(vel, vel) < 1e-8){ gl_FragColor = texture2D(tDiffuse, vUv); return; }
+
+      vec4 acc = vec4(0.0);
+      for (int i = 0; i < MB_SAMPLES; i++){
+        float t = float(i) / float(MB_SAMPLES - 1) - 0.5;
+        acc += texture2D(tDiffuse, clamp(vUv + vel * t, 0.0, 1.0));
+      }
+      gl_FragColor = acc / float(MB_SAMPLES);
+    }
+  `
+};
+
+/* ---------- Depth of field (usado no modo Foto e nos replays cinematográficos) ---------- */
+const DofShader = {
+  uniforms: {
+    tDiffuse:{value:null}, tDepth:{value:null}, uInvProj:{value:new THREE.Matrix4()},
+    uNear:{value:0.1}, uFar:{value:1000},
+    uFocus:{value:14}, uAperture:{value:1.0}, uMaxBlur:{value:0.010}, uAspect:{value:1},
+  },
+  vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: /* glsl */`
+    uniform sampler2D tDiffuse;
+    uniform float uFocus, uAperture, uMaxBlur, uAspect;
+    varying vec2 vUv;
+    ${GLSL_DEPTH}
+    #define DOF_SAMPLES 16
+
+    void main(){
+      float d = linearDepth(vUv);
+      // círculo de confusão
+      float coc = clamp((d - uFocus) / max(0.001, d) * uAperture, -1.0, 1.0);
+      float r = abs(coc) * uMaxBlur;
+      if (r < 0.0005){ gl_FragColor = texture2D(tDiffuse, vUv); return; }
+      vec4 acc = vec4(0.0);
+      for (int i = 0; i < DOF_SAMPLES; i++){
+        float fi = float(i) + 0.5;
+        float rr = sqrt(fi / float(DOF_SAMPLES)) * r;
+        float th = fi * 2.39996323;
+        acc += texture2D(tDiffuse, clamp(vUv + vec2(cos(th)*rr/uAspect, sin(th)*rr), 0.0, 1.0));
+      }
+      gl_FragColor = acc / float(DOF_SAMPLES);
+    }
+  `
+};
+
+/**
+ * Copia o depth texture do RenderPass para um alvo FLOAT dedicado.
+ *
+ * Sem isso os passes seguintes formam um FEEDBACK LOOP: o EffectComposer faz
+ * ping-pong entre renderTarget1 e renderTarget2, e o depth texture pertence ao
+ * renderTarget1 — na hora em que um pass escreve de volta no rt1 ele estaria
+ * amostrando uma textura anexada ao próprio framebuffer (GL_INVALID_OPERATION).
+ * Copiando uma vez para um alvo fora do ping-pong, todo mundo lê em paz.
+ * O alvo é float porque a profundidade bruta é muito não-linear para 16 bits.
+ */
+class DepthCopyPass extends Pass {
+  constructor(){
+    super();
+    this.needsSwap = false;                    // não participa do ping-pong
+    this.source = null;                        // DepthTexture do RenderPass
+    this.material = new THREE.ShaderMaterial({
+      uniforms: { tDepth: { value: null } },
+      depthTest: false, depthWrite: false,
+      vertexShader:`varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+      fragmentShader:`uniform sampler2D tDepth; varying vec2 vUv;
+        void main(){ gl_FragColor = vec4(texture2D(tDepth, vUv).x, 0.0, 0.0, 1.0); }`,
+    });
+    this.fsQuad = new FullScreenQuad(this.material);
+    this.target = new THREE.WebGLRenderTarget(1, 1, {
+      type: THREE.FloatType, format: THREE.RGBAFormat,
+      minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter,
+      depthBuffer: false, stencilBuffer: false, generateMipmaps: false,
+    });
+  }
+  setSize(w, h){ this.target.setSize(Math.max(1,w), Math.max(1,h)); }
+  render(renderer){
+    this.material.uniforms.tDepth.value = this.source;
+    const prev = renderer.getRenderTarget();
+    renderer.setRenderTarget(this.target);
+    this.fsQuad.render(renderer);
+    renderer.setRenderTarget(prev);
+  }
+  dispose(){ this.target.dispose(); this.material.dispose(); this.fsQuad.dispose(); }
+}
+
 let composer, renderPass, bloomPass, smaaPass, gradePass, outputPass;
+let ssaoPass, godraysPass, motionPass, dofPass, depthTex, depthCopyPass;
+
+/** Passes de profundidade não testam nem escrevem depth (são quads full-screen). */
+function addDepthPass(shader){
+  const p = new ShaderPass(shader);
+  p.material.depthTest = false;
+  p.material.depthWrite = false;
+  composer.addPass(p);
+  return p;
+}
+
 function buildComposer(q){
+  // EffectComposer.dispose() só descarta os render targets internos — os passes
+  // que criamos (e seus buffers) precisam ser liberados na mão, senão cada
+  // troca de preset/toggle vaza um alvo de tela cheia.
+  for (const p of [depthCopyPass, ssaoPass, godraysPass, motionPass, dofPass,
+                   bloomPass, smaaPass, gradePass, outputPass]){
+    if (p && typeof p.dispose === 'function') p.dispose();
+  }
   if (composer) composer.dispose();
-  const rt = new THREE.WebGLRenderTarget(1,1,{
-    type: THREE.HalfFloatType, samples: q.smaa ? 0 : 4,
-    colorSpace: THREE.LinearSRGBColorSpace
+  if (depthTex) depthTex.dispose();
+
+  const needDepth = q.ssao || q.godrays || q.motionBlur || CONFIG.post.dof.on;
+
+  const rt = new THREE.WebGLRenderTarget(1, 1, {
+    type: THREE.HalfFloatType,
+    // MSAA e depth texture não convivem bem; com passes de profundidade o AA
+    // fica todo por conta do SMAA.
+    samples: (needDepth || q.smaa) ? 0 : 4,
+    colorSpace: THREE.LinearSRGBColorSpace,
   });
+  if (needDepth){
+    depthTex = new THREE.DepthTexture(1, 1);
+    rt.depthTexture = depthTex;
+    rt.depthBuffer = true;
+  } else depthTex = null;
+
   composer = new EffectComposer(renderer, rt);
   composer.setPixelRatio(Math.min(devicePixelRatio, q.pixelRatio));
   composer.setSize(innerWidth, innerHeight);
@@ -716,9 +1078,22 @@ function buildComposer(q){
   renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
 
+  if (needDepth){
+    depthCopyPass = new DepthCopyPass();
+    depthCopyPass.source = depthTex;
+    composer.addPass(depthCopyPass);
+  } else depthCopyPass = null;
+
+  // --- passes HDR, antes do tone mapping ---
+  ssaoPass    = (q.ssao       && CONFIG.gfx.ssaoOn    !== false) ? addDepthPass(SSAOShader)       : null;
+  godraysPass = (q.godrays    && CONFIG.gfx.godraysOn !== false) ? addDepthPass(GodRaysShader)    : null;
+  motionPass  = (q.motionBlur && CONFIG.gfx.motionOn  !== false) ? addDepthPass(MotionBlurShader) : null;
+  dofPass     = (needDepth && CONFIG.post.dof.on)                ? addDepthPass(DofShader)        : null;
+
   outputPass = new OutputPass();               // tone mapping ACES + sRGB
   composer.addPass(outputPass);
 
+  // --- passes LDR, depois do tone mapping ---
   if (q.bloom && CONFIG.gfx.bloomOn !== false){
     bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight),
       CONFIG.gfx.bloom.strength, CONFIG.gfx.bloom.radius, CONFIG.gfx.bloom.threshold);
@@ -730,9 +1105,76 @@ function buildComposer(q){
     composer.addPass(smaaPass);
   } else smaaPass = null;
 
-  gradePass = new ShaderPass(GradeShader);     // vinheta + CA + grão + flare
+  gradePass = new ShaderPass(GradeShader);     // vinheta + CA + grão + flare + speed lines
   gradePass.renderToScreen = true;
   composer.addPass(gradePass);
+
+  syncPostUniforms();
+}
+
+/** Copia os valores de CONFIG.post para os uniforms dos passes. */
+function syncPostUniforms(){
+  const P = CONFIG.post;
+  if (ssaoPass){
+    const u = ssaoPass.uniforms;
+    u.uRadius.value = P.ssao.radius; u.uIntensity.value = P.ssao.intensity;
+    u.uBias.value = P.ssao.bias;
+    u.uFadeStart.value = P.ssao.fadeStart; u.uFadeEnd.value = P.ssao.fadeEnd;
+  }
+  if (godraysPass){
+    const u = godraysPass.uniforms;
+    u.uDensity.value = P.godrays.density; u.uWeight.value = P.godrays.weight;
+    u.uDecay.value = P.godrays.decay;     u.uStrength.value = P.godrays.strength;
+  }
+  if (motionPass){
+    motionPass.uniforms.uScale.value = P.motionBlur.scale;
+    motionPass.uniforms.uMax.value   = P.motionBlur.max;
+  }
+  if (dofPass){
+    dofPass.uniforms.uFocus.value = P.dof.focus;
+    dofPass.uniforms.uAperture.value = P.dof.aperture;
+    dofPass.uniforms.uMaxBlur.value = P.dof.maxBlur;
+  }
+  if (gradePass){
+    gradePass.uniforms.uGrain.value = CONFIG.gfx.grain;
+    gradePass.uniforms.uVignette.value = CONFIG.gfx.vignette;
+    gradePass.uniforms.uChroma.value = CONFIG.gfx.chroma;
+    gradePass.uniforms.uFlare.value = CONFIG.gfx.lensFlare;
+  }
+}
+
+/** Alimenta, a cada frame, os uniforms que dependem da câmera. */
+const _prevViewProj = new THREE.Matrix4();
+const _curViewProj  = new THREE.Matrix4();
+function updatePostUniforms(sunUv, sunVis){
+  const pr = renderer.getPixelRatio();
+  const w = innerWidth * pr, h = innerHeight * pr;
+  const depthPasses = [ssaoPass, godraysPass, motionPass, dofPass];
+  for (const p of depthPasses){
+    if (!p) continue;
+    const u = p.uniforms;
+    if (u.tDepth) u.tDepth.value = depthCopyPass ? depthCopyPass.target.texture : null;
+    if (u.uNear)  u.uNear.value  = camera.near;
+    if (u.uFar)   u.uFar.value   = camera.far;
+    if (u.uInvProj) u.uInvProj.value.copy(camera.projectionMatrixInverse);
+  }
+  if (ssaoPass){
+    ssaoPass.uniforms.uProj.value.copy(camera.projectionMatrix);
+    ssaoPass.uniforms.uTexel.value.set(1/Math.max(1,w), 1/Math.max(1,h));
+    ssaoPass.uniforms.uFrame.value = (ssaoPass.uniforms.uFrame.value + 1) % 64;
+  }
+  if (godraysPass){
+    godraysPass.uniforms.uSunUv.value.copy(sunUv);
+    godraysPass.uniforms.uSunVis.value = sunVis;
+    godraysPass.uniforms.uAspect.value = innerWidth/innerHeight;
+  }
+  if (motionPass){
+    _curViewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    motionPass.uniforms.uInvViewProj.value.copy(_curViewProj).invert();
+    motionPass.uniforms.uPrevViewProj.value.copy(_prevViewProj);
+    _prevViewProj.copy(_curViewProj);
+  }
+  if (dofPass) dofPass.uniforms.uAspect.value = innerWidth/innerHeight;
 }
 
 /* ==================================================================================
@@ -768,7 +1210,10 @@ scene.add(sunLight.target);
 const hemi = new THREE.HemisphereLight(0x9fc4ff, 0x3a3226, 0.6);
 scene.add(hemi);
 
-const sunDir = new THREE.Vector3(0,1,0);       // direção DO ponto PARA o sol
+const sunDir   = new THREE.Vector3(0,1,0);     // direção DO ponto PARA o SOL (flare/god rays)
+const lightDir = new THREE.Vector3(0,1,0);     // direção da LUZ principal (sol de dia, lua à noite)
+const _moonPos = new THREE.Vector3();
+let moonMesh = null;
 let currentPreset = CONFIG.timePresets.golden;
 
 /* ---------- Estrelas ---------- */
@@ -817,21 +1262,85 @@ function buildStars(){
       }`,
     vertexColors:true
   });
+  // disco da lua (fica visível só quando a luz principal vira lua)
+  moonMesh = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: makeSoftDot(64), color: 0xdfe9ff, transparent: true, opacity: 0,
+    depthWrite: false, fog: false, toneMapped: false, blending: THREE.AdditiveBlending }));
+  moonMesh.scale.setScalar(SKY_SCALE * 0.055);
+  moonMesh.frustumCulled = false;
+  moonMesh.renderOrder = -1;
+  moonMesh.visible = false;
+  scene.add(moonMesh);
+
   starPoints = new THREE.Points(g,m);
   starPoints.frustumCulled = false;
   starPoints.renderOrder = -1;
   scene.add(starPoints);
 }
 
-/** Aplica um preset de hora do dia: céu, sol, névoa, ambiente, IBL */
-function applyTimePreset(key){
-  const p = CONFIG.timePresets[key] || CONFIG.timePresets.golden;
-  currentPreset = p; currentPreset.key = key;
+/* ---------- CICLO DE DIA CONTÍNUO ----------
+   O sol descreve um arco em função da hora; TODOS os parâmetros atmosféricos
+   são interpolados a partir da ELEVAÇÃO resultante, então não há "degrau" ao
+   passar de um preset para outro. */
 
-  const phi   = (90 - p.elev) * D2R;
-  const theta = p.azim * D2R;
-  const sunPos = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
-  sunDir.copy(sunPos).normalize();
+/** Posição do sol para uma hora do dia (0..24). Nascer ~6.9h, poente ~18.6h. */
+function sunAnglesForHour(h){
+  const t    = ((h - 12.75) / 12) * Math.PI;     // -π .. π ao longo do dia
+  const elev = Math.cos(t) * 66 - 2;             // ~64° no zênite, negativo à noite
+  const azim = 90 + (h / 24) * 360;              // gira uma volta por dia
+  return { elev, azim, rising: h < 12.75 };
+}
+
+// cores de trabalho (evita alocar Color a cada frame)
+const _cSun = new THREE.Color(), _cAmb = new THREE.Color(), _cFog = new THREE.Color();
+const _cA = new THREE.Color(), _cB = new THREE.Color();
+const sunState = { name:'Golden Hour', exp:0.62, elev:11, azim:250, hour:18 };
+
+/** Interpola dois keyframes de céu; devolve um objeto reaproveitado. */
+const _blend = {};
+function blendPresets(a, b, t){
+  const o = _blend;
+  for (const k of ['turbidity','rayleigh','mieG','mie','sunI','ambI','fogD','exp','stars'])
+    o[k] = lerp(a[k], b[k], t);
+  o.name = t < 0.5 ? a.name : b.name;
+  o.sunC = _cSun.copy(_cA.setHex(a.sun)).lerp(_cB.setHex(b.sun), t);
+  o.ambC = _cAmb.copy(_cA.setHex(a.amb)).lerp(_cB.setHex(b.amb), t);
+  o.fogC = _cFog.copy(_cA.setHex(a.fog)).lerp(_cB.setHex(b.fog), t);
+  return o;
+}
+
+/** Parâmetros atmosféricos para uma elevação de sol. */
+function skyParamsForSun(elev, rising){
+  const P = CONFIG.timePresets;
+  const low = rising ? P.dawn : P.golden;        // manhã é mais fria, tarde mais quente
+  // keyframes por elevação (em ordem crescente)
+  const kf = [[-14, P.night], [1.0, P.dusk], [11, low], [62, P.noon]];
+  if (elev <= kf[0][0]) return blendPresets(kf[0][1], kf[0][1], 0);
+  for (let i = 0; i < kf.length - 1; i++){
+    if (elev <= kf[i+1][0]){
+      const t = (elev - kf[i][0]) / (kf[i+1][0] - kf[i][0]);
+      return blendPresets(kf[i][1], kf[i+1][1], clamp(t, 0, 1));
+    }
+  }
+  return blendPresets(P.noon, P.noon, 0);
+}
+
+const _sunPos = new THREE.Vector3();
+let envDirtyDeg = 999;      // quanto o sol andou desde a última geração de IBL
+
+/** Aplica o estado do sol para uma hora do dia. Barato o bastante para rodar todo frame. */
+function applySunHour(hour, forceEnv){
+  CONFIG.day.hour = ((hour % 24) + 24) % 24;
+  const { elev, azim, rising } = sunAnglesForHour(CONFIG.day.hour);
+  const p = skyParamsForSun(elev, rising);
+
+  const prevX = sunDir.x, prevY = sunDir.y, prevZ = sunDir.z;
+  _sunPos.setFromSphericalCoords(1, (90 - elev) * D2R, azim * D2R);
+  sunDir.copy(_sunPos).normalize();
+
+  // ângulo percorrido desde a última atualização do environment map
+  const dot = clamp(prevX*sunDir.x + prevY*sunDir.y + prevZ*sunDir.z, -1, 1);
+  envDirtyDeg += Math.acos(dot) * R2D;
 
   for (const s of [sky, skyIBL]){
     const u = s.material.uniforms;
@@ -839,32 +1348,62 @@ function applyTimePreset(key){
     u.rayleigh.value        = p.rayleigh;
     u.mieCoefficient.value  = p.mie;
     u.mieDirectionalG.value = p.mieG;
-    u.sunPosition.value.copy(sunPos);
+    u.sunPosition.value.copy(_sunPos);
   }
 
-  sunLight.color.setHex(p.sun);
-  sunLight.intensity = p.sunI;
+  // ---- Luz principal: sol de dia, LUA à noite ----
+  // Abaixo do horizonte o sol ilumina "por baixo" e não acende nada (N·L < 0).
+  // Então, quando ele se põe, a luz direcional passa para a lua — oposta ao sol
+  // no céu —, o que devolve sombras e modelado à noite em vez de um ambiente chapado.
+  const sunK  = clamp((elev + 3) / 6, 0, 1);
+  const moonK = clamp((-elev - 2) / 8, 0, 1) * 0.85;
+  if (sunK >= moonK){
+    lightDir.copy(sunDir);
+    sunLight.color.copy(p.sunC);
+    sunLight.intensity = p.sunI * sunK;
+    if (moonMesh) moonMesh.visible = false;
+  } else {
+    _moonPos.setFromSphericalCoords(1, (90 - clamp(-elev * 0.85, 10, 62)) * D2R, (azim + 180) * D2R);
+    lightDir.copy(_moonPos).normalize();
+    sunLight.color.setHex(0xb4cdff);
+    sunLight.intensity = p.sunI * moonK;
+    if (moonMesh){
+      moonMesh.visible = true;
+      moonMesh.material.opacity = clamp(moonK * 1.9, 0, 1);
+    }
+  }
   hemi.intensity = p.ambI;
-  // O radiance do shader do Sky é muito alto; sem atenuar, o IBL lava o terreno inteiro.
-  // A luz do céu no difuso fica por conta da HemisphereLight; o environment map
-  // serve principalmente para os reflexos (água, metais do drone).
-  scene.environmentIntensity = p.envI;
-  hemi.color.setHex(0x9fc4ff).lerp(new THREE.Color(p.sun), 0.25);
-  hemi.groundColor.setHex(p.amb);
+  hemi.color.set(0x9fc4ff).lerp(p.sunC, 0.25);
+  hemi.groundColor.copy(p.ambC);
 
-  scene.fog.color.setHex(p.fog);
+  scene.fog.color.copy(p.fogC);
   scene.fog.density = CONFIG.gfx.fogDensity * p.fogD;
-
   renderer.toneMappingExposure = CONFIG.gfx.exposure * p.exp;
 
   if (starPoints) starPoints.material.uniforms.uOpacity.value = p.stars;
-  if (GradeShader.uniforms) gradePass && gradePass.uniforms.uSunColor.value.setHex(p.sun);
+  if (gradePass) gradePass.uniforms.uSunColor.value.copy(p.sunC);
+  if (godraysPass) godraysPass.uniforms.uSunColor.value.copy(p.sunC);
 
-  // IBL — environment map real gerado a partir do próprio céu
-  if (envRT) envRT.dispose();
-  envRT = pmrem.fromScene(pmremScene, 0.02);
-  scene.environment = envRT.texture;
-  scene.environmentIntensity = 1.0;
+  sunState.name = p.name; sunState.exp = p.exp;
+  sunState.elev = elev;   sunState.azim = azim; sunState.hour = CONFIG.day.hour;
+  currentPreset = sunState;
+
+  // IBL: regenerar o PMREM é caro; só quando o sol andou o suficiente.
+  // A intensidade do environment fica em 1.0 — o balanço é por material
+  // (envMapIntensity), e o mapa já escurece sozinho à noite porque vem do céu.
+  if (forceEnv || envDirtyDeg > 2.0){
+    envDirtyDeg = 0;
+    if (envRT) envRT.dispose();
+    envRT = pmrem.fromScene(pmremScene, 0.02);
+    scene.environment = envRT.texture;
+    scene.environmentIntensity = 1.0;
+  }
+}
+
+/** Atalho do menu: pula para a hora de um preset nomeado. */
+function applyTimePreset(key){
+  const p = CONFIG.timePresets[key] || CONFIG.timePresets.golden;
+  applySunHour(p.hour, true);
 }
 
 /* ==================================================================================
@@ -1041,45 +1580,42 @@ function regionMinMax(cx, cz, size){
   return [mn,mx];
 }
 
-/* ---------- Máscara de sombra solar (raymarch do heightmap na CPU) ---------- */
-async function buildSunShadowMask(onProgress){
+/* ---------- Máscara de sombra solar (raymarch do heightmap na CPU) ----------
+   É ela que dá sombras de montanha a qualquer distância, de graça para a GPU.
+   Como o sol agora se move continuamente, a máscara é re-assada em fatias:
+   algumas linhas por frame num buffer paralelo, trocado quando fica pronto. */
+function bakeSunRows(dst, dir, j0, j1){
   const R = CONFIG.world.shadowMaskRes, S = CONFIG.world.size;
-  const data = World.shadowMask || new Uint8Array(R*R);
-  World.shadowMask = data;
-  const sx = sunDir.x, sy = sunDir.y, sz = sunDir.z;
-
+  const sx = dir.x, sy = dir.y, sz = dir.z;
   if (sy <= 0.02){                                        // sol abaixo do horizonte
-    data.fill(0);
-  } else {
-    const rowsPerChunk = Math.max(8, R>>4);
-    for (let z0=0; z0<R; z0+=rowsPerChunk){
-      const z1 = Math.min(R, z0+rowsPerChunk);
-      for (let j=z0;j<z1;j++){
-        const wz = (j+0.5)/R*S - S*0.5;
-        for (let i=0;i<R;i++){
-          const wx = (i+0.5)/R*S - S*0.5;
-          const h0 = sampleHeight(wx,wz);
-          let shade = 1, t = 6;
-          for (let s=0;s<26;s++){
-            const px = wx + sx*t, py = h0 + sy*t + 0.6, pz = wz + sz*t;
-            if (py > World.maxH) break;
-            const hh = sampleHeight(px,pz);
-            const dd = py - hh;
-            const v = smooth(-1.5, 16.0, dd);
-            if (v < shade) shade = v;
-            if (shade <= 0.001) break;
-            t *= 1.30;
-            if (t > 2400) break;
-          }
-          data[j*R+i] = (shade*255)|0;
-        }
+    dst.fill(0, j0*R, j1*R);
+    return;
+  }
+  for (let j=j0;j<j1;j++){
+    const wz = (j+0.5)/R*S - S*0.5;
+    for (let i=0;i<R;i++){
+      const wx = (i+0.5)/R*S - S*0.5;
+      const h0 = sampleHeight(wx,wz);
+      let shade = 1, t = 6;
+      for (let s=0;s<26;s++){
+        const px = wx + sx*t, py = h0 + sy*t + 0.6, pz = wz + sz*t;
+        if (py > World.maxH) break;
+        const dd = py - sampleHeight(px,pz);
+        const v = smooth(-1.5, 16.0, dd);
+        if (v < shade) shade = v;
+        if (shade <= 0.001) break;
+        t *= 1.30;
+        if (t > 2400) break;
       }
-      if (onProgress) onProgress(z1/R);
-      await nextFrame();
+      dst[j*R+i] = (shade*255)|0;
     }
   }
+}
+
+function ensureShadowTex(){
   if (!World.shadowTex){
-    const tex = new THREE.DataTexture(data, R, R, THREE.RedFormat, THREE.UnsignedByteType);
+    const R = CONFIG.world.shadowMaskRes;
+    const tex = new THREE.DataTexture(World.shadowMask, R, R, THREE.RedFormat, THREE.UnsignedByteType);
     tex.minFilter = tex.magFilter = THREE.LinearFilter;   // filtro linear => penumbra suave
     tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
     tex.generateMipmaps = false;
@@ -1087,6 +1623,49 @@ async function buildSunShadowMask(onProgress){
   }
   World.shadowTex.needsUpdate = true;
 }
+
+/** Assadura completa e bloqueante (usada no carregamento, com barra de progresso). */
+async function buildSunShadowMask(onProgress){
+  const R = CONFIG.world.shadowMaskRes;
+  World.shadowMask = World.shadowMask || new Uint8Array(R*R);
+  const rows = Math.max(8, R>>4);
+  for (let j0=0;j0<R;j0+=rows){
+    const j1 = Math.min(R, j0+rows);
+    bakeSunRows(World.shadowMask, lightDir, j0, j1);
+    if (onProgress) onProgress(j1/R);
+    await nextFrame();
+  }
+  ensureShadowTex();
+}
+
+/** Re-assadura incremental, amortizada ao longo de vários frames. */
+const SunBaker = {
+  buf: null, row: 0, dir: new THREE.Vector3(), lastDir: new THREE.Vector3(), running: false,
+  /** Chamar todo frame: dispara e avança o re-bake conforme o sol se move. */
+  update(){
+    const R = CONFIG.world.shadowMaskRes;
+    if (!World.shadowMask) return;
+    if (!this.running){
+      // o sol andou o bastante desde a última assadura?
+      const dot = clamp(this.lastDir.dot(lightDir), -1, 1);
+      if (Math.acos(dot)*R2D < CONFIG.day.rebakeDeg) return;
+      if (!this.buf) this.buf = new Uint8Array(R*R);
+      this.dir.copy(lightDir);
+      this.row = 0; this.running = true;
+    }
+    const rows = Math.max(4, CONFIG.day.rowsPerFrame|0);
+    const j1 = Math.min(R, this.row + rows);
+    bakeSunRows(this.buf, this.dir, this.row, j1);
+    this.row = j1;
+    if (this.row >= R){
+      World.shadowMask.set(this.buf);      // troca atômica: sem meia-sombra na tela
+      ensureShadowTex();
+      this.lastDir.copy(this.dir);
+      this.running = false;
+    }
+  },
+  reset(){ this.running = false; this.lastDir.copy(lightDir); }
+};
 
 /* ---------- Geometria de chunk compartilhada (grid + saias) ---------- */
 function buildChunkGeometry(N){
@@ -1456,7 +2035,473 @@ function buildWater(waveTex){
 }
 
 /* ==================================================================================
-   7) DRONE — modelo construído com geometria primitiva
+   7) VEGETAÇÃO E ROCHAS — InstancedMesh por célula, sway no vertex shader,
+      fade dithered por distância
+   ================================================================================== */
+
+/** Concatena geometrias numa só (aceita indexadas e não indexadas —
+ *  IcosahedronGeometry, por exemplo, vem sem índice). */
+function mergeGeos(list){
+  let nv = 0, ni = 0;
+  for (const g of list){
+    const c = g.attributes.position.count;
+    nv += c; ni += g.index ? g.index.count : c;
+  }
+  const pos = new Float32Array(nv*3), nrm = new Float32Array(nv*3);
+  const uv  = new Float32Array(nv*2), col = new Float32Array(nv*3);
+  const idx = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni);
+  let vo = 0, io = 0;
+  for (const g of list){
+    const p = g.attributes.position, n = g.attributes.normal;
+    const u = g.attributes.uv, c = g.attributes.color;
+    pos.set(p.array, vo*3);
+    if (n) nrm.set(n.array, vo*3);
+    if (u) uv.set(u.array, vo*2);
+    if (c) col.set(c.array, vo*3); else col.fill(1, vo*3, (vo + p.count)*3);
+    if (g.index){
+      const gi = g.index.array;
+      for (let i=0;i<gi.length;i++) idx[io+i] = gi[i] + vo;
+      io += gi.length;
+    } else {
+      for (let i=0;i<p.count;i++) idx[io+i] = i + vo;   // não indexada: índice sequencial
+      io += p.count;
+    }
+    vo += p.count;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  out.setAttribute('normal',   new THREE.BufferAttribute(nrm,3));
+  out.setAttribute('uv',       new THREE.BufferAttribute(uv,2));
+  out.setAttribute('color',    new THREE.BufferAttribute(col,3));
+  out.setIndex(new THREE.BufferAttribute(idx,1));
+  return out;
+}
+
+/** Pinta uma geometria inteira com uma cor (para o merge com vertexColors). */
+function paintGeo(g, hex){
+  const c = new THREE.Color(hex);
+  const n = g.attributes.position.count;
+  const arr = new Float32Array(n*3);
+  for (let i=0;i<n;i++){ arr[i*3]=c.r; arr[i*3+1]=c.g; arr[i*3+2]=c.b; }
+  g.setAttribute('color', new THREE.BufferAttribute(arr,3));
+  return g;
+}
+
+/** Textura de tufo de grama (alpha recortado, várias lâminas). */
+function makeGrassTexture(size, seed){
+  const { c, ctx } = makeCanvas(size);
+  ctx.clearRect(0,0,size,size);
+  const rnd = mulberry32(seed);
+  const blades = 11;
+  for (let b=0;b<blades;b++){
+    const x0 = size*(0.12 + rnd()*0.76);
+    const w  = size*(0.030 + rnd()*0.030);
+    const h  = size*(0.45 + rnd()*0.52);
+    const bend = (rnd()-0.5)*size*0.28;
+    const g = ctx.createLinearGradient(0, size, 0, size-h);
+    const dark = 26 + rnd()*22, mid = 70 + rnd()*48;
+    g.addColorStop(0,   `rgb(${dark|0},${(dark*1.5)|0},${(dark*0.7)|0})`);
+    g.addColorStop(0.55,`rgb(${mid|0},${(mid*1.45)|0},${(mid*0.55)|0})`);
+    g.addColorStop(1,   `rgb(${(mid*1.3)|0},${(mid*1.8)|0},${(mid*0.7)|0})`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x0 - w/2, size);
+    ctx.quadraticCurveTo(x0 - w/2 + bend*0.5, size-h*0.55, x0 + bend, size-h);
+    ctx.quadraticCurveTo(x0 + w/2 + bend*0.5, size-h*0.55, x0 + w/2, size);
+    ctx.closePath(); ctx.fill();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+/** Tufo de grama: 3 quads cruzados (billboard cruzado clássico). */
+function makeGrassGeometry(h = 0.78, w = 0.58){
+  const parts = [];
+  for (let i=0;i<3;i++){
+    const q = new THREE.PlaneGeometry(w, h, 1, 1);
+    q.translate(0, h*0.5, 0);
+    q.rotateY(i * Math.PI/3);
+    parts.push(paintGeo(q, 0xffffff));
+  }
+  const g = mergeGeos(parts);
+
+  // NORMAIS DE FOLHAGEM: os quads têm normal horizontal, então luz vinda de cima
+  // não os acende (N·L ≈ 0) e a grama vira um chuvisco preto sobre o terreno.
+  // Trocamos por uma normal em cúpula — para cima com um pouco de radial —, que é
+  // o truque padrão para cartões de vegetação: a grama passa a receber luz como o
+  // chão e se funde com ele em vez de brigar.
+  const nrm = g.attributes.normal, pos = g.attributes.position;
+  for (let i=0;i<nrm.count;i++){
+    const x = pos.getX(i), z = pos.getZ(i);
+    const l = Math.hypot(x, z) || 1;
+    const nx = x/l*0.40, ny = 1, nz = z/l*0.40;
+    const m = Math.hypot(nx, ny, nz);
+    nrm.setXYZ(i, nx/m, ny/m, nz/m);
+  }
+  nrm.needsUpdate = true;
+  return g;
+}
+
+/** Esfera com vértices deslocados por ruído — base de rochas e copas. */
+function blobGeometry(radius, detail, rnd, rough, squash){
+  const g = new THREE.IcosahedronGeometry(radius, detail);
+  const p = g.attributes.position;
+  const n = new Simplex((rnd()*100000)|0);
+  for (let i=0;i<p.count;i++){
+    const x=p.getX(i), y=p.getY(i), z=p.getZ(i);
+    const d = 1 + n.fbm(x*2.1, z*2.1 + y*1.7, 3) * rough;
+    p.setXYZ(i, x*d, y*d*squash, z*d);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+function makeRockGeometry(rnd){
+  const g = blobGeometry(1.0, 1, rnd, 0.42, 0.72);
+  g.translate(0, 0.30, 0);
+  return paintGeo(g, 0x8a8781);
+}
+
+function makeBushGeometry(rnd){
+  const parts = [];
+  for (let i=0;i<3;i++){
+    const r = 0.38 + rnd()*0.26;
+    const b = blobGeometry(r, 1, rnd, 0.34, 0.82);
+    b.translate((rnd()-0.5)*0.42, r*0.72 + rnd()*0.18, (rnd()-0.5)*0.42);
+    parts.push(paintGeo(b, 0x40631f));
+  }
+  return mergeGeos(parts);
+}
+
+/** Árvore low-poly: tronco cônico + 2–3 copas deslocadas, tudo numa geometria. */
+function makeTreeGeometry(rnd){
+  const H = 4.6 + rnd()*2.4;
+  const parts = [];
+  const trunk = new THREE.CylinderGeometry(0.09, 0.20, H*0.62, 6, 1);
+  trunk.translate(0, H*0.31, 0);
+  parts.push(paintGeo(trunk, 0x4a3524));
+  const canopies = 2 + ((rnd()*2)|0);
+  for (let i=0;i<canopies;i++){
+    const t = i/(canopies-1 || 1);
+    const r = (1.5 - t*0.62) * (0.82 + rnd()*0.3);
+    const cGeo = blobGeometry(r, 1, rnd, 0.30, 0.80);
+    cGeo.translate((rnd()-0.5)*0.28, H*(0.55 + t*0.42), (rnd()-0.5)*0.28);
+    // copas mais altas ficam mais claras (luz vinda de cima)
+    parts.push(paintGeo(cGeo, new THREE.Color(0x2f5418).lerp(new THREE.Color(0x6f9b32), t*0.75).getHex()));
+  }
+  return mergeGeos(parts);
+}
+
+/* ---------- Uniforms compartilhados por toda a vegetação ---------- */
+const scatterShared = {
+  uTime:      { value: 0 },
+  uCamPos:    { value: new THREE.Vector3() },
+  uWindDir:   { value: new THREE.Vector2(1, 0) },
+  uWindPower: { value: 1 },
+};
+
+/**
+ * Patch de material da vegetação:
+ *  - sway no vertex shader, ponderado pela altura do vértice (a base não mexe)
+ *  - fade DITHERED por distância (dissolve por Bayer 4×4, sem transparência)
+ */
+function patchScatterMaterial(mat, opts){
+  const u = {
+    uSway:      { value: opts.sway },
+    uSwayRef:   { value: opts.swayRef },
+    uFadeStart: { value: opts.radius * 0.52 },
+    uFadeEnd:   { value: opts.radius },
+  };
+  mat.userData.u = u;
+  mat.customProgramCacheKey = ()=> 'scatter' + (opts.sway > 0 ? 'S' : 'N');
+  mat.onBeforeCompile = (sh)=>{
+    Object.assign(sh.uniforms, scatterShared, u);
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', /* glsl */`
+        #include <common>
+        uniform float uTime, uSway, uSwayRef, uFadeStart, uFadeEnd, uWindPower;
+        uniform vec3  uCamPos;
+        uniform vec2  uWindDir;
+        varying float vFade;
+      `)
+      .replace('#include <begin_vertex>', /* glsl */`
+        #include <begin_vertex>
+        // posição da instância no mundo (instanceMatrix só é aplicada depois, em project_vertex)
+        #ifdef USE_INSTANCING
+          vec3 iOrigin = (modelMatrix * instanceMatrix * vec4(0.0,0.0,0.0,1.0)).xyz;
+        #else
+          vec3 iOrigin = (modelMatrix * vec4(0.0,0.0,0.0,1.0)).xyz;
+        #endif
+        vFade = 1.0 - smoothstep(uFadeStart, uFadeEnd, distance(uCamPos, iOrigin));
+        #if defined(SCATTER_SWAY)
+          float swayH = clamp(transformed.y / uSwayRef, 0.0, 1.0);
+          float ph    = iOrigin.x * 0.13 + iOrigin.z * 0.17;
+          float w     = sin(uTime * 1.15 + ph) * 0.62 + sin(uTime * 1.97 + ph * 2.3) * 0.38;
+          // quadrático na altura: a base fica firme, a ponta balança
+          transformed.xz += uWindDir * (w * uSway * uWindPower * swayH * swayH);
+        #endif
+      `);
+    if (opts.foliageNormal){
+      // DOUBLE_SIDED inverte a normal nas faces de trás, o que voltaria a apagar
+      // metade dos cartões. Multiplicar por faceDirection de novo cancela o flip
+      // (faceDirection² = 1) e mantém a normal de cúpula nos dois lados.
+      sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_begin>',
+        '#include <normal_fragment_begin>\n\tnormal *= faceDirection;');
+    }
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', /* glsl */`
+        #include <common>
+        varying float vFade;
+        // Bayer 4×4 — dissolve estável no espaço da tela (não cintila como hash aleatório)
+        float bayer4(vec2 p){
+          ivec2 q = ivec2(mod(p, 4.0));
+          int i = q.y*4 + q.x;
+          float m[16];
+          m[0]=0.0;  m[1]=8.0;  m[2]=2.0;  m[3]=10.0;
+          m[4]=12.0; m[5]=4.0;  m[6]=14.0; m[7]=6.0;
+          m[8]=3.0;  m[9]=11.0; m[10]=1.0; m[11]=9.0;
+          m[12]=15.0;m[13]=7.0; m[14]=13.0;m[15]=5.0;
+          return (m[i] + 0.5) / 16.0;
+        }
+      `)
+      .replace('#include <clipping_planes_fragment>', /* glsl */`
+        #include <clipping_planes_fragment>
+        if (vFade < bayer4(gl_FragCoord.xy)) discard;
+      `);
+  };
+  if (opts.sway > 0) mat.defines = Object.assign(mat.defines || {}, { SCATTER_SWAY: '' });
+  return mat;
+}
+
+/**
+ * Camada de espalhamento: tabuleiro de células, cada uma um InstancedMesh
+ * construído sob demanda de forma determinística e guardado num cache LRU.
+ */
+class ScatterLayer {
+  constructor(scene, name, cfg, geo, mat, place){
+    this.name = name; this.cfg = cfg;
+    this.geo = geo; this.mat = mat; this.place = place;
+    this.group = new THREE.Group();
+    this.group.matrixAutoUpdate = false;
+    scene.add(this.group);
+    this.cells = new Map();       // chave -> {mesh, lastUsed}
+    this.tick = 0;
+    this.density = 1;
+    this.radiusMul = 1;
+    this._m = new THREE.Matrix4();
+    this._q = new THREE.Quaternion();
+    this._p = new THREE.Vector3();
+    this._s = new THREE.Vector3();
+    this._c = new THREE.Color();
+    this._up = new THREE.Vector3(0,1,0);
+    this._n = new THREE.Vector3();
+  }
+
+  _key(ix, iz){ return ix * 65536 + iz; }
+
+  /** Constrói (ou reaproveita) o InstancedMesh de uma célula. */
+  _build(ix, iz){
+    const cfg = this.cfg, cs = cfg.cell;
+    const n = Math.max(1, Math.round(cfg.perCell * this.density));
+    // RNG determinístico: mesma seed + mesma célula => sempre o mesmo resultado
+    const rnd = mulberry32((CONFIG.world.seed * 2654435761 ^ (ix*73856093) ^ (iz*19349663)) >>> 0);
+    const mesh = new THREE.InstancedMesh(this.geo, this.mat, n);
+    mesh.frustumCulled = true;
+    mesh.receiveShadow = true;
+    mesh.castShadow = false;
+    mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+
+    const x0 = ix*cs, z0 = iz*cs;
+    let count = 0;
+    for (let i=0;i<n;i++){
+      const x = x0 + rnd()*cs, z = z0 + rnd()*cs;
+      const r = this.place(x, z, rnd, this);
+      if (!r) continue;
+      this._m.compose(this._p.set(x, r.y, z), this._q.setFromAxisAngle(this._up, rnd()*TAU), this._s.setScalar(r.s));
+      if (r.tiltQ) this._m.compose(this._p, r.tiltQ, this._s);
+      mesh.setMatrixAt(count, this._m);
+      mesh.setColorAt(count, this._c.setHSL(r.hue, r.sat, r.lum));
+      count++;
+    }
+    mesh.count = count;
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    if (count === 0){ mesh.dispose(); return null; }
+    // bounding sphere manual: a célula inteira, com folga vertical generosa
+    const [mn, mx] = regionMinMax(x0 + cs*0.5, z0 + cs*0.5, cs);
+    mesh.boundingSphere = new THREE.Sphere(
+      new THREE.Vector3(x0 + cs*0.5, (mn+mx)*0.5, z0 + cs*0.5),
+      Math.hypot(cs*0.71, (mx-mn)*0.5 + 12));
+    mesh.geometry.boundingSphere = mesh.boundingSphere;
+    this.group.add(mesh);
+    return mesh;
+  }
+
+  setQuality(density, radiusMul){
+    if (density === this.density && radiusMul === this.radiusMul) return;
+    this.density = density; this.radiusMul = radiusMul;
+    this.clear();
+  }
+
+  clear(){
+    for (const c of this.cells.values()){ this.group.remove(c.mesh); c.mesh.dispose(); }
+    this.cells.clear();
+  }
+
+  /** Ativa as células dentro do raio; constrói no máximo `budget` por chamada. */
+  update(camPos, dronePos, budget){
+    this.tick++;
+    const cs = this.cfg.cell;
+    const radius = this.cfg.radius * this.radiusMul;
+    if (this.density <= 0 || radius <= 0){ if (this.cells.size) this.clear(); return budget; }
+
+    const i0 = Math.floor((camPos.x - radius)/cs), i1 = Math.floor((camPos.x + radius)/cs);
+    const j0 = Math.floor((camPos.z - radius)/cs), j1 = Math.floor((camPos.z + radius)/cs);
+    const shadowR2 = CONFIG.scatter.shadowRadius * CONFIG.scatter.shadowRadius;
+
+    for (let j=j0;j<=j1;j++){
+      for (let i=i0;i<=i1;i++){
+        const ccx = (i+0.5)*cs, ccz = (j+0.5)*cs;
+        const dx = ccx - camPos.x, dz = ccz - camPos.z;
+        if (dx*dx + dz*dz > (radius+cs)*(radius+cs)) continue;
+        const key = this._key(i,j);
+        let cell = this.cells.get(key);
+        if (!cell){
+          if (budget <= 0) continue;
+          const mesh = this._build(i,j);
+          budget--;
+          cell = { mesh, lastUsed: this.tick };
+          this.cells.set(key, cell);
+          if (!mesh) continue;
+        }
+        cell.lastUsed = this.tick;
+        if (!cell.mesh) continue;
+        cell.mesh.visible = true;
+        // só as células perto do drone entram no shadow map
+        const ddx = ccx - dronePos.x, ddz = ccz - dronePos.z;
+        cell.mesh.castShadow = this.cfg.sway < 0.12 && (ddx*ddx + ddz*ddz) < shadowR2;
+      }
+    }
+
+    // descarta as células não usadas neste frame (fora do raio)
+    for (const [key, cell] of this.cells){
+      if (cell.lastUsed === this.tick) continue;
+      if (cell.mesh){ this.group.remove(cell.mesh); cell.mesh.dispose(); }
+      this.cells.delete(key);
+    }
+    return budget;
+  }
+}
+
+/** Gerenciador: cria as camadas e distribui o orçamento de construção por frame. */
+class Scatter {
+  constructor(scene, grassTex){
+    const S = CONFIG.scatter;
+    this.clump = new Simplex(CONFIG.world.seed + 5150);
+    this.treeLine = World.maxH * S.treeLineFrac;
+    this.layers = [];
+
+    const matGrass = patchScatterMaterial(new THREE.MeshStandardMaterial({
+      map: grassTex, alphaTest: 0.42, side: THREE.DoubleSide, transparent: false,
+      roughness: 0.92, metalness: 0.0, envMapIntensity: 0.3, vertexColors: true,
+    }), { ...S.grass, foliageNormal: true });
+    const matLeaf = patchScatterMaterial(new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.88, metalness: 0.0, envMapIntensity: 0.35, flatShading: true,
+    }), S.bush);
+    const matTree = patchScatterMaterial(new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.85, metalness: 0.0, envMapIntensity: 0.35, flatShading: true,
+    }), S.tree);
+    const matRock = patchScatterMaterial(new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.95, metalness: 0.02, envMapIntensity: 0.5, flatShading: true,
+    }), S.rock);
+
+    const rnd = mulberry32(CONFIG.world.seed + 909);
+
+    this.layers.push(new ScatterLayer(scene, 'grass', S.grass,
+      makeGrassGeometry(), matGrass, (x,z,r,L)=> this._place(x,z,r,{
+        minSlopeOk: S.grass.maxSlope, sMin:0.75, sMax:1.60, hue:0.24, sat:0.30, lum:0.44,
+        clumpBias: 0.30, maxAltFrac: 0.72 })));
+
+    this.layers.push(new ScatterLayer(scene, 'bush', S.bush,
+      makeBushGeometry(rnd), matLeaf, (x,z,r,L)=> this._place(x,z,r,{
+        minSlopeOk: S.bush.maxSlope, sMin:0.6, sMax:1.5, hue:0.23, sat:0.36, lum:0.34,
+        clumpBias: 0.45, maxAltFrac: 0.80 })));
+
+    this.layers.push(new ScatterLayer(scene, 'tree', S.tree,
+      makeTreeGeometry(rnd), matTree, (x,z,r,L)=> this._place(x,z,r,{
+        minSlopeOk: S.tree.maxSlope, sMin:0.70, sMax:1.45, hue:0.25, sat:0.26, lum:0.46,
+        clumpBias: 0.62, maxAltFrac: 1.0, minAlt: 4 })));
+
+    this.layers.push(new ScatterLayer(scene, 'rock', S.rock,
+      makeRockGeometry(rnd), matRock, (x,z,r,L)=> this._place(x,z,r,{
+        minSlopeOk: S.rock.maxSlope, sMin:0.35, sMax:2.6, hue:0.09, sat:0.06, lum:0.42,
+        clumpBias: -0.25, maxAltFrac: 2.0, tilt: true, ignoreTreeLine: true })));
+  }
+
+  /** Regra comum de posicionamento: água, inclinação, altitude e agrupamento. */
+  _place(x, z, rnd, o){
+    const S = CONFIG.scatter;
+    const h = sampleHeight(x, z);
+    if (h < CONFIG.world.waterLevel + (o.minAlt ?? S.beachMargin)) return null;
+    if (!o.ignoreTreeLine && h > this.treeLine * (o.maxAltFrac ?? 1)) return null;
+
+    const n = terrainNormal(x, z, 2.0);
+    const slope = 1 - n.y;
+    if (slope > o.minSlopeOk) return null;
+
+    // ruído de agrupamento: cria clareiras e bosques em vez de distribuição uniforme
+    const cl = this.clump.fbm(x*S.clumpScale, z*S.clumpScale, 3);
+    if (rnd() > clamp(0.55 + cl*o.clumpBias*2.2, 0.04, 1)) return null;
+
+    // desbaste perto da linha das árvores (transição suave, não uma borda reta)
+    if (!o.ignoreTreeLine){
+      const fade = 1 - smooth(this.treeLine*0.78, this.treeLine, h);
+      if (rnd() > fade) return null;
+    }
+
+    const res = {
+      y: h - 0.06,
+      s: lerp(o.sMin, o.sMax, rnd()*rnd() + rnd()*0.35),
+      hue: o.hue + (rnd()-0.5)*0.05,
+      sat: o.sat * (0.7 + rnd()*0.6),
+      lum: o.lum * (0.72 + rnd()*0.62),
+    };
+    if (o.tilt){
+      // rochas acompanham a inclinação do terreno
+      res.tiltQ = new THREE.Quaternion().setFromUnitVectors(this._u || (this._u = new THREE.Vector3(0,1,0)), n)
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), rnd()*TAU));
+    }
+    return res;
+  }
+
+  update(camPos, dronePos, dt, windVec){
+    scatterShared.uTime.value += dt;
+    scatterShared.uCamPos.value.copy(camPos);
+    const wl = Math.hypot(windVec.x, windVec.z) || 1;
+    scatterShared.uWindDir.value.set(windVec.x/wl, windVec.z/wl);
+    scatterShared.uWindPower.value = clamp(0.35 + wl*0.10, 0.35, 2.2);
+    let budget = CONFIG.scatter.cellsPerFrame;
+    for (const L of this.layers) budget = L.update(camPos, dronePos, budget);
+  }
+
+  setQuality(q){
+    for (const L of this.layers) L.setQuality(q.veg, q.vegRadius);
+  }
+
+  clear(){ for (const L of this.layers) L.clear(); }
+
+  get instanceCount(){
+    let n = 0;
+    for (const L of this.layers) for (const c of L.cells.values()) if (c.mesh) n += c.mesh.count;
+    return n;
+  }
+}
+
+/* ==================================================================================
+   8) DRONE — modelo construído com geometria primitiva
    ================================================================================== */
 class Drone {
   constructor(carbonTex, discTex){
@@ -1733,7 +2778,7 @@ class Drone {
 }
 
 /* ==================================================================================
-   8) FÍSICA DO DRONE — quadcóptero arcade-sim, fixed timestep 120 Hz
+   9) FÍSICA DO DRONE — quadcóptero arcade-sim, fixed timestep 120 Hz
    ================================================================================== */
 class DronePhysics {
   constructor(){
@@ -2000,7 +3045,7 @@ class DronePhysics {
 }
 
 /* ==================================================================================
-   9) CÂMERA EM 3ª PESSOA — spring arm, chase/orbit, colisão, FOV dinâmico, shake
+  10) CÂMERA EM 3ª PESSOA — spring arm, chase/orbit, colisão, FOV dinâmico, shake
    ================================================================================== */
 class ChaseCamera {
   constructor(cam){
@@ -2121,7 +3166,7 @@ class ChaseCamera {
 }
 
 /* ==================================================================================
-   10) INPUT — teclado, mouse e gamepad (layout de rádio Mode 2)
+  11) INPUT — teclado, mouse e gamepad (layout de rádio Mode 2)
    ================================================================================== */
 class Input {
   constructor(){
@@ -2246,7 +3291,7 @@ class Input {
 }
 
 /* ==================================================================================
-   11) PARTÍCULAS — poeira do solo, faíscas e fumaça do crash
+  12) PARTÍCULAS — poeira, folhas, vapor das hélices, faíscas e fumaça do crash
    ================================================================================== */
 class Particles {
   constructor(scene, tex, max=900){
@@ -2326,7 +3371,7 @@ class Particles {
 }
 
 /* ==================================================================================
-   12) HUD — OSD estilo FPV desenhado em Canvas 2D
+  13) HUD — OSD estilo FPV desenhado em Canvas 2D
    ================================================================================== */
 class HUD {
   constructor(canvas){
@@ -2589,7 +3634,7 @@ class HUD {
 }
 
 /* ==================================================================================
-   13) ESTADO DO JOGO / ORQUESTRAÇÃO
+  14) ESTADO DO JOGO / ORQUESTRAÇÃO
    ================================================================================== */
 const state = {
   running: false,
@@ -2602,8 +3647,9 @@ const state = {
   shadowExt: -1,          // extensão atual da caixa de sombra (quantizada)
 };
 
-let terrain, water, drone, phys, chaseCam, input, hud, particles;
-let texSand, texGrass, texRock, texSnow, texCarbon, texDisc, texWave, texDot;
+let terrain, water, drone, phys, chaseCam, input, hud, particles, scatter;
+let hourInputEl = null;
+let texSand, texGrass, texRock, texSnow, texCarbon, texDisc, texWave, texDot, texGrassBlade;
 
 const rPos  = new THREE.Vector3();
 const rQuat = new THREE.Quaternion();
@@ -2679,7 +3725,7 @@ function togglePause(){
 }
 
 /* ==================================================================================
-   14) CARREGAMENTO / CONSTRUÇÃO DO MUNDO
+  15) CARREGAMENTO / CONSTRUÇÃO DO MUNDO
    ================================================================================== */
 const barEl = document.getElementById('bar');
 const ltxtEl = document.getElementById('ltxt');
@@ -2699,6 +3745,7 @@ async function buildTextures(){
   await nextFrame(); setProgress(0.11);
   texSnow  = makeSurfaceTexture(512, 404, [226,234,244],[188,200,216],[255,255,255], 0.12, 0.44, 7.0);
   await nextFrame(); setProgress(0.14);
+  texGrassBlade = makeGrassTexture(128, 808);
   texCarbon= makeCarbonTexture(256);
   texDisc  = makePropDiscTexture(256, 55);
   texWave  = makeWaterNormal(256, 606);
@@ -2733,6 +3780,11 @@ async function buildWorld(seed){
   if (terrain){ scene.remove(terrain.group); }
   terrain = new Terrain(scene);
 
+  // vegetação: as células são construídas sob demanda, então só criamos as camadas
+  if (scatter){ scatter.clear(); for (const L of scatter.layers) scene.remove(L.group); }
+  scatter = new Scatter(scene, texGrassBlade);
+  scatter.setQuality(CONFIG.quality[state.quality]);
+
   if (!water){ water = buildWater(texWave); scene.add(water); }
 
   setProgress(0.90, 'desenhando o minimapa…');
@@ -2763,7 +3815,7 @@ async function buildWorld(seed){
 }
 
 /* ==================================================================================
-   15) MENU / QUALIDADE
+  16) MENU / QUALIDADE
    ================================================================================== */
 function applyQuality(name){
   state.quality = name;
@@ -2773,6 +3825,7 @@ function applyQuality(name){
   if (sunLight.shadow.map){ sunLight.shadow.map.dispose(); sunLight.shadow.map = null; }
   state.shadowExt = -1;    // força o recálculo da caixa de sombra no próximo frame
   if (terrain) terrain.lodBias = q.lodBias;
+  if (scatter) scatter.setQuality(q);
   buildComposer(q);
   onResize();
 }
@@ -2789,7 +3842,12 @@ function readMenu(){
   CONFIG.input.deadzone      = parseFloat($('opt-dead').value);
   CONFIG.input.invertPitch   = $('opt-invp').checked;
   CONFIG.game.infiniteBattery= $('opt-batt').checked;
-  if (gradePass) gradePass.uniforms.uGrain.value = CONFIG.gfx.grain;
+  CONFIG.gfx.ssaoOn          = $('opt-ssao').checked;
+  CONFIG.gfx.godraysOn       = $('opt-godrays').checked;
+  CONFIG.gfx.motionOn        = $('opt-motion').checked;
+  CONFIG.gfx.speedLinesOn    = $('opt-speed').checked;
+  CONFIG.day.auto            = $('opt-auto').checked;
+  syncPostUniforms();
 }
 
 function wireMenu(){
@@ -2797,7 +3855,6 @@ function wireMenu(){
 
   $('btn-play').addEventListener('click', ()=>{
     readMenu();
-    applyTimePreset($('opt-time').value);
     state.paused = false;
     $('menu').classList.remove('on');
     $('btn-play').textContent = 'CONTINUAR';
@@ -2807,7 +3864,6 @@ function wireMenu(){
     readMenu();
     $('menu').classList.remove('on');
     document.getElementById('loading').style.display = 'flex';
-    applyTimePreset($('opt-time').value);
     await buildWorld(CONFIG.world.seed);
     document.getElementById('loading').style.display = 'none';
     state.paused = true;
@@ -2816,13 +3872,26 @@ function wireMenu(){
 
   $('opt-quality').addEventListener('change', e=> applyQuality(e.target.value));
 
-  $('opt-time').addEventListener('change', async e=>{
-    applyTimePreset(e.target.value);
-    ltxtEl.textContent = 'recalculando a luz…';
-    document.getElementById('loading').style.display = 'flex';
-    await buildSunShadowMask(p=> setProgress(p, `recalculando a luz… ${(p*100)|0}%`));
-    document.getElementById('loading').style.display = 'none';
+  // O relógio e o seletor de hora andam juntos; a máscara de sombra do relevo
+  // é re-assada em fatias pelo SunBaker, sem travar a tela.
+  hourInputEl = $('opt-hour');
+  const setHourLabel = ()=>{
+    const h = CONFIG.day.hour;
+    $('lbl-hour').textContent =
+      `${String(Math.floor(h)).padStart(2,'0')}:${String(Math.floor((h%1)*60)).padStart(2,'0')}`;
+  };
+  $('opt-time').addEventListener('change', e=>{
+    const p = CONFIG.timePresets[e.target.value];
+    applySunHour(p.hour, true);
+    hourInputEl.value = CONFIG.day.hour.toFixed(2);
+    setHourLabel();
   });
+  hourInputEl.addEventListener('input', e=>{
+    applySunHour(parseFloat(e.target.value), true);
+    setHourLabel();
+  });
+  $('opt-auto').addEventListener('change', e=>{ CONFIG.day.auto = e.target.checked; });
+  setInterval(()=>{ if (CONFIG.day.auto) setHourLabel(); }, 500);
 
   $('opt-exposure').addEventListener('input', e=>{
     CONFIG.gfx.exposure = parseFloat(e.target.value);
@@ -2836,6 +3905,21 @@ function wireMenu(){
     CONFIG.gfx.grain = e.target.checked ? 0.035 : 0;
     if (gradePass) gradePass.uniforms.uGrain.value = CONFIG.gfx.grain;
   });
+  // ligar/desligar um pass muda a pilha do composer, então ele é remontado
+  const rebuild = ()=>{ buildComposer(CONFIG.quality[state.quality]); onResize(); };
+  $('opt-ssao').addEventListener('change',    e=>{ CONFIG.gfx.ssaoOn = e.target.checked; rebuild(); });
+  $('opt-godrays').addEventListener('change', e=>{ CONFIG.gfx.godraysOn = e.target.checked; rebuild(); });
+  $('opt-motion').addEventListener('change',  e=>{ CONFIG.gfx.motionOn = e.target.checked; rebuild(); });
+  $('opt-speed').addEventListener('change',   e=>{ CONFIG.gfx.speedLinesOn = e.target.checked; });
+  // densidade/distância da vegetação reconstroem as células em cache
+  const vegApply = ()=>{
+    if (!scatter) return;
+    const q = CONFIG.quality[state.quality];
+    scatter.setQuality({ veg: q.veg * parseFloat($('opt-veg').value),
+                         vegRadius: q.vegRadius * parseFloat($('opt-vegdist').value) });
+  };
+  $('opt-veg').addEventListener('change', vegApply);
+  $('opt-vegdist').addEventListener('change', vegApply);
   ['opt-sens','opt-expo','opt-dead','opt-invp','opt-batt','opt-wind'].forEach(id=>{
     $(id).addEventListener('input', readMenu);
     $(id).addEventListener('change', readMenu);
@@ -2852,18 +3936,17 @@ function wireMenu(){
 }
 
 /* ==================================================================================
-   16) RESIZE
+  17) RESIZE
    ================================================================================== */
 function onResize(){
   const w = innerWidth, h = innerHeight;
   camera.aspect = w/h;
   camera.updateProjectionMatrix();
   renderer.setSize(w,h);
-  if (composer){
-    composer.setSize(w,h);
-    if (bloomPass) bloomPass.setSize(w,h);
-    if (smaaPass)  smaaPass.setSize(w,h);
-  }
+  // composer.setSize já repassa o tamanho EFETIVO (multiplicado pelo pixelRatio)
+  // para todos os passes; redimensioná-los aqui com o tamanho CSS os deixaria
+  // em resolução menor que o alvo sempre que devicePixelRatio > 1.
+  if (composer) composer.setSize(w,h);
   if (gradePass) gradePass.uniforms.uAspect.value = w/h;
   if (starPoints) starPoints.material.uniforms.uPR.value = renderer.getPixelRatio();
   if (hud) hud.resize();
@@ -2871,7 +3954,7 @@ function onResize(){
 addEventListener('resize', onResize);
 
 /* ==================================================================================
-   17) GAME LOOP — fixed timestep + render interpolado
+  18) GAME LOOP — fixed timestep + render interpolado
    ================================================================================== */
 let accumulator = 0;
 let lastTime = performance.now()/1000;
@@ -2881,23 +3964,25 @@ const _sunScreen = new THREE.Vector3();
 const _shadowCenter = new THREE.Vector3();
 const _shadowHit = new THREE.Vector3();
 const _dVel = new THREE.Vector3();
+const _tipPos = new THREE.Vector3();
+const _sunUv = new THREE.Vector2();
 
 /** Onde a sombra do drone toca o solo (marcha ao longo de -sunDir). */
 function sunGroundHit(p, out){
-  if (sunDir.y < 0.06) return false;
-  const maxT = Math.min(700, (p.y - World.minH)/sunDir.y + 5);
+  if (lightDir.y < 0.06) return false;
+  const maxT = Math.min(700, (p.y - World.minH)/lightDir.y + 5);
   if (maxT <= 0) return false;
   let prevT = 0;
   let prevD = p.y - Math.max(sampleHeight(p.x, p.z), CONFIG.world.waterLevel);
   const steps = 20;
   for (let i=1;i<=steps;i++){
     const t = maxT*i/steps;
-    const x = p.x - sunDir.x*t, y = p.y - sunDir.y*t, z = p.z - sunDir.z*t;
+    const x = p.x - lightDir.x*t, y = p.y - lightDir.y*t, z = p.z - lightDir.z*t;
     const d = y - Math.max(sampleHeight(x,z), CONFIG.world.waterLevel);
     if (d <= 0){
       const f = prevD/(prevD - d);                       // refino linear entre as amostras
       const tt = prevT + (t - prevT)*clamp(f,0,1);
-      out.set(p.x - sunDir.x*tt, p.y - sunDir.y*tt, p.z - sunDir.z*tt);
+      out.set(p.x - lightDir.x*tt, p.y - lightDir.y*tt, p.z - lightDir.z*tt);
       return true;
     }
     prevT = t; prevD = d;
@@ -2916,7 +4001,8 @@ function loop(){
   /* ---------- FPS ---------- */
   fpsAcc += frameDt; fpsFrames++;
   if (fpsAcc >= 0.4){ fpsVal = fpsFrames/fpsAcc; fpsAcc=0; fpsFrames=0;
-    fpsEl.textContent = `${fpsVal.toFixed(0)} FPS · ${terrain?terrain.active:0} chunks · ${state.quality.toUpperCase()}`;
+    fpsEl.textContent = `${fpsVal.toFixed(0)} FPS · ${terrain?terrain.active:0} chunks · ` +
+      `${scatter?(scatter.instanceCount/1000).toFixed(1):0}k plantas · ${state.quality.toUpperCase()}`;
   }
 
   /* ---------- Toast ---------- */
@@ -2960,6 +4046,14 @@ function loop(){
 function render(frameDt, alpha){
   const dt = frameDt * state.timeScale;
 
+  /* ---------- Ciclo de dia contínuo ---------- */
+  if (CONFIG.day.auto && !state.paused){
+    applySunHour(CONFIG.day.hour + CONFIG.day.speed * frameDt, false);
+    if (hourInputEl) hourInputEl.value = CONFIG.day.hour.toFixed(2);
+  }
+  // re-assa a máscara de sombra do relevo em fatias, conforme o sol anda
+  SunBaker.update();
+
   /* ---------- Estado interpolado do drone ---------- */
   phys.interpolate(alpha, rPos, rQuat);
   drone.root.position.copy(rPos);
@@ -2991,6 +4085,9 @@ function render(frameDt, alpha){
   /* ---------- Terreno LOD ---------- */
   terrain.update(camera.position, camera);
 
+  /* ---------- Vegetação e rochas (células por demanda) ---------- */
+  if (scatter) scatter.update(camera.position, rPos, dt, phys.wind);
+
   /* ---------- Sol / sombras ----------
      O drone é o único caster (o relevo usa a máscara solar analítica), então a
      caixa de sombra é apertada em volta do segmento drone → sombra no solo.
@@ -3016,7 +4113,7 @@ function render(frameDt, alpha){
   _shadowCenter.x = Math.round(_shadowCenter.x/texelSize)*texelSize;
   _shadowCenter.z = Math.round(_shadowCenter.z/texelSize)*texelSize;
   sunLight.target.position.copy(_shadowCenter);
-  sunLight.position.copy(_shadowCenter).addScaledVector(sunDir, ext*2.2 + 20);
+  sunLight.position.copy(_shadowCenter).addScaledVector(lightDir, ext*2.2 + 20);
   sunLight.target.updateMatrixWorld();
   sunLight.updateMatrixWorld();
 
@@ -3028,6 +4125,9 @@ function render(frameDt, alpha){
 
   /* ---------- Céu e estrelas acompanham a câmera (domo "infinito") ---------- */
   sky.position.copy(camera.position);
+  if (moonMesh && moonMesh.visible){
+    moonMesh.position.copy(camera.position).addScaledVector(lightDir, SKY_SCALE * 0.42);
+  }
   if (starPoints){
     starPoints.position.copy(camera.position);
     starPoints.material.uniforms.uTime.value += frameDt;
@@ -3049,6 +4149,37 @@ function render(frameDt, alpha){
         0.62,0.56,0.44);
     }
   }
+  /* ---------- Partículas: folhas soltas sobre a vegetação ---------- */
+  if (pq > 0 && phys.agl < 60 && Math.random() < 0.35*pq*Math.min(frameDt*60,3)){
+    const a = Math.random()*TAU, r = 8 + Math.random()*34;
+    const lx = rPos.x + Math.cos(a)*r, lz = rPos.z + Math.sin(a)*r;
+    const lh = sampleHeight(lx, lz);
+    if (lh > CONFIG.world.waterLevel + 2){
+      particles.spawn(lx, lh + 0.6 + Math.random()*3.2, lz,
+        phys.wind.x*0.5 + (Math.random()-0.5), 0.25 + Math.random()*0.5,
+        phys.wind.z*0.5 + (Math.random()-0.5),
+        0.13 + Math.random()*0.10, 3.5 + Math.random()*2.5,
+        0.42, 0.46, 0.16);
+    }
+  }
+
+  /* ---------- Partículas: vapor nas pontas das hélices em alto G ---------- */
+  const gLoad = Math.hypot(phys.accel.x, phys.accel.y, phys.accel.z) / CONFIG.physics.gravity;
+  if (pq > 0 && gLoad > 2.6 && phys.throttle > 0.5){
+    const k = clamp((gLoad - 2.6)/3.5, 0, 1);
+    for (const m of drone.motors){
+      if (Math.random() > k*0.55) continue;
+      m.group.getWorldPosition(_tipPos);
+      const a = Math.random()*TAU, rr = CONFIG.drone.propRadius*0.95;
+      particles.spawn(_tipPos.x + Math.cos(a)*rr, _tipPos.y + 0.02, _tipPos.z + Math.sin(a)*rr,
+        phys.vel.x*0.7 + (Math.random()-0.5)*1.4,
+        phys.vel.y*0.7 - 0.4,
+        phys.vel.z*0.7 + (Math.random()-0.5)*1.4,
+        0.10 + Math.random()*0.13, 0.30 + Math.random()*0.25,
+        0.92, 0.95, 1.0);
+    }
+  }
+
   particles.update(Math.max(dt,1e-4));
 
   /* ---------- Lens flare: posição do sol na tela + oclusão ---------- */
@@ -3077,8 +4208,17 @@ function render(frameDt, alpha){
     gu.uSunScreen.value.set(_sunScreen.x, _sunScreen.y);
     gu.uSunVis.value = lerp(gu.uSunVis.value, sunVis, dmp(8, frameDt));
     gu.uTime.value += frameDt;
-    gu.uSunColor.value.setHex(currentPreset.sun);
+    // speed lines proporcionais à velocidade (a cor do sol já vem de applySunHour)
+    const SL = CONFIG.post.speedLines;
+    const kmh = phys.vel.length()*3.6;
+    gu.uSpeed.value = lerp(gu.uSpeed.value,
+      smooth(SL.from, SL.to, kmh) * SL.strength * (CONFIG.gfx.speedLinesOn === false ? 0 : 1),
+      dmp(6, frameDt));
   }
+
+  /* ---------- Uniforms dos passes de profundidade ---------- */
+  _sunUv.set(_sunScreen.x*0.5 + 0.5, _sunScreen.y*0.5 + 0.5);
+  updatePostUniforms(_sunUv, gradePass ? gradePass.uniforms.uSunVis.value : 0);
 
   /* ---------- HUD ---------- */
   const att = phys.attitude();
@@ -3111,7 +4251,7 @@ function formatTime(t){
 }
 
 /* ==================================================================================
-   18) BOOT
+  19) BOOT
    ================================================================================== */
 async function boot(){
   try {
@@ -3136,6 +4276,7 @@ async function boot(){
     applyTimePreset(document.getElementById('opt-time').value);
     await buildSunShadowMask(()=>{});
     terrainShared.uShadowTex.value = World.shadowTex;
+    SunBaker.reset();          // marca a direção já assada, evita re-bake imediato
 
     wireMenu();
     onResize();
