@@ -1,0 +1,3159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DRONE FPV — Fase 1</title>
+<style>
+  /* ============================================================
+     ESTILO GLOBAL — UI em estilo OSD de FPV
+     ============================================================ */
+  :root{
+    --osd:#d8f5ff;
+    --osd-dim:#8fb6c4;
+    --accent:#39d7ff;
+    --warn:#ffb03a;
+    --bad:#ff4d5e;
+    --good:#5dff9b;
+    --panel:rgba(6,14,20,.82);
+    --panel-b:rgba(90,200,240,.22);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#05080c;
+    font-family:"Consolas","SF Mono","Roboto Mono",ui-monospace,monospace;color:var(--osd)}
+  canvas{display:block}
+  #app{position:fixed;inset:0}
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+
+  /* ---------- Loading ---------- */
+  #loading{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:18px;
+    background:radial-gradient(ellipse at 50% 40%,#0d1a24 0%,#05080c 70%)}
+  #loading h1{font-size:34px;letter-spacing:14px;margin:0;font-weight:700;
+    color:#eaffff;text-shadow:0 0 26px rgba(57,215,255,.55)}
+  #loading .sub{font-size:11px;letter-spacing:5px;color:var(--osd-dim);margin-top:-10px}
+  #barwrap{width:min(460px,72vw);height:5px;background:rgba(255,255,255,.08);
+    border-radius:3px;overflow:hidden;position:relative}
+  #bar{height:100%;width:0%;background:linear-gradient(90deg,#2ea8ff,#39d7ff,#a5f6ff);
+    box-shadow:0 0 18px rgba(57,215,255,.8);transition:width .18s ease-out}
+  #ltxt{font-size:11px;letter-spacing:2px;color:var(--osd-dim);height:14px}
+
+  /* ---------- Menus ---------- */
+  .overlay{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+    background:rgba(3,7,11,.72);backdrop-filter:blur(9px)}
+  .overlay.on{display:flex}
+  .panel{width:min(880px,94vw);max-height:92vh;overflow:auto;background:var(--panel);
+    border:1px solid var(--panel-b);border-radius:14px;padding:26px 30px;
+    box-shadow:0 30px 80px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.05)}
+  .panel h2{margin:0 0 4px;font-size:22px;letter-spacing:9px;font-weight:700}
+  .panel .tag{font-size:10px;letter-spacing:4px;color:var(--osd-dim);margin-bottom:20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
+  .card{border:1px solid rgba(120,200,230,.16);border-radius:10px;padding:14px 16px;
+    background:rgba(255,255,255,.025)}
+  .card h3{margin:0 0 10px;font-size:11px;letter-spacing:4px;color:var(--accent);font-weight:600}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:7px 0;font-size:12px}
+  .row label{color:var(--osd-dim)}
+  select,input[type=text],input[type=number]{background:rgba(0,0,0,.45);color:var(--osd);
+    border:1px solid rgba(120,200,230,.25);border-radius:6px;padding:5px 8px;font:inherit;font-size:12px;width:130px}
+  input[type=range]{width:130px;accent-color:var(--accent)}
+  input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px}
+  .btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
+  button{background:linear-gradient(180deg,rgba(57,215,255,.22),rgba(57,215,255,.08));
+    color:#eaffff;border:1px solid rgba(120,220,255,.4);border-radius:8px;padding:11px 22px;
+    font:inherit;font-size:12px;letter-spacing:3px;cursor:pointer;transition:.15s}
+  button:hover{background:rgba(57,215,255,.32);box-shadow:0 0 22px rgba(57,215,255,.35)}
+  button.ghost{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.14)}
+  button:disabled{opacity:.32;cursor:not-allowed}
+  .modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+  .mode{border:1px solid rgba(120,200,230,.18);border-radius:10px;padding:12px;cursor:pointer;
+    background:rgba(255,255,255,.02);transition:.15s}
+  .mode:hover{border-color:rgba(120,220,255,.55)}
+  .mode.sel{border-color:var(--accent);background:rgba(57,215,255,.12);
+    box-shadow:inset 0 0 22px rgba(57,215,255,.14)}
+  .mode.off{opacity:.3;cursor:not-allowed}
+  .mode b{display:block;font-size:13px;letter-spacing:3px;margin-bottom:4px}
+  .mode span{font-size:10px;color:var(--osd-dim);line-height:1.45}
+  .keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:5px 16px;font-size:11px}
+  .keys div{display:flex;justify-content:space-between;color:var(--osd-dim);
+    border-bottom:1px dotted rgba(255,255,255,.07);padding:2px 0}
+  .keys div b{color:var(--osd);font-weight:600}
+  .note{font-size:10px;color:var(--osd-dim);line-height:1.6;margin-top:14px}
+  #fps{position:fixed;top:8px;left:10px;z-index:6;font-size:11px;color:var(--osd-dim);
+    pointer-events:none;text-shadow:0 1px 3px #000}
+  #toast{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:7;
+    font-size:12px;letter-spacing:3px;padding:8px 18px;border-radius:20px;
+    background:rgba(6,16,22,.8);border:1px solid var(--panel-b);opacity:0;transition:opacity .3s;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+<canvas id="hud"></canvas>
+<div id="fps"></div>
+<div id="toast"></div>
+
+<!-- ============ TELA DE CARREGAMENTO ============ -->
+<div id="loading">
+  <h1>DRONE FPV</h1>
+  <div class="sub">TERCEIRA PESSOA — WEBGL</div>
+  <div id="barwrap"><div id="bar"></div></div>
+  <div id="ltxt">iniciando…</div>
+</div>
+
+<!-- ============ MENU PRINCIPAL ============ -->
+<div id="menu" class="overlay">
+  <div class="panel">
+    <h2>DRONE FPV</h2>
+    <div class="tag">FASE 1 — VOO LIVRE · MUNDO PROCEDURAL 4×4 km</div>
+
+    <div class="modes" id="modes">
+      <div class="mode sel" data-mode="free"><b>LIVRE</b><span>Explore o mapa sem timer. Bateria opcional.</span></div>
+      <div class="mode off" data-mode="race"><b>CORRIDA</b><span>Circuitos de argolas — Fase 3.</span></div>
+      <div class="mode off" data-mode="freestyle"><b>FREESTYLE</b><span>Combos e truques — Fase 4.</span></div>
+      <div class="mode off" data-mode="photo"><b>FOTO</b><span>Freecam e DOF — Fase 4.</span></div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>MUNDO</h3>
+        <div class="row"><label>Semente</label><input id="opt-seed" type="number" value="1337" step="1"></div>
+        <div class="row"><label>Hora do dia</label>
+          <select id="opt-time">
+            <option value="dawn">Amanhecer</option>
+            <option value="noon">Meio-dia</option>
+            <option value="golden" selected>Golden Hour</option>
+            <option value="dusk">Anoitecer</option>
+            <option value="night">Noite</option>
+          </select></div>
+        <div class="row"><label>Vento</label><input id="opt-wind" type="range" min="0" max="12" step="0.5" value="3.5"></div>
+      </div>
+
+      <div class="card">
+        <h3>GRÁFICOS</h3>
+        <div class="row"><label>Preset</label>
+          <select id="opt-quality">
+            <option value="low">Baixo</option>
+            <option value="med">Médio</option>
+            <option value="high" selected>Alto</option>
+            <option value="ultra">Ultra</option>
+          </select></div>
+        <div class="row"><label>Bloom</label><input id="opt-bloom" type="checkbox" checked></div>
+        <div class="row"><label>Grão de filme</label><input id="opt-grain" type="checkbox" checked></div>
+        <div class="row"><label>Exposição</label><input id="opt-exposure" type="range" min="0.4" max="2.0" step="0.05" value="1.0"></div>
+      </div>
+
+      <div class="card">
+        <h3>CONTROLES</h3>
+        <div class="row"><label>Sensibilidade</label><input id="opt-sens" type="range" min="0.3" max="2" step="0.05" value="1"></div>
+        <div class="row"><label>Expo</label><input id="opt-expo" type="range" min="0" max="0.9" step="0.05" value="0.35"></div>
+        <div class="row"><label>Deadzone</label><input id="opt-dead" type="range" min="0" max="0.3" step="0.01" value="0.06"></div>
+        <div class="row"><label>Inverter pitch</label><input id="opt-invp" type="checkbox"></div>
+        <div class="row"><label>Bateria infinita</label><input id="opt-batt" type="checkbox" checked></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3>TECLADO &amp; GAMEPAD</h3>
+      <div class="keys">
+        <div><span>Throttle (subir/descer)</span><b>W / S</b></div>
+        <div><span>Yaw (girar)</span><b>A / D</b></div>
+        <div><span>Pitch / Roll</span><b>Setas ou Mouse*</b></div>
+        <div><span>Turbo</span><b>Shift</b></div>
+        <div><span>Modo de voo SPORT/ACRO</span><b>Espaço</b></div>
+        <div><span>Câmera Chase/Orbit</span><b>C</b></div>
+        <div><span>Direção pelo mouse</span><b>M</b></div>
+        <div><span>Reset / respawn</span><b>R</b></div>
+        <div><span>Slow-motion</span><b>F</b></div>
+        <div><span>Menu / pausa</span><b>Esc</b></div>
+        <div><span>Gamepad (Mode 2)</span><b>auto</b></div>
+        <div><span>HUD on/off</span><b>H</b></div>
+      </div>
+      <div class="note">*Segure o botão direito do mouse para orbitar a câmera. Com <b>M</b> ativo, o mouse
+        vira o stick direito (pitch/roll) e a câmera fica travada atrás do drone.</div>
+    </div>
+
+    <div class="btns">
+      <button id="btn-play">INICIAR VOO</button>
+      <button id="btn-regen" class="ghost">GERAR MUNDO</button>
+    </div>
+    <div class="note">Fase 1 entrega: renderer + pós-processamento, céu atmosférico com IBL, terreno com LOD
+      quadtree/CDLOD sem popping, água, drone completo, física de quadcóptero a 120&nbsp;Hz, câmera em 3ª pessoa e HUD.</div>
+  </div>
+</div>
+
+<!-- ============ IMPORTMAP ============ -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { Sky }             from 'three/addons/objects/Sky.js';
+import { EffectComposer }  from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }      from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass }      from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass }      from 'three/addons/postprocessing/OutputPass.js';
+import { SMAAPass }        from 'three/addons/postprocessing/SMAAPass.js';
+
+/* ==================================================================================
+   1) CONFIG — todos os valores ajustáveis do jogo
+   ================================================================================== */
+const CONFIG = {
+
+  /* ---------- MUNDO ---------- */
+  world: {
+    seed:            1337,      // semente do gerador procedural
+    size:            4096,      // lado do mundo em metros (4096 m => ~16 km²  de heightmap, ~4 km² úteis)
+    heightRes:       1024,      // resolução do heightmap (1024 => 4 m por texel)
+    maxHeight:       520,       // altura máxima aproximada do terreno (m)
+    waterLevel:      0,         // altitude do mar/lago (m)
+    shadowMaskRes:   512,       // resolução da máscara de sombra solar analítica do terreno
+    ceiling:         900,       // teto de voo — acima disso a névoa fecha e há aviso
+  },
+
+  /* ---------- TERRENO / LOD ---------- */
+  terrain: {
+    gridSegments:    32,        // segmentos por chunk (33×33 vértices)
+    maxDepth:        6,         // profundidade máxima da quadtree (4096 → 64 m)
+    lodFactor:       2.6,       // multiplicador de distância para subdividir (maior = mais detalhe longe)
+    morphStart:      0.62,      // início do morphing geométrico (fração da distância de split)
+    skirtDepth:      14,        // profundidade das saias que fecham frestas entre chunks (m)
+    texRepeat:       0.05,      // repetição das texturas de splat (por metro)
+    macroRepeat:     0.0009,    // variação macro de cor
+  },
+
+  /* ---------- FÍSICA DO DRONE ---------- */
+  physics: {
+    hz:              120,       // fixed timestep (Hz) — física independente do FPS
+    maxSubSteps:     12,         // passos máximos por frame (anti espiral da morte)
+    mass:            0.68,      // massa (kg) — quad freestyle 5"
+    gravity:         9.81,
+    twr:             5.2,       // thrust-to-weight ratio no máximo
+    dragLinear:      0.030,     // arrasto quadrático (F = -k·|v|·v)
+    dragAngular:     0.55,      // arrasto angular
+    inertia:         [0.0068, 0.0092, 0.0068], // momento de inércia [pitch(x), yaw(y), roll(z)]
+    rotorRadius:     0.0635,    // 5" / 2 em metros
+    // taxas angulares máximas (deg/s)
+    rateAcro:        { pitch: 720, yaw: 380, roll: 800 },
+    rateSport:       { pitch: 260, yaw: 240, roll: 300 },
+    maxAngle:        38,        // ângulo máx em SPORT (deg)
+    angleP:          7.0,       // ganho do PID de ângulo (auto-level)
+    rateP:           26.0,      // ganho do loop de taxa
+    rateD:           0.9,       // amortecimento do loop de taxa
+    maxAngAccel:     95,        // aceleração angular máxima (rad/s²)
+    turboMul:        1.45,      // multiplicador de empuxo/taxa no turbo
+    groundEffectH:   1.9,       // altura (m) até onde o ground effect atua
+    groundEffectMul: 0.22,      // ganho extra de empuxo colado ao chão
+    propwash:        0.9,       // turbulência ao descer sobre o próprio downwash
+    windBase:        3.5,       // vento base (m/s)
+    windGust:        1.8,       // amplitude das rajadas
+    windAltitude:    0.0009,    // ganho de vento por metro de altitude
+    batteryCapacity: 100,       // %
+    batteryDrain:    1.35,      // %/s a throttle máximo
+    batterySagStart: 18,        // abaixo disso o empuxo começa a cair
+    collisionRadius: 0.28,      // esfera de colisão (m)
+    crashSpeed:      9.0,       // impacto acima disso = crash
+    restitution:     0.32,      // quique em impactos leves
+  },
+
+  /* ---------- CÂMERA ---------- */
+  camera: {
+    distance:        2.6,       // distância do spring arm (m)
+    height:          0.95,      // offset vertical (m)
+    stiffness:       9.0,       // rigidez da mola (quase criticamente amortecida)
+    damping:         1.0,       // razão de amortecimento
+    rotLag:          7.0,       // atraso rotacional (a câmera "corre atrás")
+    fovMin:          68,
+    fovMax:          100,
+    fovSpeed:        42,        // velocidade (m/s) na qual o FOV chega ao máximo
+    near:            0.12,
+    far:             24000,
+    springStep:      1/120,     // substep da mola (mantém a câmera estável em qualquer FPS)
+    distMin:         1.6,       // limites do zoom (roda do mouse)
+    distMax:         9.0,
+    collisionPad:    0.55,      // folga da colisão de câmera (m)
+    shakeThrottle:   0.030,     // shake por throttle
+    shakeGround:     0.055,     // shake por proximidade do solo
+    shakeImpact:     0.85,      // shake de impacto
+    orbitSens:       0.0026,    // sensibilidade do mouse no modo orbit
+  },
+
+  /* ---------- CONTROLES ---------- */
+  input: {
+    sens:            1.0,
+    expo:            0.35,      // curva expo dos sticks
+    deadzone:        0.06,
+    invertPitch:     false,
+    mouseSteer:      false,     // mouse como stick direito
+    mouseSens:       0.0022,
+    keyRamp:         5.5,       // velocidade de subida dos "sticks virtuais" do teclado
+    keyReturn:       7.5,       // velocidade de auto-centragem
+  },
+
+  /* ---------- GRÁFICOS ---------- */
+  gfx: {
+    exposure:        1.0,        // multiplicador do usuário (a base vem do preset de hora)
+    fogDensity:      0.00016,
+    // Bloom SELETIVO aplicado DEPOIS do tone mapping. Em HDR o céu tem radiance
+    // altíssimo e o glow lava a tela inteira; em LDR a energia extra é limitada
+    // por (1 - threshold), então só o sol, LEDs, especulares da água e emissivos brilham.
+    bloom:           { strength: 0.45, radius: 0.46, threshold: 0.82 },
+    grain:           0.035,
+    chroma:          0.0016,
+    vignette:        0.42,
+    lensFlare:       0.75,
+  },
+
+  /* ---------- PRESETS DE QUALIDADE ---------- */
+  quality: {
+    low:   { pixelRatio:1.0, shadowMap:1024, shadowDist:14, lodBias:0.62, bloom:false, smaa:false, particles:0.3, waterQ:0 },
+    med:   { pixelRatio:1.25,shadowMap:2048, shadowDist:20, lodBias:0.82, bloom:true,  smaa:false, particles:0.6, waterQ:1 },
+    high:  { pixelRatio:1.5, shadowMap:3072, shadowDist:28, lodBias:1.00, bloom:true,  smaa:true,  particles:1.0, waterQ:1 },
+    ultra: { pixelRatio:2.0, shadowMap:4096, shadowDist:38, lodBias:1.30, bloom:true,  smaa:true,  particles:1.5, waterQ:2 },
+  },
+
+  /* ---------- PRESETS DE HORA DO DIA ---------- */
+  timePresets: {
+    // exp = exposição BASE do tone mapping (o shader do Sky é muito energético;
+    //       valores em torno de 0.4–0.7 são o ponto certo com ACES).
+    dawn:   { name:'Amanhecer',   elev: 4.5, azim: 95,  turbidity: 6.0, rayleigh: 3.2, mieG:0.86, mie:0.010,
+              sun:0xffb377, sunI:2.6, ambI:0.45, envI:0.36, amb:0x2a3c52, fog:0x9fb0c4, fogD:1.55, exp:0.60, stars:0.35 },
+    noon:   { name:'Meio-dia',    elev: 62,  azim: 145, turbidity: 3.2, rayleigh: 1.5, mieG:0.80, mie:0.004,
+              sun:0xfff4e2, sunI:3.6, ambI:0.60, envI:0.30, amb:0x8fb4d8, fog:0xc9dcf0, fogD:0.80, exp:0.38, stars:0.0 },
+    golden: { name:'Golden Hour', elev: 11,  azim: 250, turbidity: 5.0, rayleigh: 2.4, mieG:0.87, mie:0.008,
+              sun:0xffc07a, sunI:3.2, ambI:0.45, envI:0.36, amb:0x40506e, fog:0xd9b78f, fogD:1.25, exp:0.62, stars:0.06 },
+    dusk:   { name:'Anoitecer',   elev: 1.2, azim: 268, turbidity: 8.0, rayleigh: 3.6, mieG:0.90, mie:0.014,
+              sun:0xff7a4d, sunI:1.6, ambI:0.38, envI:0.45, amb:0x2b3350, fog:0x6f6483, fogD:1.85, exp:0.76, stars:0.55 },
+    night:  { name:'Noite',       elev:-8,   azim: 300, turbidity: 2.0, rayleigh: 0.9, mieG:0.80, mie:0.003,
+              sun:0x9fc3ff, sunI:0.55, ambI:0.34, envI:0.85, amb:0x121c30, fog:0x101a2c, fogD:1.15, exp:1.30, stars:1.0 },
+  },
+
+  /* ---------- DRONE (visual) ---------- */
+  drone: {
+    armLength:       0.115,     // do centro ao motor (m)
+    propRadius:      0.0635,
+    blurRPM:         4200,      // RPM onde as pás viram disco borrado
+    maxRPM:          31000,
+    ledIntensity:    3.2,
+  },
+
+  /* ---------- GAMEPLAY ---------- */
+  game: {
+    mode:            'free',
+    infiniteBattery: true,
+    slowmoScale:     0.22,
+    respawnHeight:   45,
+  },
+};
+
+/* ==================================================================================
+   2) UTILS / NOISE — PRNG determinístico, simplex noise, fBm, ridged, helpers
+   ================================================================================== */
+const clamp  = (v,a,b)=> v<a?a:(v>b?b:v);
+const lerp   = (a,b,t)=> a+(b-a)*t;
+const smooth = (e0,e1,x)=>{ const t=clamp((x-e0)/(e1-e0),0,1); return t*t*(3-2*t); };
+const dmp    = (rate,dt)=> 1-Math.exp(-rate*dt);   // damping independente de framerate
+const TAU = Math.PI*2, D2R = Math.PI/180, R2D = 180/Math.PI;
+
+/** PRNG rápido e determinístico */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Simplex Noise 2D/3D (port do Gustavson, com tabela de permutação semeada) */
+class Simplex {
+  constructor(seed=0){
+    const rnd = mulberry32(seed);
+    const p = new Uint8Array(256);
+    for (let i=0;i<256;i++) p[i]=i;
+    for (let i=255;i>0;i--){ const j=(rnd()*(i+1))|0; const t=p[i]; p[i]=p[j]; p[j]=t; }
+    this.perm = new Uint8Array(512);
+    this.permMod12 = new Uint8Array(512);
+    for (let i=0;i<512;i++){ this.perm[i]=p[i&255]; this.permMod12[i]=this.perm[i]%12; }
+    this.G3 = [1,1,0, -1,1,0, 1,-1,0, -1,-1,0, 1,0,1, -1,0,1, 1,0,-1, -1,0,-1, 0,1,1, 0,-1,1, 0,1,-1, 0,-1,-1];
+  }
+  noise2D(xin, yin){
+    const F2 = 0.5*(Math.sqrt(3)-1), G2 = (3-Math.sqrt(3))/6;
+    const g = this.G3, perm = this.perm, pm = this.permMod12;
+    let n0=0,n1=0,n2=0;
+    const s = (xin+yin)*F2;
+    const i = Math.floor(xin+s), j = Math.floor(yin+s);
+    const t = (i+j)*G2;
+    const X0=i-t, Y0=j-t;
+    const x0=xin-X0, y0=yin-Y0;
+    let i1,j1;
+    if (x0>y0){ i1=1; j1=0; } else { i1=0; j1=1; }
+    const x1=x0-i1+G2, y1=y0-j1+G2;
+    const x2=x0-1+2*G2, y2=y0-1+2*G2;
+    const ii=i&255, jj=j&255;
+    const gi0=pm[ii+perm[jj]]*3, gi1=pm[ii+i1+perm[jj+j1]]*3, gi2=pm[ii+1+perm[jj+1]]*3;
+    let t0=0.5-x0*x0-y0*y0;
+    if (t0>=0){ t0*=t0; n0=t0*t0*(g[gi0]*x0+g[gi0+1]*y0); }
+    let t1=0.5-x1*x1-y1*y1;
+    if (t1>=0){ t1*=t1; n1=t1*t1*(g[gi1]*x1+g[gi1+1]*y1); }
+    let t2=0.5-x2*x2-y2*y2;
+    if (t2>=0){ t2*=t2; n2=t2*t2*(g[gi2]*x2+g[gi2+1]*y2); }
+    return 70*(n0+n1+n2);
+  }
+  /** fBm — soma de oitavas */
+  fbm(x,y,oct=5,lac=2.0,gain=0.5){
+    let a=1, f=1, sum=0, norm=0;
+    for (let i=0;i<oct;i++){ sum += a*this.noise2D(x*f,y*f); norm += a; a*=gain; f*=lac; }
+    return sum/norm;
+  }
+  /** Ridged multifractal — cristas de montanha */
+  ridged(x,y,oct=5,lac=2.0,gain=0.5){
+    let a=1, f=1, sum=0, norm=0, prev=1;
+    for (let i=0;i<oct;i++){
+      let n = 1-Math.abs(this.noise2D(x*f,y*f));
+      n *= n; n *= prev; prev = clamp(n*1.6,0,1);
+      sum += a*n; norm += a; a*=gain; f*=lac;
+    }
+    return sum/norm;
+  }
+}
+
+/** Espera um tick do browser (para a barra de progresso ser real) */
+const nextFrame = ()=> new Promise(r=> requestAnimationFrame(()=>r()));
+
+/** Toast rápido no topo da tela */
+let toastT = 0;
+const toastEl = document.getElementById('toast');
+function toast(msg, dur=1.4){
+  toastEl.textContent = msg; toastEl.style.opacity = '1'; toastT = dur;
+}
+
+/* ---------- Geração procedural de texturas em canvas ---------- */
+function makeCanvas(size){
+  const c = document.createElement('canvas'); c.width=c.height=size;
+  return { c, ctx: c.getContext('2d', {willReadFrequently:true}) };
+}
+
+/**
+ * Textura de superfície tileável gerada por ruído (grão + manchas + variação de cor).
+ * base/dark/light em [r,g,b] 0..255
+ */
+function makeSurfaceTexture(size, seed, base, dark, light, grain, blotch, blotchScale){
+  const { c, ctx } = makeCanvas(size);
+  const img = ctx.createImageData(size,size);
+  const d = img.data;
+  const sx = new Simplex(seed), sy = new Simplex(seed+91);
+  const inv = 1/size;
+  for (let y=0;y<size;y++){
+    for (let x=0;x<size;x++){
+      // ruído periódico: amostra num toro para ficar tileável
+      const a = x*inv*TAU, b = y*inv*TAU;
+      const nx = Math.cos(a)*blotchScale, ny = Math.sin(a)*blotchScale;
+      const nz = Math.cos(b)*blotchScale, nw = Math.sin(b)*blotchScale;
+      let n = sx.fbm(nx+nz*0.37, ny+nw*0.37, 4) * 0.5 + 0.5;
+      let g = sy.noise2D(x*0.9, y*0.9)*0.5+0.5;      // grão fino (não tileável, mas imperceptível)
+      let t = clamp(n*blotch + g*grain + (1-blotch-grain)*0.5, 0, 1);
+      const i = (y*size+x)*4;
+      const mixLow  = t < 0.5 ? (t*2) : 1;
+      const mixHigh = t > 0.5 ? (t-0.5)*2 : 0;
+      d[i  ] = lerp(dark[0], base[0], mixLow) + (light[0]-base[0])*mixHigh;
+      d[i+1] = lerp(dark[1], base[1], mixLow) + (light[1]-base[1])*mixHigh;
+      d[i+2] = lerp(dark[2], base[2], mixLow) + (light[2]-base[2])*mixHigh;
+      d[i+3] = 255;
+    }
+  }
+  ctx.putImageData(img,0,0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+/**
+ * Normal map de ondas para a água.
+ * Soma de senoides com vetores de onda INTEIROS: tileável por construção e com
+ * padrão de interferência natural (ruído fBm amostrado num toro vira "veludo cotelê").
+ * A amplitude segue um espectro tipo Phillips e as direções são enviesadas para o
+ * vento dominante, como em mar real.
+ */
+function makeWaterNormal(size, seed){
+  const { c, ctx } = makeCanvas(size);
+  const img = ctx.createImageData(size,size);
+  const d = img.data;
+  const rnd = mulberry32(seed);
+  const waves = [];
+  const windAng = rnd()*TAU;
+  for (let i=0;i<22;i++){
+    // direção enviesada para o vento (cos² em torno de windAng)
+    const a = windAng + (rnd()-0.5)*2.1;
+    const k = 1 + Math.floor(Math.pow(rnd(), 0.7)*9);
+    const kx = Math.round(Math.cos(a)*k), ky = Math.round(Math.sin(a)*k);
+    if (kx === 0 && ky === 0) continue;
+    const km = Math.hypot(kx,ky);
+    waves.push({ kx, ky, amp: 1/Math.pow(km, 1.7), ph: rnd()*TAU });
+  }
+  const H = new Float32Array(size*size);
+  const inv = 1/size;
+  let norm = 0;
+  for (const w of waves) norm += w.amp;
+  for (let y=0;y<size;y++) for (let x=0;x<size;x++){
+    const u = x*inv, v = y*inv;
+    let h = 0;
+    for (const w of waves) h += w.amp * Math.sin(TAU*(w.kx*u + w.ky*v) + w.ph);
+    H[y*size+x] = h/norm;
+  }
+  for (let y=0;y<size;y++) for (let x=0;x<size;x++){
+    const xm=(x-1+size)%size, xp=(x+1)%size, ym=(y-1+size)%size, yp=(y+1)%size;
+    const dx = (H[y*size+xp]-H[y*size+xm])*2.2;
+    const dz = (H[yp*size+x]-H[ym*size+x])*2.2;
+    let nx=-dx, ny=1, nz=-dz;
+    const l = Math.hypot(nx,ny,nz); nx/=l; ny/=l; nz/=l;
+    const i=(y*size+x)*4;
+    d[i]=(nx*0.5+0.5)*255; d[i+1]=(nz*0.5+0.5)*255; d[i+2]=(ny*0.5+0.5)*255; d[i+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.anisotropy = 8;                 // reduz o aliasing das ondas em ângulo rasante
+  return tex;
+}
+
+/** Textura do disco borrado das hélices (radial, alpha) */
+function makePropDiscTexture(size, seed){
+  const { c, ctx } = makeCanvas(size);
+  const img = ctx.createImageData(size,size);
+  const d = img.data;
+  const rnd = mulberry32(seed);
+  const bands = new Float32Array(64);
+  for (let i=0;i<64;i++) bands[i] = 0.35 + rnd()*0.65;
+  const half = size/2;
+  for (let y=0;y<size;y++) for (let x=0;x<size;x++){
+    const dx=(x-half)/half, dy=(y-half)/half;
+    const r = Math.hypot(dx,dy);
+    const i=(y*size+x)*4;
+    if (r>1){ d[i+3]=0; continue; }
+    // banda radial + queda no centro (hub) e na ponta
+    const bi = Math.min(63, (r*63)|0);
+    const band = bands[bi]*0.5 + bands[(bi+1)&63]*0.5;
+    const hub  = smooth(0.06,0.20,r);
+    const tip  = 1-smooth(0.90,1.0,r);
+    const a = hub*tip*(0.10 + band*0.26);
+    // realce especular só perto da ponta, como numa hélice de verdade
+    const spec = Math.pow(smooth(0.62,0.99,r), 2) * band;
+    const v = 26 + band*30 + spec*170;
+    d[i]=v*0.95; d[i+1]=v*0.98; d[i+2]=v+8; d[i+3]=a*255;
+  }
+  ctx.putImageData(img,0,0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/** Textura de fibra de carbono (trama 2×2) */
+function makeCarbonTexture(size){
+  const { c, ctx } = makeCanvas(size);
+  const img = ctx.createImageData(size,size);
+  const d = img.data;
+  const cell = size/16;
+  for (let y=0;y<size;y++) for (let x=0;x<size;x++){
+    const cx = Math.floor(x/cell), cy = Math.floor(y/cell);
+    const horiz = ((cx+cy)&1)===0;
+    const u = horiz ? (y%cell)/cell : (x%cell)/cell;
+    const w = Math.sin(u*Math.PI);                 // brilho da fibra
+    const fib = 0.5 + 0.5*Math.sin((horiz?x:y)*2.4);
+    let v = 16 + w*44 + fib*10;
+    const i=(y*size+x)*4;
+    d[i]=v*0.92; d[i+1]=v*0.96; d[i+2]=v; d[i+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+/** Partícula circular suave (poeira / fumaça) */
+function makeSoftDot(size){
+  const { c, ctx } = makeCanvas(size);
+  const g = ctx.createRadialGradient(size/2,size/2,0,size/2,size/2,size/2);
+  g.addColorStop(0,'rgba(255,255,255,1)');
+  g.addColorStop(0.45,'rgba(255,255,255,0.42)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,size,size);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+/* ==================================================================================
+   3) RENDERER & COMPOSER
+   ================================================================================== */
+const appEl = document.getElementById('app');
+
+const renderer = new THREE.WebGLRenderer({
+  antialias: true, powerPreference: 'high-performance', stencil: false, depth: true,
+});
+renderer.outputColorSpace   = THREE.SRGBColorSpace;
+renderer.toneMapping        = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure= CONFIG.gfx.exposure;
+renderer.shadowMap.enabled  = true;
+renderer.shadowMap.type     = THREE.PCFSoftShadowMap;
+renderer.setSize(innerWidth, innerHeight);
+appEl.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0xc9dcf0, CONFIG.gfx.fogDensity);
+
+const camera = new THREE.PerspectiveCamera(CONFIG.camera.fovMin, innerWidth/innerHeight,
+                                           CONFIG.camera.near, CONFIG.camera.far);
+camera.position.set(0, 90, 60);
+
+/* ---------- Shader de acabamento: vignette + aberração cromática + grão + lens flare ---------- */
+const GradeShader = {
+  uniforms: {
+    tDiffuse:   { value: null },
+    uTime:      { value: 0 },
+    uVignette:  { value: CONFIG.gfx.vignette },
+    uChroma:    { value: CONFIG.gfx.chroma },
+    uGrain:     { value: CONFIG.gfx.grain },
+    uSunScreen: { value: new THREE.Vector2(-1,-1) },  // posição do sol em NDC (-1..1)
+    uSunVis:    { value: 0 },                          // visibilidade do sol (oclusão)
+    uSunColor:  { value: new THREE.Color(1,0.85,0.7) },
+    uFlare:     { value: CONFIG.gfx.lensFlare },
+    uAspect:    { value: 1 },
+  },
+  vertexShader: /* glsl */`
+    varying vec2 vUv;
+    void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }
+  `,
+  fragmentShader: /* glsl */`
+    uniform sampler2D tDiffuse;
+    uniform float uTime, uVignette, uChroma, uGrain, uSunVis, uFlare, uAspect;
+    uniform vec2  uSunScreen;
+    uniform vec3  uSunColor;
+    varying vec2 vUv;
+
+    float hash12(vec2 p){
+      vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.x + p3.y) * p3.z);
+    }
+
+    // Halo/ghosts procedurais de lens flare
+    vec3 flare(vec2 uv, vec2 sun){
+      vec3 col = vec3(0.0);
+      vec2 d = uv - sun; d.x *= uAspect;
+      float r = length(d);
+      // brilho principal + estrela de 6 pontas
+      float ang = atan(d.y, d.x);
+      float star = pow(max(0.0, cos(ang*3.0)), 6.0) * 0.35 + pow(max(0.0,cos(ang*6.0+1.2)),10.0)*0.2;
+      col += uSunColor * (exp(-r*9.0)*0.55 + exp(-r*26.0)*0.9);
+      col += uSunColor * star * exp(-r*5.0) * 0.5;
+      // ghosts ao longo do eixo centro-sol
+      vec2 dir = (vec2(0.5) - sun);
+      for (int i=1;i<=5;i++){
+        float fi = float(i);
+        vec2 gp = sun + dir * (fi*0.42);
+        vec2 gd = uv - gp; gd.x *= uAspect;
+        float gr = length(gd);
+        vec3 tint = vec3(0.6+0.4*sin(fi*1.7), 0.6+0.4*sin(fi*2.3+2.0), 0.7+0.3*sin(fi*1.1+4.0));
+        col += tint * exp(-gr*(28.0+fi*9.0)) * (0.16/fi);
+      }
+      return col;
+    }
+
+    void main(){
+      vec2 uv = vUv;
+      vec2 c  = uv - 0.5;
+      float r2 = dot(c,c);
+
+      // aberração cromática radial
+      vec2 off = c * uChroma * (0.35 + r2*2.4);
+      vec3 col;
+      col.r = texture2D(tDiffuse, uv + off).r;
+      col.g = texture2D(tDiffuse, uv).g;
+      col.b = texture2D(tDiffuse, uv - off).b;
+
+      // lens flare (só quando o sol está visível na tela)
+      if (uSunVis > 0.001 && uFlare > 0.001){
+        vec2 sunUv = uSunScreen * 0.5 + 0.5;
+        col += flare(uv, sunUv) * uSunVis * uFlare;
+      }
+
+      // vinheta
+      float vig = 1.0 - uVignette * smoothstep(0.18, 0.78, r2);
+      col *= vig;
+
+      // grão de filme fino, animado
+      float g = hash12(uv * vec2(1920.0, 1080.0) + fract(uTime)*137.0) - 0.5;
+      col += g * uGrain * (0.35 + 0.65*(1.0 - dot(col, vec3(0.333))));
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `
+};
+
+let composer, renderPass, bloomPass, smaaPass, gradePass, outputPass;
+function buildComposer(q){
+  if (composer) composer.dispose();
+  const rt = new THREE.WebGLRenderTarget(1,1,{
+    type: THREE.HalfFloatType, samples: q.smaa ? 0 : 4,
+    colorSpace: THREE.LinearSRGBColorSpace
+  });
+  composer = new EffectComposer(renderer, rt);
+  composer.setPixelRatio(Math.min(devicePixelRatio, q.pixelRatio));
+  composer.setSize(innerWidth, innerHeight);
+
+  renderPass = new RenderPass(scene, camera);
+  composer.addPass(renderPass);
+
+  outputPass = new OutputPass();               // tone mapping ACES + sRGB
+  composer.addPass(outputPass);
+
+  if (q.bloom && CONFIG.gfx.bloomOn !== false){
+    bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight),
+      CONFIG.gfx.bloom.strength, CONFIG.gfx.bloom.radius, CONFIG.gfx.bloom.threshold);
+    composer.addPass(bloomPass);
+  } else bloomPass = null;
+
+  if (q.smaa){
+    smaaPass = new SMAAPass(innerWidth, innerHeight);
+    composer.addPass(smaaPass);
+  } else smaaPass = null;
+
+  gradePass = new ShaderPass(GradeShader);     // vinheta + CA + grão + flare
+  gradePass.renderToScreen = true;
+  composer.addPass(gradePass);
+}
+
+/* ==================================================================================
+   4) CÉU & ILUMINAÇÃO — Sky atmosférico, IBL via PMREM, sol direcional, estrelas
+   ================================================================================== */
+// A caixa do Sky precisa caber DENTRO do far plane, senão é descartada pelo frustum.
+// Ela acompanha a câmera a cada frame, então funciona como um domo infinito.
+const SKY_SCALE = CONFIG.camera.far * 0.9;
+const sky = new Sky();
+sky.scale.setScalar(SKY_SCALE);
+sky.frustumCulled = false;
+sky.renderOrder = -2;
+scene.add(sky);
+
+// Segunda instância só para gerar o environment map (IBL) sem mexer na cena principal
+const pmremScene = new THREE.Scene();
+const skyIBL = new Sky();
+skyIBL.scale.setScalar(SKY_SCALE);
+pmremScene.add(skyIBL);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+pmrem.compileEquirectangularShader();
+let envRT = null;
+
+const sunLight = new THREE.DirectionalLight(0xffffff, 3.0);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048,2048);
+sunLight.shadow.bias = -0.0006;
+sunLight.shadow.normalBias = 0.06;
+scene.add(sunLight);
+scene.add(sunLight.target);
+
+const hemi = new THREE.HemisphereLight(0x9fc4ff, 0x3a3226, 0.6);
+scene.add(hemi);
+
+const sunDir = new THREE.Vector3(0,1,0);       // direção DO ponto PARA o sol
+let currentPreset = CONFIG.timePresets.golden;
+
+/* ---------- Estrelas ---------- */
+let starPoints = null;
+function buildStars(){
+  const N = 2600, pos = new Float32Array(N*3), col = new Float32Array(N*3), siz = new Float32Array(N);
+  const rnd = mulberry32(7777);
+  for (let i=0;i<N;i++){
+    // hemisfério superior
+    const u = rnd()*2-1, th = rnd()*TAU;
+    const y = Math.abs(u)*0.98 + 0.02;
+    const s = Math.sqrt(1-y*y);
+    const R = 9000;
+    pos[i*3]   = Math.cos(th)*s*R;
+    pos[i*3+1] = y*R;
+    pos[i*3+2] = Math.sin(th)*s*R;
+    const t = rnd();
+    const c = new THREE.Color().setHSL(0.55+ (rnd()-0.5)*0.12, 0.35, 0.6+t*0.4);
+    col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
+    siz[i] = 1.1 + Math.pow(rnd(),3)*2.6;   // pixels na tela
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color',    new THREE.BufferAttribute(col,3));
+  g.setAttribute('aSize',    new THREE.BufferAttribute(siz,1));
+  const m = new THREE.ShaderMaterial({
+    uniforms:{ uOpacity:{value:0}, uTime:{value:0}, uPR:{value:1} },
+    transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, fog:false,
+    vertexShader:/* glsl */`
+      attribute float aSize; varying vec3 vC; varying float vTw;
+      uniform float uTime, uPR;
+      void main(){
+        vC = color;
+        vec4 mv = modelViewMatrix * vec4(position,1.0);
+        // cintilação
+        vTw = 0.75 + 0.25*sin(uTime*2.1 + position.x*0.013 + position.z*0.017);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = aSize * uPR;
+      }`,
+    fragmentShader:/* glsl */`
+      uniform float uOpacity; varying vec3 vC; varying float vTw;
+      void main(){
+        vec2 d = gl_PointCoord - 0.5;
+        float a = smoothstep(0.5, 0.03, length(d));
+        gl_FragColor = vec4(vC * vTw, a*a*uOpacity);
+      }`,
+    vertexColors:true
+  });
+  starPoints = new THREE.Points(g,m);
+  starPoints.frustumCulled = false;
+  starPoints.renderOrder = -1;
+  scene.add(starPoints);
+}
+
+/** Aplica um preset de hora do dia: céu, sol, névoa, ambiente, IBL */
+function applyTimePreset(key){
+  const p = CONFIG.timePresets[key] || CONFIG.timePresets.golden;
+  currentPreset = p; currentPreset.key = key;
+
+  const phi   = (90 - p.elev) * D2R;
+  const theta = p.azim * D2R;
+  const sunPos = new THREE.Vector3().setFromSphericalCoords(1, phi, theta);
+  sunDir.copy(sunPos).normalize();
+
+  for (const s of [sky, skyIBL]){
+    const u = s.material.uniforms;
+    u.turbidity.value       = p.turbidity;
+    u.rayleigh.value        = p.rayleigh;
+    u.mieCoefficient.value  = p.mie;
+    u.mieDirectionalG.value = p.mieG;
+    u.sunPosition.value.copy(sunPos);
+  }
+
+  sunLight.color.setHex(p.sun);
+  sunLight.intensity = p.sunI;
+  hemi.intensity = p.ambI;
+  // O radiance do shader do Sky é muito alto; sem atenuar, o IBL lava o terreno inteiro.
+  // A luz do céu no difuso fica por conta da HemisphereLight; o environment map
+  // serve principalmente para os reflexos (água, metais do drone).
+  scene.environmentIntensity = p.envI;
+  hemi.color.setHex(0x9fc4ff).lerp(new THREE.Color(p.sun), 0.25);
+  hemi.groundColor.setHex(p.amb);
+
+  scene.fog.color.setHex(p.fog);
+  scene.fog.density = CONFIG.gfx.fogDensity * p.fogD;
+
+  renderer.toneMappingExposure = CONFIG.gfx.exposure * p.exp;
+
+  if (starPoints) starPoints.material.uniforms.uOpacity.value = p.stars;
+  if (GradeShader.uniforms) gradePass && gradePass.uniforms.uSunColor.value.setHex(p.sun);
+
+  // IBL — environment map real gerado a partir do próprio céu
+  if (envRT) envRT.dispose();
+  envRT = pmrem.fromScene(pmremScene, 0.02);
+  scene.environment = envRT.texture;
+  scene.environmentIntensity = 1.0;
+}
+
+/* ==================================================================================
+   5) TERRENO — heightmap, quadtree CDLOD, splat, sombra solar analítica
+   ================================================================================== */
+const World = {
+  size: CONFIG.world.size,
+  half: CONFIG.world.size/2,
+  res:  CONFIG.world.heightRes,
+  heights: null,           // Float32Array res*res (metros)
+  heightTex: null,         // DataTexture R32F
+  minmax: [],              // pirâmide de min/max por nível (para culling e colisão rápida)
+  shadowMask: null,        // Uint8Array shadowMaskRes²
+  shadowTex: null,
+  maxH: 0, minH: 0,
+};
+
+/** Função de altura procedural — domain warping + fBm + ridged + máscaras */
+function makeHeightFn(seed){
+  const n1 = new Simplex(seed);
+  const n2 = new Simplex(seed+1013);
+  const n3 = new Simplex(seed+7717);
+  const S = CONFIG.world.size;
+
+  return function height(x, z){
+    // coordenadas normalizadas (-1..1)
+    const nx = x / (S*0.5), nz = z / (S*0.5);
+
+    // --- domain warping ---
+    const wx = n2.fbm(nx*0.85 + 11.3, nz*0.85 - 4.1, 4);
+    const wz = n2.fbm(nx*0.85 - 7.7,  nz*0.85 + 2.9, 4);
+    const px = nx + wx*0.30, pz = nz + wz*0.30;
+
+    // --- base continental suave ---
+    const base = n1.fbm(px*1.15, pz*1.15, 6) * 0.5 + 0.5;      // 0..1
+
+    // --- cristas de montanha, só longe do centro (vale central) ---
+    const d = Math.hypot(nx, nz);
+    const mtnMask = smooth(0.26, 0.92, d);
+    const ridge = n3.ridged(px*1.7 + 3.1, pz*1.7 - 2.2, 6);
+
+    // --- colinas médias ---
+    const hills = n1.fbm(px*3.6, pz*3.6, 4) * 0.5 + 0.5;
+
+    let h = 14 + base*70 + hills*38 + ridge*430*mtnMask;
+
+    // --- penhascos: acentua encostas em altitude ---
+    const cliff = smooth(0.45, 0.85, ridge) * mtnMask;
+    h += cliff*95;
+
+    // --- lago no vale (depressão gaussiana) ---
+    const lx = nx - 0.17, lz = nz + 0.24;
+    const lake = Math.exp(-(lx*lx + lz*lz)/0.0135);
+    h -= lake*105;
+
+    // --- borda do mundo desce até o mar => praia em anel, sem parede invisível ---
+    const edge = 1 - smooth(0.72, 1.02, Math.max(Math.abs(nx), Math.abs(nz)));
+    h = h*edge - (1-edge)*55;
+
+    // --- micro detalhe (dunas / erosão) ---
+    h += n3.fbm(px*11.0, pz*11.0, 3) * 4.5 * clamp(1-lake*2,0,1);
+
+    return h;
+  };
+}
+
+/** Amostra bilinear do heightmap — IDÊNTICA à do shader (garante física == visual) */
+function sampleHeight(x, z){
+  const R = World.res, H = World.heights;
+  const u = (x + World.half) / World.size, v = (z + World.half) / World.size;
+  let tx = u*R - 0.5, tz = v*R - 0.5;
+  const x0 = Math.floor(tx), z0 = Math.floor(tz);
+  const fx = tx - x0, fz = tz - z0;
+  const cx0 = clamp(x0,0,R-1), cx1 = clamp(x0+1,0,R-1);
+  const cz0 = clamp(z0,0,R-1), cz1 = clamp(z0+1,0,R-1);
+  const h00 = H[cz0*R+cx0], h10 = H[cz0*R+cx1];
+  const h01 = H[cz1*R+cx0], h11 = H[cz1*R+cx1];
+  return lerp(lerp(h00,h10,fx), lerp(h01,h11,fx), fz);
+}
+
+/** Normal do terreno por diferenças centrais */
+const _tn = new THREE.Vector3();
+function terrainNormal(x,z,e=2.0){
+  const hx0 = sampleHeight(x-e,z), hx1 = sampleHeight(x+e,z);
+  const hz0 = sampleHeight(x,z-e), hz1 = sampleHeight(x,z+e);
+  return _tn.set(hx0-hx1, 2*e, hz0-hz1).normalize();
+}
+
+/* ---------- Geração assíncrona do heightmap (com progresso real) ---------- */
+async function generateHeightmap(seed, onProgress){
+  const R = World.res, S = CONFIG.world.size;
+  const fn = makeHeightFn(seed);
+  const H = new Float32Array(R*R);
+  let minH = 1e9, maxH = -1e9;
+  const rowsPerChunk = Math.max(4, Math.floor(R/64));
+  for (let z0=0; z0<R; z0+=rowsPerChunk){
+    const z1 = Math.min(R, z0+rowsPerChunk);
+    for (let z=z0; z<z1; z++){
+      const wz = (z+0.5)/R * S - S*0.5;
+      for (let x=0; x<R; x++){
+        const wx = (x+0.5)/R * S - S*0.5;
+        const h = fn(wx, wz);
+        H[z*R+x] = h;
+        if (h<minH) minH=h; if (h>maxH) maxH=h;
+      }
+    }
+    onProgress(z1/R);
+    await nextFrame();
+  }
+  World.heights = H; World.minH = minH; World.maxH = maxH;
+
+  // Textura R32F com filtro NEAREST — a interpolação bilinear é feita à mão no shader,
+  // exatamente como em sampleHeight(), garantindo física == geometria.
+  const tex = new THREE.DataTexture(H, R, R, THREE.RedFormat, THREE.FloatType);
+  tex.minFilter = tex.magFilter = THREE.NearestFilter;
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  World.heightTex = tex;
+}
+
+/** Pirâmide min/max (células de 64 m) para culling da quadtree e raycast rápido */
+function buildMinMaxPyramid(){
+  const cell = 64;
+  const N = Math.round(CONFIG.world.size / cell);   // 64 células
+  const R = World.res, H = World.heights;
+  const step = R / N;
+  const lvl0 = { n:N, min:new Float32Array(N*N), max:new Float32Array(N*N) };
+  for (let j=0;j<N;j++) for (let i=0;i<N;i++){
+    let mn=1e9, mx=-1e9;
+    const x0=Math.floor(i*step), x1=Math.min(R,Math.ceil((i+1)*step)+1);
+    const z0=Math.floor(j*step), z1=Math.min(R,Math.ceil((j+1)*step)+1);
+    for (let z=z0;z<z1;z++) for (let x=x0;x<x1;x++){
+      const h=H[z*R+x]; if(h<mn)mn=h; if(h>mx)mx=h;
+    }
+    lvl0.min[j*N+i]=mn; lvl0.max[j*N+i]=mx;
+  }
+  World.minmax = [lvl0];
+  let cur = lvl0;
+  while (cur.n > 1){
+    const n = cur.n>>1;
+    const lv = { n, min:new Float32Array(n*n), max:new Float32Array(n*n) };
+    for (let j=0;j<n;j++) for (let i=0;i<n;i++){
+      let mn=1e9, mx=-1e9;
+      for (let dj=0;dj<2;dj++) for (let di=0;di<2;di++){
+        const k=(j*2+dj)*cur.n + (i*2+di);
+        if (cur.min[k]<mn) mn=cur.min[k];
+        if (cur.max[k]>mx) mx=cur.max[k];
+      }
+      lv.min[j*n+i]=mn; lv.max[j*n+i]=mx;
+    }
+    World.minmax.push(lv); cur=lv;
+  }
+}
+
+/** min/max de uma região quadrada (usa o nível apropriado da pirâmide) */
+function regionMinMax(cx, cz, size){
+  const levels = World.minmax;
+  const cellsAcross = Math.max(1, Math.round(size/64));
+  let li = 0;
+  while (li < levels.length-1 && (1<<li) < cellsAcross) li++;
+  const lv = levels[li];
+  const cellSize = CONFIG.world.size / lv.n;
+  const i0 = clamp(Math.floor((cx - size*0.5 + World.half)/cellSize), 0, lv.n-1);
+  const i1 = clamp(Math.floor((cx + size*0.5 + World.half - 0.001)/cellSize), 0, lv.n-1);
+  const j0 = clamp(Math.floor((cz - size*0.5 + World.half)/cellSize), 0, lv.n-1);
+  const j1 = clamp(Math.floor((cz + size*0.5 + World.half - 0.001)/cellSize), 0, lv.n-1);
+  let mn=1e9,mx=-1e9;
+  for (let j=j0;j<=j1;j++) for (let i=i0;i<=i1;i++){
+    const k=j*lv.n+i;
+    if (lv.min[k]<mn) mn=lv.min[k];
+    if (lv.max[k]>mx) mx=lv.max[k];
+  }
+  return [mn,mx];
+}
+
+/* ---------- Máscara de sombra solar (raymarch do heightmap na CPU) ---------- */
+async function buildSunShadowMask(onProgress){
+  const R = CONFIG.world.shadowMaskRes, S = CONFIG.world.size;
+  const data = World.shadowMask || new Uint8Array(R*R);
+  World.shadowMask = data;
+  const sx = sunDir.x, sy = sunDir.y, sz = sunDir.z;
+
+  if (sy <= 0.02){                                        // sol abaixo do horizonte
+    data.fill(0);
+  } else {
+    const rowsPerChunk = Math.max(8, R>>4);
+    for (let z0=0; z0<R; z0+=rowsPerChunk){
+      const z1 = Math.min(R, z0+rowsPerChunk);
+      for (let j=z0;j<z1;j++){
+        const wz = (j+0.5)/R*S - S*0.5;
+        for (let i=0;i<R;i++){
+          const wx = (i+0.5)/R*S - S*0.5;
+          const h0 = sampleHeight(wx,wz);
+          let shade = 1, t = 6;
+          for (let s=0;s<26;s++){
+            const px = wx + sx*t, py = h0 + sy*t + 0.6, pz = wz + sz*t;
+            if (py > World.maxH) break;
+            const hh = sampleHeight(px,pz);
+            const dd = py - hh;
+            const v = smooth(-1.5, 16.0, dd);
+            if (v < shade) shade = v;
+            if (shade <= 0.001) break;
+            t *= 1.30;
+            if (t > 2400) break;
+          }
+          data[j*R+i] = (shade*255)|0;
+        }
+      }
+      if (onProgress) onProgress(z1/R);
+      await nextFrame();
+    }
+  }
+  if (!World.shadowTex){
+    const tex = new THREE.DataTexture(data, R, R, THREE.RedFormat, THREE.UnsignedByteType);
+    tex.minFilter = tex.magFilter = THREE.LinearFilter;   // filtro linear => penumbra suave
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.generateMipmaps = false;
+    World.shadowTex = tex;
+  }
+  World.shadowTex.needsUpdate = true;
+}
+
+/* ---------- Geometria de chunk compartilhada (grid + saias) ---------- */
+function buildChunkGeometry(N){
+  const gv = (N+1)*(N+1);
+  const sv = 4*(N+1);
+  const total = gv + sv;
+  const pos   = new Float32Array(total*3);
+  const skirt = new Float32Array(total);
+  const gi = (i,j)=> j*(N+1)+i;
+
+  for (let j=0;j<=N;j++) for (let i=0;i<=N;i++){
+    const k = gi(i,j)*3;
+    pos[k]=i/N; pos[k+1]=0; pos[k+2]=j/N;
+  }
+  // saias: cópias das bordas com skirt=1
+  const sBase = gv;
+  const sIdx = {
+    z0: sBase, zN: sBase+(N+1), x0: sBase+2*(N+1), xN: sBase+3*(N+1)
+  };
+  for (let i=0;i<=N;i++){
+    let k=(sIdx.z0+i)*3; pos[k]=i/N; pos[k+2]=0;      skirt[sIdx.z0+i]=1;
+    k=(sIdx.zN+i)*3;     pos[k]=i/N; pos[k+2]=1;      skirt[sIdx.zN+i]=1;
+    k=(sIdx.x0+i)*3;     pos[k]=0;   pos[k+2]=i/N;    skirt[sIdx.x0+i]=1;
+    k=(sIdx.xN+i)*3;     pos[k]=1;   pos[k+2]=i/N;    skirt[sIdx.xN+i]=1;
+  }
+
+  const idx = [];
+  for (let j=0;j<N;j++) for (let i=0;i<N;i++){
+    const a=gi(i,j), b=gi(i,j+1), c=gi(i+1,j), d=gi(i+1,j+1);
+    idx.push(a,b,c,  c,b,d);
+  }
+  for (let i=0;i<N;i++){
+    // borda z=0 (normal -Z)
+    idx.push(gi(i,0), gi(i+1,0), sIdx.z0+i,      gi(i+1,0), sIdx.z0+i+1, sIdx.z0+i);
+    // borda z=N (normal +Z)
+    idx.push(gi(i+1,N), gi(i,N), sIdx.zN+i,      gi(i,N), sIdx.zN+i, sIdx.zN+i+1);
+    // borda x=0 (normal -X)
+    idx.push(gi(0,i), sIdx.x0+i, gi(0,i+1),      gi(0,i+1), sIdx.x0+i, sIdx.x0+i+1);
+    // borda x=N (normal +X)
+    idx.push(gi(N,i), gi(N,i+1), sIdx.xN+i,      gi(N,i+1), sIdx.xN+i+1, sIdx.xN+i);
+  }
+
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  g.setAttribute('aSkirt',   new THREE.BufferAttribute(skirt,1));
+  g.setAttribute('normal',   new THREE.BufferAttribute(new Float32Array(total*3),3));
+  g.setAttribute('uv',       new THREE.BufferAttribute(new Float32Array(total*2),2));
+  g.setIndex(idx);
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e7); // culling é manual
+  return g;
+}
+
+/* ---------- Material do terreno (MeshStandardMaterial patchado) ---------- */
+const terrainShared = {
+  uHeightTex:   { value: null },
+  uShadowTex:   { value: null },
+  uRes:         { value: CONFIG.world.heightRes },
+  uTexel:       { value: 1/CONFIG.world.heightRes },
+  uWorldSize:   { value: CONFIG.world.size },
+  uWorldMin:    { value: new THREE.Vector2(-CONFIG.world.size/2, -CONFIG.world.size/2) },
+  uTexelWorld:  { value: CONFIG.world.size/CONFIG.world.heightRes },
+  uGridSeg:     { value: CONFIG.terrain.gridSegments },
+  uSkirtDepth:  { value: CONFIG.terrain.skirtDepth },
+  uCamPos:      { value: new THREE.Vector3() },
+  uTexSand:     { value: null },
+  uTexGrass:    { value: null },
+  uTexRock:     { value: null },
+  uTexSnow:     { value: null },
+  uTexRepeat:   { value: CONFIG.terrain.texRepeat },
+  uMacroRepeat: { value: CONFIG.terrain.macroRepeat },
+  uWaterLevel:  { value: CONFIG.world.waterLevel },
+  uSnowLine:    { value: 300 },
+  uShadowSoft:  { value: 1.0 },
+};
+
+const GLSL_SAMPLE_H = /* glsl */`
+  uniform sampler2D uHeightTex;
+  uniform float uRes, uTexel, uWorldSize, uTexelWorld;
+  uniform vec2  uWorldMin;
+  // bilinear manual — replica exatamente sampleHeight() do JS
+  float sampleH(vec2 w){
+    vec2 uv = (w - uWorldMin) / uWorldSize;
+    vec2 t  = uv * uRes - 0.5;
+    vec2 f  = fract(t);
+    vec2 b  = (floor(t) + 0.5) * uTexel;
+    float h00 = texture2D(uHeightTex, b).r;
+    float h10 = texture2D(uHeightTex, b + vec2(uTexel, 0.0)).r;
+    float h01 = texture2D(uHeightTex, b + vec2(0.0, uTexel)).r;
+    float h11 = texture2D(uHeightTex, b + vec2(uTexel, uTexel)).r;
+    return mix(mix(h00,h10,f.x), mix(h01,h11,f.x), f.y);
+  }
+`;
+
+function patchTerrainShader(shader, u){
+  Object.assign(shader.uniforms, terrainShared, u);
+
+  /* ---------------- VERTEX ---------------- */
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', /* glsl */`
+      #include <common>
+      ${GLSL_SAMPLE_H}
+      attribute float aSkirt;
+      uniform vec2  uOffset;
+      uniform float uScale;
+      uniform vec2  uMorph;
+      uniform float uGridSeg, uSkirtDepth;
+      uniform vec3  uCamPos;
+      varying vec3  vTerrW;
+      varying vec3  vTerrN;
+      vec3 gTransformed;
+    `)
+    .replace('#include <beginnormal_vertex>', /* glsl */`
+      vec2 grid  = position.xz;
+      vec2 wpos0 = uOffset + grid * uScale;
+      float h0   = sampleH(wpos0);
+      float dcam = distance(uCamPos, vec3(wpos0.x, h0, wpos0.y));
+      float k    = clamp((dcam - uMorph.x) / max(0.001, uMorph.y - uMorph.x), 0.0, 1.0);
+      // CDLOD: vértices ímpares deslizam para o vértice par anterior
+      vec2 gridM = grid - fract(grid * (uGridSeg * 0.5)) * (2.0 / uGridSeg) * k;
+      vec2 wpos  = uOffset + gridM * uScale;
+      float h    = sampleH(wpos);
+
+      float e = uTexelWorld;
+      float hx0 = sampleH(wpos - vec2(e,0.0)), hx1 = sampleH(wpos + vec2(e,0.0));
+      float hz0 = sampleH(wpos - vec2(0.0,e)), hz1 = sampleH(wpos + vec2(0.0,e));
+      vec3 objectNormal = normalize(vec3(hx0-hx1, 2.0*e, hz0-hz1));
+
+      gTransformed = vec3(wpos.x, h - aSkirt*uSkirtDepth, wpos.y);
+      vTerrW = vec3(wpos.x, h, wpos.y);
+      vTerrN = objectNormal;
+    `)
+    .replace('#include <begin_vertex>', `vec3 transformed = gTransformed;`);
+
+  /* ---------------- FRAGMENT ---------------- */
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', /* glsl */`
+      #include <common>
+      ${GLSL_SAMPLE_H}
+      uniform sampler2D uShadowTex, uTexSand, uTexGrass, uTexRock, uTexSnow;
+      uniform float uTexRepeat, uMacroRepeat, uWaterLevel, uSnowLine, uShadowSoft;
+      varying vec3 vTerrW;
+      varying vec3 vTerrN;
+
+      // amostragem triplanar (usada nas encostas íngremes)
+      vec3 triplanar(sampler2D t, vec3 p, vec3 n, float sc){
+        vec3 bw = pow(abs(n), vec3(4.0));
+        bw /= (bw.x + bw.y + bw.z);
+        vec3 cx = texture2D(t, p.zy*sc).rgb;
+        vec3 cy = texture2D(t, p.xz*sc).rgb;
+        vec3 cz = texture2D(t, p.xy*sc).rgb;
+        return cx*bw.x + cy*bw.y + cz*bw.z;
+      }
+    `)
+    .replace('#include <map_fragment>', /* glsl */`
+      vec3  P = vTerrW;
+      vec3  N = normalize(vTerrN);
+      float slope = 1.0 - clamp(N.y, 0.0, 1.0);          // 0 = plano, 1 = parede
+      float alt   = P.y;
+
+      // variação macro para quebrar a repetição das texturas
+      float macro = texture2D(uTexGrass, P.xz * uMacroRepeat).g;
+      float jitter = (macro - 0.5) * 26.0;
+
+      vec3 cSand  = texture2D(uTexSand,  P.xz*uTexRepeat*1.7).rgb;
+      vec3 cGrass = texture2D(uTexGrass, P.xz*uTexRepeat).rgb;
+      vec3 cRock  = triplanar(uTexRock, P, N, uTexRepeat*0.85);
+      vec3 cSnow  = texture2D(uTexSnow,  P.xz*uTexRepeat*0.8).rgb;
+
+      // blend por altura e inclinação, com bordas suaves e ruído
+      float wSand  = 1.0 - smoothstep(uWaterLevel + 1.0, uWaterLevel + 9.0 + jitter*0.3, alt);
+      float wSnow  = smoothstep(uSnowLine + jitter, uSnowLine + 95.0 + jitter, alt) * (1.0 - smoothstep(0.55,0.80,slope));
+      float wRock  = smoothstep(0.34, 0.62, slope + jitter*0.004);
+      wRock = max(wRock, smoothstep(uSnowLine - 130.0, uSnowLine + 40.0, alt) * 0.55);
+
+      vec3 col = cGrass;
+      col = mix(col, cRock,  clamp(wRock,0.0,1.0));
+      col = mix(col, cSnow,  clamp(wSnow,0.0,1.0));
+      col = mix(col, cSand,  clamp(wSand,0.0,1.0));
+      col *= 0.86 + macro*0.30;                           // variação macro de luminância
+
+      diffuseColor.rgb *= col;
+    `)
+    // Sombra solar analítica do relevo, pré-calculada por raymarch do heightmap.
+    // É o que dá sombras de montanha a qualquer distância — o shadow map fica
+    // reservado para o drone, que é o único caster dinâmico.
+    .replace('#include <lights_fragment_begin>', /* glsl */`
+      vec2 shUv = (vTerrW.xz - uWorldMin) / uWorldSize;
+      float terrainSun = texture2D(uShadowTex, shUv).r;
+      terrainSun = mix(1.0, terrainSun, uShadowSoft);
+      #include <lights_fragment_begin>
+    `)
+    // <lights_fragment_begin> é onde os loops de luz direta acumulam em
+    // reflectedLight.direct*; escalar aqui atinge SÓ o sol, preservando o
+    // ambiente e o IBL. (Não dá para mexer no directLight dentro do loop:
+    // onBeforeCompile recebe os #include ainda por resolver.)
+    .replace('#include <lights_fragment_end>', /* glsl */`
+      reflectedLight.directDiffuse  *= terrainSun;
+      reflectedLight.directSpecular *= terrainSun;
+      #include <lights_fragment_end>
+    `);
+}
+
+function makeTerrainMaterial(){
+  const u = {
+    uOffset: { value: new THREE.Vector2() },
+    uScale:  { value: 1 },
+    uMorph:  { value: new THREE.Vector2(0,1) },
+  };
+  const m = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.94, metalness: 0.0, envMapIntensity: 0.35,
+  });
+  m.userData.u = u;
+  m.customProgramCacheKey = ()=> 'terrainCDLOD';
+  m.onBeforeCompile = (sh)=> patchTerrainShader(sh, u);
+  return m;
+}
+
+/* ---------- Quadtree CDLOD ---------- */
+class Terrain {
+  constructor(scene){
+    this.geo = buildChunkGeometry(CONFIG.terrain.gridSegments);
+    this.group = new THREE.Group();
+    this.group.matrixAutoUpdate = false;
+    scene.add(this.group);
+    this.pool = [];
+    this.active = 0;
+    this._box = new THREE.Box3();
+    this._frustum = new THREE.Frustum();
+    this._mat4 = new THREE.Matrix4();
+    this.lodBias = 1.0;
+  }
+  _get(){
+    if (this.active < this.pool.length) return this.pool[this.active++];
+    const mat = makeTerrainMaterial();
+    const mesh = new THREE.Mesh(this.geo, mat);
+    mesh.frustumCulled = false;
+    mesh.matrixAutoUpdate = false;
+    mesh.receiveShadow = true;
+    mesh.castShadow = false;
+    mesh.renderOrder = 0;
+    this.group.add(mesh);
+    this.pool.push(mesh); this.active++;
+    return mesh;
+  }
+  update(camPos, cam){
+    this.active = 0;
+    this._mat4.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+    this._frustum.setFromProjectionMatrix(this._mat4);
+    terrainShared.uCamPos.value.copy(camPos);
+    this._node(0, 0, CONFIG.world.size, 0, camPos);
+    for (let i=this.active;i<this.pool.length;i++) this.pool[i].visible = false;
+  }
+  _node(cx, cz, size, depth, camPos){
+    const [mn, mx] = regionMinMax(cx, cz, size);
+    // distância ao AABB do nó
+    const dx = Math.max(Math.abs(camPos.x-cx) - size*0.5, 0);
+    const dz = Math.max(Math.abs(camPos.z-cz) - size*0.5, 0);
+    const dy = Math.max(mn - camPos.y, camPos.y - mx, 0);
+    const dist = Math.hypot(dx,dy,dz);
+
+    const splitDist = size * CONFIG.terrain.lodFactor * this.lodBias;
+
+    if (depth < CONFIG.terrain.maxDepth && dist < splitDist){
+      const h = size*0.5, q = size*0.25;
+      this._node(cx-q, cz-q, h, depth+1, camPos);
+      this._node(cx+q, cz-q, h, depth+1, camPos);
+      this._node(cx-q, cz+q, h, depth+1, camPos);
+      this._node(cx+q, cz+q, h, depth+1, camPos);
+      return;
+    }
+
+    // culling por frustum usando o AABB real do chunk
+    this._box.min.set(cx-size*0.5, mn - CONFIG.terrain.skirtDepth, cz-size*0.5);
+    this._box.max.set(cx+size*0.5, mx, cz+size*0.5);
+    if (!this._frustum.intersectsBox(this._box)) return;
+
+    const mesh = this._get();
+    mesh.visible = true;
+    const u = mesh.material.userData.u;
+    u.uOffset.value.set(cx-size*0.5, cz-size*0.5);
+    u.uScale.value = size;
+    // faixa de morphing: termina exatamente na distância de split do nó
+    const end   = splitDist;
+    const start = end * CONFIG.terrain.morphStart;
+    u.uMorph.value.set(start, end);
+  }
+}
+
+/* ==================================================================================
+   6) ÁGUA — plano com fresnel, normais animadas em 2 camadas, espuma e profundidade
+   ================================================================================== */
+function buildWater(waveTex){
+  // menor que a caixa do céu, para que o horizonte seja sempre céu (com a névoa fechando antes)
+  const geo = new THREE.PlaneGeometry(20000, 20000, 1, 1);
+  geo.rotateX(-Math.PI/2);
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: 0x11384c, roughness: 0.045, metalness: 0.0,
+    transparent: true, opacity: 1.0, envMapIntensity: 3.2,
+    clearcoat: 0.55, clearcoatRoughness: 0.08,
+    side: THREE.FrontSide, depthWrite: true,
+  });
+  const u = {
+    uWaveTex:  { value: waveTex },
+    uTime:     { value: 0 },
+    uWaterLvl: { value: CONFIG.world.waterLevel },
+    uWaveAmp:  { value: 0.40 },
+    uScaleA:   { value: 0.055 },
+    uScaleB:   { value: 0.017 },
+    uDeep:     { value: new THREE.Color(0x06202e) },
+    uShallow:  { value: new THREE.Color(0x2f8fa0) },
+  };
+  mat.customProgramCacheKey = ()=> 'waterMat';
+  mat.onBeforeCompile = (sh)=>{
+    Object.assign(sh.uniforms, u, {
+      uHeightTex: terrainShared.uHeightTex, uRes: terrainShared.uRes,
+      uTexel: terrainShared.uTexel, uWorldSize: terrainShared.uWorldSize,
+      uWorldMin: terrainShared.uWorldMin, uTexelWorld: terrainShared.uTexelWorld,
+    });
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', `#include <common>\n varying vec2 vWXZ;`)
+      .replace('#include <begin_vertex>',
+        `#include <begin_vertex>\n vWXZ = (modelMatrix * vec4(transformed,1.0)).xz;`);
+
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', /* glsl */`
+        #include <common>
+        ${GLSL_SAMPLE_H}
+        uniform sampler2D uWaveTex;
+        uniform float uTime, uWaterLvl, uWaveAmp, uScaleA, uScaleB;
+        uniform vec3 uDeep, uShallow;
+        varying vec2 vWXZ;
+      `)
+      .replace('#include <map_fragment>', /* glsl */`
+        float bed   = sampleH(vWXZ);
+        float depth = max(0.0, uWaterLvl - bed);
+        float dk    = 1.0 - exp(-depth * 0.22);
+        vec3  wc    = mix(uShallow, uDeep, dk);
+        // espuma na borda do terreno, modulada pelas ondas
+        float wave  = texture2D(uWaveTex, vWXZ*uScaleA + uTime*vec2(0.021,0.013)).b;
+        float foam  = (1.0 - smoothstep(0.0, 1.5, depth)) * (0.55 + wave*0.9);
+        foam       += (1.0 - smoothstep(1.2, 3.4, depth)) * wave * 0.28;
+        wc = mix(wc, vec3(0.92,0.97,1.0), clamp(foam, 0.0, 0.92));
+        diffuseColor.rgb  = wc;
+        diffuseColor.a    = mix(0.62, 0.97, dk) + foam*0.4;
+      `)
+      .replace('#include <normal_fragment_maps>', /* glsl */`
+        vec3 nA = texture2D(uWaveTex, vWXZ*uScaleA + uTime*vec2( 0.021, 0.013)).xyz * 2.0 - 1.0;
+        vec3 nB = texture2D(uWaveTex, vWXZ*uScaleB + uTime*vec2(-0.009, 0.017)).xyz * 2.0 - 1.0;
+        vec3 wn = normalize(vec3(nA.x*uWaveAmp + nB.x*uWaveAmp*1.6,
+                                 1.0,
+                                 nA.y*uWaveAmp + nB.y*uWaveAmp*1.6));
+        // Ao longe as ondas ficam menores que um pixel e viram moiré: achata a
+        // normal com a distância, deixando a água distante espelhada (como na vida real).
+        float wDist = length(vViewPosition);
+        wn = normalize(mix(vec3(0.0, 1.0, 0.0), wn, 1.0 - smoothstep(70.0, 700.0, wDist)));
+        normal = normalize((viewMatrix * vec4(wn, 0.0)).xyz);
+      `);
+    mat.userData.sh = sh;
+  };
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.y = CONFIG.world.waterLevel;
+  mesh.renderOrder = 1;
+  mesh.receiveShadow = false;
+  mesh.frustumCulled = false;
+  mesh.userData.u = u;
+  return mesh;
+}
+
+/* ==================================================================================
+   7) DRONE — modelo construído com geometria primitiva
+   ================================================================================== */
+class Drone {
+  constructor(carbonTex, discTex){
+    this.root = new THREE.Group();
+    this.motors = [];      // {group, propBlades, propDisc, dir, pos}
+    this.rpm = [0,0,0,0];
+    this.propAngle = [0,0,0,0];
+
+    const A = CONFIG.drone.armLength;
+    const PR = CONFIG.drone.propRadius;
+
+    /* ---- Materiais PBR ---- */
+    const matCarbon = new THREE.MeshPhysicalMaterial({
+      map: carbonTex, color: 0xffffff, roughness: 0.42, metalness: 0.18,
+      clearcoat: 0.7, clearcoatRoughness: 0.28, envMapIntensity: 2.4,
+    });
+    matCarbon.map.repeat.set(4,4);
+    const matAlu = new THREE.MeshStandardMaterial({
+      color: 0xb9c0c6, roughness: 0.28, metalness: 0.95, envMapIntensity: 3.0 });
+    const matAluDark = new THREE.MeshStandardMaterial({
+      color: 0x3d444b, roughness: 0.45, metalness: 0.85, envMapIntensity: 2.6 });
+    const matCopper = new THREE.MeshStandardMaterial({
+      color: 0xb87333, roughness: 0.35, metalness: 1.0, envMapIntensity: 2.8 });
+    const matPlastic = new THREE.MeshPhysicalMaterial({
+      color: 0x1a1d22, roughness: 0.35, metalness: 0.0,
+      clearcoat: 1.0, clearcoatRoughness: 0.12, envMapIntensity: 2.2 });
+    const matProp = new THREE.MeshPhysicalMaterial({
+      color: 0x20242b, roughness: 0.30, metalness: 0.0,
+      clearcoat: 1.0, clearcoatRoughness: 0.10, side: THREE.DoubleSide, envMapIntensity: 2.2 });
+    const matLens = new THREE.MeshPhysicalMaterial({
+      color: 0x05070c, roughness: 0.03, metalness: 0.1,
+      clearcoat: 1.0, clearcoatRoughness: 0.02, envMapIntensity: 5.0 });
+    const matScrew = new THREE.MeshStandardMaterial({
+      color: 0xd8dde2, roughness: 0.22, metalness: 1.0 });
+
+    this.matLedFront = new THREE.MeshStandardMaterial({
+      color: 0x0a2a12, emissive: 0x28ff5a, emissiveIntensity: CONFIG.drone.ledIntensity,
+      roughness: 0.4, metalness: 0 });
+    this.matLedRear = new THREE.MeshStandardMaterial({
+      color: 0x2a0a0d, emissive: 0xff2436, emissiveIntensity: CONFIG.drone.ledIntensity,
+      roughness: 0.4, metalness: 0 });
+
+    /* ---- Placa inferior em X (chanfrada) ---- */
+    const plateShape = new THREE.Shape();
+    const pw = 0.052, pl = 0.082;
+    plateShape.moveTo(-pw, -pl);
+    plateShape.lineTo( pw, -pl);
+    plateShape.lineTo( pw*1.35, -pl*0.45);
+    plateShape.lineTo( pw*1.35,  pl*0.45);
+    plateShape.lineTo( pw,  pl);
+    plateShape.lineTo(-pw,  pl);
+    plateShape.lineTo(-pw*1.35,  pl*0.45);
+    plateShape.lineTo(-pw*1.35, -pl*0.45);
+    plateShape.closePath();
+    const plateGeo = new THREE.ExtrudeGeometry(plateShape, { depth: 0.004, bevelEnabled: true,
+      bevelSize: 0.0016, bevelThickness: 0.0012, bevelSegments: 2 });
+    plateGeo.rotateX(-Math.PI/2);
+    plateGeo.translate(0, -0.010, 0);
+    const bottomPlate = new THREE.Mesh(plateGeo, matCarbon);
+    this.root.add(bottomPlate);
+
+    const topPlate = new THREE.Mesh(plateGeo.clone().scale(0.86,1,0.72), matCarbon);
+    topPlate.position.y = 0.036;
+    this.root.add(topPlate);
+
+    /* ---- Braços em X ---- */
+    this.arms = [];
+    const armPositions = [
+      { x:  1, z: -1, dir:  1, front: true  },   // frente-direita, CW
+      { x: -1, z: -1, dir: -1, front: true  },   // frente-esquerda, CCW
+      { x: -1, z:  1, dir:  1, front: false },   // trás-esquerda, CW
+      { x:  1, z:  1, dir: -1, front: false },   // trás-direita, CCW
+    ];
+    const armGeo = new THREE.BoxGeometry(0.020, 0.006, 1);
+    armGeo.translate(0,0,0.5);   // pivô na base
+
+    for (let i=0;i<4;i++){
+      const ap = armPositions[i];
+      const armPivot = new THREE.Group();
+      armPivot.position.set(ap.x*0.028, 0.0, ap.z*0.030);
+      const ang = Math.atan2(ap.x, ap.z);
+      armPivot.rotation.y = ang;
+      this.root.add(armPivot);
+      this.arms.push(armPivot);
+
+      const armLen = A;
+      const arm = new THREE.Mesh(armGeo, matCarbon);
+      arm.scale.z = armLen;
+      arm.castShadow = true;
+      armPivot.add(arm);
+
+      // grupo do motor na ponta do braço
+      const mg = new THREE.Group();
+      mg.position.set(0, 0.004, armLen);
+      armPivot.add(mg);
+
+      // corpo do motor (sino) + bobinas + eixo
+      const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.0135,0.0145,0.014,20,1), matAlu);
+      bell.position.y = 0.011; bell.castShadow = true; mg.add(bell);
+      const stator = new THREE.Mesh(new THREE.CylinderGeometry(0.0112,0.0112,0.009,18,1), matCopper);
+      stator.position.y = 0.0035; mg.add(stator);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.0125,0.0125,0.003,18,1), matAluDark);
+      base.position.y = -0.0005; mg.add(base);
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.0018,0.0018,0.010,8,1), matScrew);
+      shaft.position.y = 0.021; mg.add(shaft);
+
+      // parafusos
+      for (let s=0;s<4;s++){
+        const sc = new THREE.Mesh(new THREE.CylinderGeometry(0.0016,0.0016,0.0016,6,1), matScrew);
+        sc.position.set(Math.cos(s*Math.PI/2)*0.0095, 0.0185, Math.sin(s*Math.PI/2)*0.0095);
+        mg.add(sc);
+      }
+
+      // ---- hélice sólida (3 pás com torção) ----
+      const propGroup = new THREE.Group();
+      propGroup.position.y = 0.0195;
+      mg.add(propGroup);
+      const blades = new THREE.Group();
+      for (let b=0;b<3;b++){
+        const bl = this._makeBlade(PR, ap.dir, matProp);
+        bl.rotation.y = b * TAU/3;
+        blades.add(bl);
+      }
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.0055,0.006,0.005,14,1), matProp);
+      blades.add(hub);
+      propGroup.add(blades);
+
+      // ---- disco borrado (crossfade em RPM alto) ----
+      const discGeo = new THREE.CircleGeometry(PR, 40);
+      discGeo.rotateX(-Math.PI/2);
+      const discMat = new THREE.MeshBasicMaterial({
+        map: discTex, transparent: true, opacity: 0, depthWrite: false,
+        side: THREE.DoubleSide, blending: THREE.NormalBlending, toneMapped: true });
+      const disc = new THREE.Mesh(discGeo, discMat);
+      disc.position.y = 0.001;
+      disc.renderOrder = 3;
+      propGroup.add(disc);
+
+      // ---- LED do braço ----
+      const led = new THREE.Mesh(new THREE.BoxGeometry(0.016,0.0028,0.030),
+                                 ap.front ? this.matLedFront : this.matLedRear);
+      led.position.set(0, -0.004, armLen*0.72);
+      armPivot.add(led);
+
+      this.motors.push({ group: mg, blades, disc, dir: ap.dir, front: ap.front,
+                         world: new THREE.Vector3(), armPivot });
+    }
+
+    /* ---- Corpo central: stack de eletrônica + bateria ---- */
+    const stack = new THREE.Mesh(new THREE.BoxGeometry(0.038,0.030,0.038), matPlastic);
+    stack.position.y = 0.014; stack.castShadow = true; this.root.add(stack);
+
+    const batt = new THREE.Mesh(new THREE.BoxGeometry(0.036,0.024,0.078), new THREE.MeshPhysicalMaterial({
+      color: 0x18202c, roughness: 0.55, metalness: 0.1, clearcoat: 0.4 }));
+    batt.position.set(0, 0.050, 0.006); batt.castShadow = true; this.root.add(batt);
+    // faixa de velcro
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.040,0.0026,0.020),
+      new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.85 }));
+    strap.position.set(0, 0.0625, 0.006); this.root.add(strap);
+
+    /* ---- Gimbal frontal + lente ---- */
+    const gimbal = new THREE.Group();
+    gimbal.position.set(0, 0.020, -0.060);
+    this.root.add(gimbal);
+    this.gimbal = gimbal;
+    const camBody = new THREE.Mesh(new THREE.BoxGeometry(0.026,0.024,0.026), matPlastic);
+    camBody.castShadow = true; gimbal.add(camBody);
+    const hood = new THREE.Mesh(new THREE.CylinderGeometry(0.0115,0.0125,0.014,20,1), matAluDark);
+    hood.rotation.x = Math.PI/2; hood.position.z = -0.017; gimbal.add(hood);
+    const lens = new THREE.Mesh(new THREE.SphereGeometry(0.0098, 20, 14, 0, TAU, 0, Math.PI*0.5), matLens);
+    lens.rotation.x = -Math.PI/2; lens.position.z = -0.0235; gimbal.add(lens);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.0112,0.0016,8,24), matAlu);
+    ring.position.z = -0.0225; gimbal.add(ring);
+
+    /* ---- Antena flexível (3 segmentos que oscilam) ---- */
+    this.antenna = [];
+    let parent = this.root;
+    for (let i=0;i<3;i++){
+      const seg = new THREE.Group();
+      seg.position.set(i===0 ? 0.018 : 0, i===0 ? 0.030 : 0.026, i===0 ? 0.055 : 0);
+      const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.0012,0.0011,0.026,6,1),
+        new THREE.MeshStandardMaterial({ color: i===2?0xff7a1a:0x101318, roughness:0.6, metalness:0.1 }));
+      rod.position.y = 0.013;
+      seg.add(rod);
+      parent.add(seg);
+      parent = seg;
+      this.antenna.push(seg);
+    }
+
+    /* ---- Luz pontual dos LEDs (dá vida ao chão à noite) ---- */
+    this.ledLight = new THREE.PointLight(0x44ff88, 0.0, 6, 2);
+    this.ledLight.position.y = -0.01;
+    this.root.add(this.ledLight);
+
+    this.root.traverse(o=>{ if (o.isMesh){ o.castShadow = true; o.receiveShadow = false; } });
+    // discos não projetam sombra (seriam quadrados pretos)
+    for (const m of this.motors) m.disc.castShadow = false;
+  }
+
+  /** Pá de hélice com torção e formato de gota */
+  _makeBlade(R, dir, mat){
+    const seg = 10, w = 0.013;
+    const pos = [], idx = [], nrm = [];
+    for (let i=0;i<=seg;i++){
+      const t = i/seg;
+      const r = 0.006 + t*(R-0.006);
+      const chord = w * (0.55 + Math.sin(t*Math.PI)*0.9) * (1 - t*t*0.55);
+      const twist = (1-t) * 0.42 * dir;
+      const camber = Math.sin(t*Math.PI) * 0.0016;
+      for (let s=-1;s<=1;s+=2){
+        const c = s*chord*0.5;
+        pos.push(c*Math.cos(twist)*dir, camber + c*Math.sin(twist), r);
+        nrm.push(0,1,0);
+      }
+    }
+    for (let i=0;i<seg;i++){
+      const a=i*2, b=i*2+1, c=i*2+2, d=i*2+3;
+      idx.push(a,c,b, b,c,d);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, mat);
+    m.castShadow = true;
+    return m;
+  }
+
+  /** Atualiza visual: rotação das hélices, crossfade do blur, LEDs, antena, deformação */
+  updateVisual(dt, motorOut, throttle, accel, batteryLow){
+    const maxRPM = CONFIG.drone.maxRPM, blurRPM = CONFIG.drone.blurRPM;
+    for (let i=0;i<4;i++){
+      const rpm = motorOut[i] * maxRPM;
+      this.rpm[i] = rpm;
+      const m = this.motors[i];
+      // rotação real (limitada para não estourar precisão)
+      const rad = rpm/60 * TAU * dt * m.dir;
+      this.propAngle[i] = (this.propAngle[i] + rad) % TAU;
+      m.blades.rotation.y = this.propAngle[i];
+      m.disc.rotation.y   = this.propAngle[i] * 0.13;
+
+      // crossfade pás sólidas <-> disco translúcido
+      const k = smooth(blurRPM*0.55, blurRPM*1.35, rpm);
+      m.blades.visible = k < 0.985;
+      m.blades.scale.setScalar(1);
+      m.disc.material.opacity = k * 0.92;
+      m.disc.visible = k > 0.02;
+
+      // deformação: braços levantam levemente sob carga
+      m.armPivot.rotation.x = -motorOut[i]*0.055;
+    }
+
+    // LEDs pulsam com throttle; piscam quando a bateria está baixa
+    const pulse = batteryLow ? (Math.sin(performance.now()*0.012)>0 ? 1 : 0.12) : 1;
+    const eI = CONFIG.drone.ledIntensity * (0.55 + throttle*0.8) * pulse;
+    this.matLedFront.emissiveIntensity = eI;
+    this.matLedRear.emissiveIntensity  = eI;
+    this.ledLight.intensity = eI * 0.55;
+
+    // antena oscila com a aceleração local
+    const ax = clamp(-accel.x*0.035, -0.5, 0.5);
+    const az = clamp(-accel.z*0.035, -0.5, 0.5);
+    for (let i=0;i<this.antenna.length;i++){
+      const f = (i+1)/this.antenna.length;
+      const s = this.antenna[i];
+      const wob = Math.sin(performance.now()*0.006 + i)*0.04;
+      s.rotation.z = lerp(s.rotation.z, ax*f + wob, 0.15);
+      s.rotation.x = lerp(s.rotation.x, az*f - wob*0.6, 0.15);
+    }
+
+    // gimbal estabiliza levemente o pitch
+    this.gimbal.rotation.x = lerp(this.gimbal.rotation.x, -0.10, 0.1);
+  }
+}
+
+/* ==================================================================================
+   8) FÍSICA DO DRONE — quadcóptero arcade-sim, fixed timestep 120 Hz
+   ================================================================================== */
+class DronePhysics {
+  constructor(){
+    const P = CONFIG.physics;
+    this.pos      = new THREE.Vector3(0, 60, 0);
+    this.vel      = new THREE.Vector3();
+    this.quat     = new THREE.Quaternion();
+    this.angVel   = new THREE.Vector3();       // rad/s no referencial do corpo (x=pitch, y=yaw, z=roll)
+    this.accel    = new THREE.Vector3();       // aceleração local (para efeitos visuais)
+    this.prevPos  = this.pos.clone();
+    this.prevQuat = this.quat.clone();
+    this.motorOut = [0,0,0,0];
+    this.throttle = 0;                         // throttle interno 0..1
+    this.mode     = 'sport';                   // 'sport' | 'acro'
+    this.battery  = P.batteryCapacity;
+    this.current  = 0;
+    this.crashed  = false;
+    this.crashTimer = 0;
+    this.impact   = 0;                         // magnitude do último impacto (para shake)
+    this.agl      = 0;
+    this.spawn    = new THREE.Vector3(0, 60, 0);
+    this.windNoise = new Simplex(4242);
+    this.windTime  = 0;
+    this.wind      = new THREE.Vector3();
+    this.turbo     = false;
+    this.hoverThrottle = 1/P.twr;
+    this._up   = new THREE.Vector3();
+    this._fwd  = new THREE.Vector3();
+    this._tmp  = new THREE.Vector3();
+    this._rel  = new THREE.Vector3();
+    this._qa   = new THREE.Quaternion();
+    this._qb   = new THREE.Quaternion();
+    this._q    = new THREE.Quaternion();
+    this._e    = new THREE.Euler();
+    this.propwashT = 0;
+    this.flips = 0;      // acumulador de rotação para estatística
+  }
+
+  reset(pos){
+    this.pos.copy(pos || this.spawn);
+    this.vel.set(0,0,0);
+    this.quat.identity();
+    this.angVel.set(0,0,0);
+    this.throttle = this.hoverThrottle;
+    this.crashed = false; this.crashTimer = 0; this.impact = 0;
+    this.prevPos.copy(this.pos); this.prevQuat.copy(this.quat);
+  }
+
+  /** Ângulos de roll/pitch/yaw atuais a partir do quaternion.
+   *  Convenção interna (validada por teste): pitch > 0 = NARIZ PARA BAIXO,
+   *  roll > 0 = inclinado para a ESQUERDA. Quem exibe precisa inverter. */
+  attitude(){
+    // vetor "up" do corpo no mundo
+    this._up.set(0,1,0).applyQuaternion(this.quat);
+    this._fwd.set(0,0,-1).applyQuaternion(this.quat);
+    const yaw   = Math.atan2(this._fwd.x, this._fwd.z);
+    // roll/pitch relativos ao plano horizontal
+    const right = this._tmp.set(1,0,0).applyQuaternion(this.quat);
+    const pitch = Math.asin(clamp(-this._fwd.y, -1, 1));
+    const roll  = Math.atan2(right.y, this._up.y);
+    return { roll, pitch, yaw };
+  }
+
+  step(dt, input, world){
+    const P = CONFIG.physics;
+    this.prevPos.copy(this.pos);
+    this.prevQuat.copy(this.quat);
+
+    /* ---------- Vento com ruído Perlin variando no tempo e na altitude ---------- */
+    this.windTime += dt;
+    const wt = this.windTime*0.11;
+    const wAmp = (CONFIG.physics.windBase) * (1 + this.pos.y * P.windAltitude);
+    const gx = this.windNoise.noise2D(wt, this.pos.y*0.002);
+    const gz = this.windNoise.noise2D(wt+31.7, this.pos.y*0.002+11.3);
+    const gust = 1 + this.windNoise.noise2D(wt*2.3, 5.5) * P.windGust*0.35;
+    this.wind.set(gx*wAmp*gust, this.windNoise.noise2D(wt*1.7, 77.1)*wAmp*0.22, gz*wAmp*gust);
+
+    /* ---------- Altura acima do solo ---------- */
+    const groundH = sampleHeight(this.pos.x, this.pos.z);
+    this.agl = this.pos.y - Math.max(groundH, CONFIG.world.waterLevel);
+
+    /* ---------- Estado de crash: sem controle por um instante ---------- */
+    if (this.crashed){
+      this.crashTimer -= dt;
+      this.vel.y -= P.gravity*dt;
+      this.vel.multiplyScalar(1 - 1.2*dt);
+      this.angVel.multiplyScalar(1 - 1.8*dt);
+      this.pos.addScaledVector(this.vel, dt);
+      this._integrateRotation(dt);
+      this.motorOut[0]=this.motorOut[1]=this.motorOut[2]=this.motorOut[3]=0;
+      this._collide(dt);
+      if (this.crashTimer <= 0) this.reset(this.spawn);
+      return;
+    }
+
+    const turboMul = this.turbo ? P.turboMul : 1.0;
+
+    /* ---------- Loop de controle ---------- */
+    const att = this.attitude();
+    let cmdRate = { pitch:0, yaw:0, roll:0 };
+
+    if (this.mode === 'acro'){
+      // ACRO: comando direto de taxa angular — permite flips/rolls infinitos
+      const R = P.rateAcro;
+      cmdRate.pitch = -input.pitch * R.pitch * D2R * turboMul;
+      cmdRate.roll  = -input.roll  * R.roll  * D2R * turboMul;
+      cmdRate.yaw   = input.yaw   * R.yaw   * D2R;
+      // throttle direto (integrado pelos comandos)
+      this.throttle = clamp(this.throttle + input.throttle*dt*1.4, 0, 1);
+    } else {
+      // SPORT/ANGLE: PID de ângulo com auto-nivelamento
+      const R = P.rateSport;
+      const maxA = P.maxAngle * D2R;
+      const tgtRoll  = -input.roll  * maxA;
+      const tgtPitch =  input.pitch * maxA;
+      const errRoll  = tgtRoll  - att.roll;
+      const errPitch = tgtPitch - att.pitch;
+      cmdRate.roll  = clamp(errRoll  * P.angleP, -R.roll *D2R, R.roll *D2R);
+      cmdRate.pitch = clamp(errPitch * P.angleP, -R.pitch*D2R, R.pitch*D2R) * -1;
+      cmdRate.yaw   = input.yaw * R.yaw * D2R;
+
+      // throttle mantém altitude: compensa a inclinação + amortece VSI
+      const tilt = Math.max(0.35, this._up.y);
+      const base = this.hoverThrottle / tilt;
+      const climb = input.throttle * 0.55 * turboMul;
+      const damp  = (Math.abs(input.throttle) < 0.05) ? (-this.vel.y * 0.030) : 0;
+      this.throttle = clamp(base + climb + damp, 0, 1);
+    }
+
+    /* ---------- Loop de taxa angular (P + D) ---------- */
+    const I = P.inertia;
+    const axes = ['x','y','z'];
+    const cmd = [cmdRate.pitch, cmdRate.yaw, cmdRate.roll];
+    const torqueNorm = [0,0,0];
+    for (let i=0;i<3;i++){
+      const a = axes[i];
+      const err = cmd[i] - this.angVel[a];
+      let acc = err * P.rateP - this.angVel[a] * P.rateD;
+      acc = clamp(acc, -P.maxAngAccel, P.maxAngAccel);
+      torqueNorm[i] = clamp(acc / P.maxAngAccel, -1, 1);
+      // arrasto angular
+      acc -= this.angVel[a] * P.dragAngular * Math.abs(this.angVel[a]) * 0.5;
+      this.angVel[a] += acc * dt;
+    }
+
+    /* ---------- Mixagem dos 4 motores (visual + áudio + consumo) ---------- */
+    // ordem: 0=FR(CW) 1=FL(CCW) 2=RL(CW) 3=RR(CCW)
+    const tP = torqueNorm[0]*0.30, tY = torqueNorm[1]*0.22, tR = torqueNorm[2]*0.30;
+    this.motorOut[0] = clamp(this.throttle - tP - tR + tY, 0.03, 1);
+    this.motorOut[1] = clamp(this.throttle - tP + tR - tY, 0.03, 1);
+    this.motorOut[2] = clamp(this.throttle + tP + tR + tY, 0.03, 1);
+    this.motorOut[3] = clamp(this.throttle + tP - tR - tY, 0.03, 1);
+
+    /* ---------- Bateria ---------- */
+    let sag = 1;
+    if (!CONFIG.game.infiniteBattery){
+      const load = (this.motorOut[0]+this.motorOut[1]+this.motorOut[2]+this.motorOut[3])*0.25;
+      this.current = 4 + load*load*38;                          // amperes simulados
+      this.battery = Math.max(0, this.battery - load*P.batteryDrain*dt);
+      if (this.battery < P.batterySagStart)
+        sag = 0.55 + 0.45*(this.battery/P.batterySagStart);      // queda de empuxo no fim
+      if (this.battery <= 0) sag = 0.30;
+    } else {
+      const load = (this.motorOut[0]+this.motorOut[1]+this.motorOut[2]+this.motorOut[3])*0.25;
+      this.current = 4 + load*load*38;
+    }
+
+    /* ---------- Empuxo vetorial no eixo UP local ---------- */
+    this._up.set(0,1,0).applyQuaternion(this.quat);
+    const maxThrust = P.mass * P.gravity * P.twr * turboMul;
+    let thrust = maxThrust * this.throttle * sag;
+
+    // Ground effect: mais empuxo perto do solo
+    if (this.agl < P.groundEffectH && this.agl > -1){
+      const ge = 1 - clamp(this.agl / P.groundEffectH, 0, 1);
+      thrust *= 1 + ge*ge*P.groundEffectMul;
+    }
+    // Propwash: turbulência ao descer sobre o próprio downwash
+    if (this.vel.y < -3 && this.throttle > 0.35){
+      const pw = clamp(-this.vel.y/12, 0, 1) * P.propwash;
+      this.propwashT += dt*22;
+      this.angVel.x += Math.sin(this.propwashT*1.7)*pw*dt*4.2;
+      this.angVel.z += Math.cos(this.propwashT*2.3)*pw*dt*4.2;
+      thrust *= 1 - pw*0.14;
+    }
+
+    /* ---------- Forças ---------- */
+    const F = this._tmp.set(0,0,0);
+    F.addScaledVector(this._up, thrust);
+    F.y -= P.mass * P.gravity;
+    // arrasto quadrático em relação ao ar (velocidade relativa ao vento)
+    const rel = this._rel.subVectors(this.vel, this.wind);
+    const spd = rel.length();
+    if (spd > 0.001) F.addScaledVector(rel, -P.dragLinear * spd);
+
+    const acc = F.multiplyScalar(1/P.mass);
+    this.accel.copy(acc).applyQuaternion(this._q.copy(this.quat).invert()); // aceleração no corpo
+    this.vel.addScaledVector(acc, dt);
+    this.pos.addScaledVector(this.vel, dt);
+
+    this._integrateRotation(dt);
+    this._collide(dt);
+
+    // teto: freia suavemente (sem parede invisível)
+    if (this.pos.y > CONFIG.world.ceiling){
+      const over = this.pos.y - CONFIG.world.ceiling;
+      this.vel.y -= over*0.55*dt*8;
+    }
+  }
+
+  _integrateRotation(dt){
+    const w = this.angVel;
+    const len = w.length();
+    if (len > 1e-7){
+      this._q.setFromAxisAngle(this._tmp.copy(w).multiplyScalar(1/len), len*dt);
+      this.quat.multiply(this._q).normalize();
+    }
+  }
+
+  /** Colisão com o terreno e a água (esfera + normal do heightmap) */
+  _collide(dt){
+    const P = CONFIG.physics;
+    const r = P.collisionRadius;
+    const gh = sampleHeight(this.pos.x, this.pos.z);
+    const wl = CONFIG.world.waterLevel;
+    const surf = Math.max(gh, wl);
+    const isWater = wl > gh;
+
+    if (this.pos.y - r < surf){
+      const n = isWater ? _tn.set(0,1,0) : terrainNormal(this.pos.x, this.pos.z, 2.0);
+      const pen = surf - (this.pos.y - r);
+      this.pos.y += pen;
+      const vn = this.vel.dot(n);
+      if (vn < 0){
+        const impactSpeed = -vn;
+        this.impact = Math.max(this.impact, impactSpeed);
+        if (!this.crashed && impactSpeed > P.crashSpeed){
+          this.crashed = true;
+          this.crashTimer = 1.5;
+          onCrash(impactSpeed, this.pos.clone(), n.clone());
+        }
+        // resposta: reflexão amortecida + atrito
+        this.vel.addScaledVector(n, -vn * (1 + P.restitution));
+        this.vel.multiplyScalar(0.86);
+        this.angVel.multiplyScalar(0.75);
+        // torque de tombamento ao raspar
+        this.angVel.x += (Math.random()-0.5) * impactSpeed * 0.12;
+        this.angVel.z += (Math.random()-0.5) * impactSpeed * 0.12;
+      }
+      // parado no chão: alinha lentamente com a normal
+      if (Math.abs(this.vel.y) < 0.6 && this.throttle < 0.12){
+        const tq = this._qa.setFromUnitVectors(
+          this._up.set(0,1,0).applyQuaternion(this.quat), n);
+        this.quat.premultiply(tq.slerp(this._qb.identity(), 1-dmp(4,dt)));
+      }
+    }
+  }
+
+  /** Interpolação para o render (física 120 Hz, render em qualquer FPS) */
+  interpolate(alpha, outPos, outQuat){
+    outPos.lerpVectors(this.prevPos, this.pos, alpha);
+    outQuat.copy(this.prevQuat).slerp(this.quat, alpha);
+  }
+}
+
+/* ==================================================================================
+   9) CÂMERA EM 3ª PESSOA — spring arm, chase/orbit, colisão, FOV dinâmico, shake
+   ================================================================================== */
+class ChaseCamera {
+  constructor(cam){
+    this.cam = cam;
+    this.mode = 'chase';                 // 'chase' | 'orbit'
+    this.pos      = new THREE.Vector3(0, 70, 12);
+    this.vel      = new THREE.Vector3();
+    this.lookAt   = new THREE.Vector3();
+    this.smoothLook = new THREE.Vector3();
+    this.orbitYaw = 0; this.orbitPitch = 0.22; this.orbiting = false;
+    this.shake = 0;
+    this.shakeSeed = new Simplex(999);
+    this.t = 0;
+    this.curFov = CONFIG.camera.fovMin;
+    this.rotQuat = new THREE.Quaternion();
+    this._desired = new THREE.Vector3();
+    this._tmp = new THREE.Vector3();
+    this._tmp2 = new THREE.Vector3();
+    this.dist = CONFIG.camera.distance;
+  }
+
+  addShake(v){ this.shake = Math.min(2.5, this.shake + v); }
+
+  update(dt, dPos, dQuat, dVel, throttle, agl){
+    const C = CONFIG.camera;
+    this.t += dt;
+
+    /* ---- direção base do braço da câmera ---- */
+    let armDir = this._tmp;
+    if (this.mode === 'orbit' || this.orbiting){
+      const cp = Math.cos(this.orbitPitch), sp = Math.sin(this.orbitPitch);
+      armDir.set(Math.sin(this.orbitYaw)*cp, sp, Math.cos(this.orbitYaw)*cp);
+    } else {
+      // CHASE: mistura entre "atrás do drone" e "atrás do vetor velocidade"
+      const back = this._tmp2.set(0,0,1).applyQuaternion(dQuat);
+      back.y = lerp(back.y, 0.16, 0.62);            // nunca fica totalmente vertical
+      const spd = dVel.length();
+      const velDir = this._desired.copy(dVel);
+      if (spd > 2.5){ velDir.multiplyScalar(-1/spd); velDir.y = velDir.y*0.35 + 0.16; }
+      else velDir.copy(back);
+      const k = smooth(3, 16, spd) * 0.55;          // quanto mais rápido, mais alinha com a velocidade
+      armDir.copy(back).lerp(velDir, k).normalize();
+      armDir.y = Math.max(armDir.y, 0.05);
+      armDir.normalize();
+    }
+
+    /* ---- posição desejada (spring arm) ---- */
+    let dist = this.dist;
+    const desired = this._desired.copy(dPos).addScaledVector(armDir, dist);
+    desired.y += C.height;
+
+    /* ---- colisão de câmera contra o terreno (marcha ao longo do braço) ---- */
+    const steps = 8;
+    for (let i=1;i<=steps;i++){
+      const t = i/steps;
+      const px = lerp(dPos.x, desired.x, t), pz = lerp(dPos.z, desired.z, t);
+      const py = lerp(dPos.y + C.height*0.4, desired.y, t);
+      const h = Math.max(sampleHeight(px,pz), CONFIG.world.waterLevel) + C.collisionPad;
+      if (py < h){
+        // aproxima suavemente em vez de atravessar
+        desired.set(px, Math.max(py, h), pz);
+        break;
+      }
+    }
+    // nunca abaixo do solo
+    const minY = Math.max(sampleHeight(desired.x, desired.z), CONFIG.world.waterLevel) + C.collisionPad;
+    if (desired.y < minY) desired.y = minY;
+
+    /* ---- mola quase criticamente amortecida, integrada em substeps fixos ----
+       Integrar uma mola rígida com o dt do frame explode quando o FPS cai
+       (dt > 2/ω). Substeps mantêm a câmera estável de 20 a 240 FPS.          */
+    const k = C.stiffness*C.stiffness;
+    const c = 2*C.damping*C.stiffness;
+    let remaining = Math.min(dt, 0.5);
+    const h = C.springStep;
+    while (remaining > 1e-6){
+      const sdt = Math.min(h, remaining);
+      remaining -= sdt;
+      this.vel.x += ((desired.x-this.pos.x)*k - this.vel.x*c) * sdt;
+      this.vel.y += ((desired.y-this.pos.y)*k - this.vel.y*c) * sdt;
+      this.vel.z += ((desired.z-this.pos.z)*k - this.vel.z*c) * sdt;
+      this.pos.x += this.vel.x*sdt; this.pos.y += this.vel.y*sdt; this.pos.z += this.vel.z*sdt;
+    }
+    // rede de segurança: se algo produzir NaN/infinito, recoloca a câmera atrás do drone
+    if (!Number.isFinite(this.pos.x+this.pos.y+this.pos.z)){
+      this.pos.copy(desired); this.vel.set(0,0,0);
+    }
+
+    /* ---- alvo com leve antecipação na direção do movimento ---- */
+    const look = this._tmp.copy(dPos).addScaledVector(dVel, 0.09);
+    look.y += 0.25;
+    this.smoothLook.lerp(look, dmp(C.rotLag, dt));
+
+    /* ---- FOV dinâmico com a velocidade ---- */
+    const spd = dVel.length();
+    const tgtFov = lerp(C.fovMin, C.fovMax, smooth(4, C.fovSpeed, spd));
+    this.curFov = lerp(this.curFov, tgtFov, dmp(3.5, dt));
+
+    /* ---- screen shake ---- */
+    const groundK = 1 - clamp(agl/6, 0, 1);
+    const ambient = throttle*C.shakeThrottle + groundK*C.shakeGround*clamp(spd/16,0,1);
+    this.shake = Math.max(this.shake*(1-dmp(4.5,dt)), 0);
+    const amp = ambient + this.shake*C.shakeImpact;
+    const t = this.t*22;
+    const sx = this.shakeSeed.noise2D(t, 0.0)*amp;
+    const sy = this.shakeSeed.noise2D(t, 11.3)*amp;
+    const sz = this.shakeSeed.noise2D(t, 23.7)*amp*0.5;
+
+    /* ---- aplica na câmera ---- */
+    this.cam.position.copy(this.pos);
+    this.cam.fov = this.curFov;
+    this.cam.updateProjectionMatrix();
+    this.cam.lookAt(this.smoothLook);
+    // shake aplicado como rotação (mais natural que translação pura)
+    this.cam.rotateX(sy*0.09); this.cam.rotateY(sx*0.09); this.cam.rotateZ(sz*0.12);
+    this.cam.position.x += sx*0.05; this.cam.position.y += sy*0.05;
+  }
+}
+
+/* ==================================================================================
+   10) INPUT — teclado, mouse e gamepad (layout de rádio Mode 2)
+   ================================================================================== */
+class Input {
+  constructor(){
+    this.keys = Object.create(null);
+    this.stick = { throttle:0, yaw:0, pitch:0, roll:0 };  // valores suavizados
+    this.raw   = { throttle:0, yaw:0, pitch:0, roll:0 };
+    this.turbo = false;
+    this.slowmo = false;
+    this.mouseDX = 0; this.mouseDY = 0;
+    this.viewDX  = 0; this.viewDY = 0;   // deltas destinados à câmera (orbit)
+    this.wheel   = 0;
+    this.rmb = false;
+    this.gamepadIndex = null;
+    this.hadGamepad = false;
+    this.mouseSteer = CONFIG.input.mouseSteer;
+    this.mPitch = 0; this.mRoll = 0;
+    this._bind();
+  }
+  _bind(){
+    addEventListener('keydown', e=>{
+      if (e.repeat) return;
+      this.keys[e.code] = true;
+      handleKeyDown(e);
+    });
+    addEventListener('keyup',   e=>{ this.keys[e.code] = false; });
+    addEventListener('blur',    ()=>{ this.keys = Object.create(null); });
+
+    const dom = renderer.domElement;
+    dom.addEventListener('contextmenu', e=> e.preventDefault());
+    dom.addEventListener('mousedown', e=>{ if (e.button===2) this.rmb = true; });
+    addEventListener('mouseup',   e=>{ if (e.button===2) this.rmb = false; });
+    addEventListener('mousemove', e=>{ this.mouseDX += e.movementX||0; this.mouseDY += e.movementY||0; });
+    dom.addEventListener('wheel', e=>{ e.preventDefault(); this.wheel += Math.sign(e.deltaY); }, {passive:false});
+
+    addEventListener('gamepadconnected', e=>{
+      this.gamepadIndex = e.gamepad.index;
+      toast('GAMEPAD CONECTADO — ' + e.gamepad.id.slice(0,28).toUpperCase(), 2.2);
+    });
+    addEventListener('gamepaddisconnected', ()=>{ this.gamepadIndex = null; });
+  }
+
+  /** curva expo + deadzone */
+  _shape(v){
+    const dz = CONFIG.input.deadzone;
+    const s = Math.sign(v); v = Math.abs(v);
+    if (v < dz) return 0;
+    v = (v-dz)/(1-dz);
+    const e = CONFIG.input.expo;
+    v = v*(1-e) + v*v*v*e;
+    return s*v*CONFIG.input.sens;
+  }
+
+  update(dt){
+    const K = this.keys;
+    const ramp = CONFIG.input.keyRamp*dt, ret = CONFIG.input.keyReturn*dt;
+    const step = (cur, target)=>{
+      if (target !== 0) return clamp(cur + Math.sign(target)*ramp, -1, 1);
+      if (cur > 0) return Math.max(0, cur - ret);
+      if (cur < 0) return Math.min(0, cur + ret);
+      return 0;
+    };
+
+    /* ---- teclado ---- */
+    let kThr = (K['KeyW']?1:0) + (K['KeyS']?-1:0);
+    let kYaw = (K['KeyD']?1:0) + (K['KeyA']?-1:0);
+    let kPit = (K['ArrowUp']?1:0) + (K['ArrowDown']?-1:0);
+    let kRol = (K['ArrowRight']?1:0) + (K['ArrowLeft']?-1:0);
+
+    this.raw.throttle = step(this.raw.throttle, kThr);
+    this.raw.yaw      = step(this.raw.yaw,      kYaw);
+    this.raw.pitch    = step(this.raw.pitch,    kPit);
+    this.raw.roll     = step(this.raw.roll,     kRol);
+
+    /* ---- mouse: ou pilota (modo M) ou orbita a câmera (botão direito) ---- */
+    const steering = this.mouseSteer && !this.rmb;
+    if (steering){
+      this.mRoll  = clamp(this.mRoll  + this.mouseDX*CONFIG.input.mouseSens, -1, 1);
+      this.mPitch = clamp(this.mPitch - this.mouseDY*CONFIG.input.mouseSens, -1, 1);
+      // auto-centragem suave (como um stick com mola)
+      this.mRoll  -= this.mRoll  * dmp(2.2, dt);
+      this.mPitch -= this.mPitch * dmp(2.2, dt);
+      this.viewDX = 0; this.viewDY = 0;
+    } else {
+      this.mRoll  -= this.mRoll  * dmp(3.5, dt);
+      this.mPitch -= this.mPitch * dmp(3.5, dt);
+      this.viewDX = this.mouseDX; this.viewDY = this.mouseDY;
+    }
+
+    /* ---- gamepad (Mode 2): L=throttle+yaw, R=pitch+roll ---- */
+    let gThr=0,gYaw=0,gPit=0,gRol=0, gTurbo=false, gSlow=false, hasGp=false;
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (const gp of pads){
+      if (!gp || !gp.connected) continue;
+      hasGp = true;
+      gThr = -gp.axes[1]; gYaw = gp.axes[0];
+      gPit = -(gp.axes[3] ?? 0); gRol = gp.axes[2] ?? 0;
+      gTurbo = (gp.buttons[7]?.value ?? 0) > 0.3 || (gp.buttons[5]?.pressed ?? false);
+      gSlow  = (gp.buttons[6]?.value ?? 0) > 0.3 || (gp.buttons[4]?.pressed ?? false);
+      // botões: A=modo de voo, B=reset, X=câmera
+      if (gp.buttons[0]?.pressed && !this._gpA){ togglePhysMode(); }
+      this._gpA = gp.buttons[0]?.pressed;
+      if (gp.buttons[1]?.pressed && !this._gpB){ respawn(); }
+      this._gpB = gp.buttons[1]?.pressed;
+      if (gp.buttons[2]?.pressed && !this._gpX){ toggleCamMode(); }
+      this._gpX = gp.buttons[2]?.pressed;
+      break;
+    }
+    if (hasGp && !this.hadGamepad){ this.hadGamepad = true; }
+
+    /* ---- mistura ---- */
+    const inv = CONFIG.input.invertPitch ? -1 : 1;
+    this.stick.throttle = clamp(this._shape(this.raw.throttle) + this._shape(gThr), -1, 1);
+    this.stick.yaw      = clamp(this._shape(this.raw.yaw)      + this._shape(gYaw), -1, 1);
+    this.stick.pitch    = clamp((this._shape(this.raw.pitch) + this._shape(gPit) + this.mPitch) * inv, -1, 1);
+    this.stick.roll     = clamp(this._shape(this.raw.roll)  + this._shape(gRol) + this.mRoll, -1, 1);
+
+    this.turbo  = !!K['ShiftLeft'] || !!K['ShiftRight'] || gTurbo;
+    this.slowmo = !!K['KeyF'] || gSlow;
+
+    this.mouseDX = 0; this.mouseDY = 0;
+  }
+}
+
+/* ==================================================================================
+   11) PARTÍCULAS — poeira do solo, faíscas e fumaça do crash
+   ================================================================================== */
+class Particles {
+  constructor(scene, tex, max=900){
+    this.max = max;
+    this.pos = new Float32Array(max*3);
+    this.vel = new Float32Array(max*3);
+    this.life = new Float32Array(max);
+    this.ttl  = new Float32Array(max);
+    this.size = new Float32Array(max);
+    this.col  = new Float32Array(max*3);
+    this.alive = 0; this.head = 0;
+
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(this.pos,3));
+    g.setAttribute('aSize',    new THREE.BufferAttribute(this.size,1));
+    g.setAttribute('aLife',    new THREE.BufferAttribute(this.life,1));
+    g.setAttribute('color',    new THREE.BufferAttribute(this.col,3));
+    g.setDrawRange(0,0);
+    this.geo = g;
+
+    this.mat = new THREE.ShaderMaterial({
+      uniforms:{ uTex:{value:tex}, uFade:{value:1} },
+      transparent:true, depthWrite:false, vertexColors:true,
+      blending: THREE.NormalBlending,
+      vertexShader:/* glsl */`
+        attribute float aSize, aLife;
+        varying float vL; varying vec3 vC;
+        void main(){
+          vL = aLife; vC = color;
+          vec4 mv = modelViewMatrix * vec4(position,1.0);
+          gl_Position = projectionMatrix * mv;
+          gl_PointSize = aSize * 300.0 / max(0.001, -mv.z);
+        }`,
+      fragmentShader:/* glsl */`
+        uniform sampler2D uTex; uniform float uFade;
+        varying float vL; varying vec3 vC;
+        void main(){
+          vec4 t = texture2D(uTex, gl_PointCoord);
+          // fade-in nos primeiros 18% de vida + fade-out no resto
+          float a = t.a * vL * smoothstep(0.0, 0.18, 1.0 - vL) * uFade;
+          gl_FragColor = vec4(vC, a * 0.55);
+        }`
+    });
+    this.points = new THREE.Points(g, this.mat);
+    this.points.frustumCulled = false;
+    this.points.renderOrder = 4;
+    scene.add(this.points);
+  }
+  spawn(x,y,z, vx,vy,vz, size, ttl, r,g,b){
+    const i = this.head;
+    this.head = (this.head+1) % this.max;
+    this.pos[i*3]=x; this.pos[i*3+1]=y; this.pos[i*3+2]=z;
+    this.vel[i*3]=vx; this.vel[i*3+1]=vy; this.vel[i*3+2]=vz;
+    this.size[i]=size; this.ttl[i]=ttl; this.life[i]=1;
+    this.col[i*3]=r; this.col[i*3+1]=g; this.col[i*3+2]=b;
+  }
+  update(dt){
+    let any = 0;
+    for (let i=0;i<this.max;i++){
+      if (this.life[i] <= 0) continue;
+      this.life[i] -= dt/this.ttl[i];
+      if (this.life[i] <= 0){ this.life[i]=0; this.size[i]=0; continue; }
+      this.pos[i*3]   += this.vel[i*3]*dt;
+      this.pos[i*3+1] += this.vel[i*3+1]*dt;
+      this.pos[i*3+2] += this.vel[i*3+2]*dt;
+      this.vel[i*3+1] -= 2.2*dt;                  // gravidade leve
+      this.vel[i*3]   *= 1 - 1.1*dt;
+      this.vel[i*3+2] *= 1 - 1.1*dt;
+      any = this.max;
+    }
+    this.geo.setDrawRange(0, any);
+    this.geo.attributes.position.needsUpdate = true;
+    this.geo.attributes.aSize.needsUpdate = true;
+    this.geo.attributes.aLife.needsUpdate = true;
+    this.geo.attributes.color.needsUpdate = true;
+  }
+}
+
+/* ==================================================================================
+   12) HUD — OSD estilo FPV desenhado em Canvas 2D
+   ================================================================================== */
+class HUD {
+  constructor(canvas){
+    this.c = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.visible = true;
+    this.dpr = Math.min(devicePixelRatio, 2);
+    this.resize();
+  }
+  resize(){
+    this.dpr = Math.min(devicePixelRatio, 2);
+    this.c.width  = Math.floor(innerWidth*this.dpr);
+    this.c.height = Math.floor(innerHeight*this.dpr);
+    this.c.style.width = innerWidth+'px';
+    this.c.style.height = innerHeight+'px';
+  }
+  draw(s){
+    const ctx = this.ctx, W = innerWidth, H = innerHeight;
+    ctx.setTransform(this.dpr,0,0,this.dpr,0,0);
+    ctx.clearRect(0,0,W,H);
+    if (!this.visible) return;
+
+    ctx.save();
+    ctx.font = '600 13px Consolas, ui-monospace, monospace';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 1.4;
+    const OSD = 'rgba(216,245,255,0.92)';
+    const DIM = 'rgba(216,245,255,0.42)';
+
+    /* ---------- Horizonte artificial (centro) ---------- */
+    const cx = W/2, cy = H/2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    // s.roll > 0 = inclinado à esquerda  → horizonte gira no sentido horário (canvas: +)
+    // s.pitch > 0 = nariz para baixo     → o horizonte SOBE na tela (y negativo)
+    ctx.rotate(-s.roll);
+    const pitchPx = -s.pitch * R2D * 4.2;
+    ctx.translate(0, pitchPx);
+    ctx.strokeStyle = 'rgba(216,245,255,0.55)';
+    ctx.beginPath();
+    for (let deg=-90; deg<=90; deg+=10){
+      const y = -deg*4.2;
+      if (Math.abs(y - pitchPx) > H*0.42) continue;
+      const w = deg===0 ? 118 : (deg%20===0 ? 62 : 34);
+      ctx.moveTo(-w, y); ctx.lineTo(-18, y);
+      ctx.moveTo( 18, y); ctx.lineTo( w, y);
+      if (deg!==0 && deg%20===0){
+        ctx.save(); ctx.rotate(0);
+        ctx.fillStyle = DIM; ctx.font='500 10px Consolas, monospace';
+        ctx.textAlign='left'; ctx.fillText(String(deg), w+5, y);
+        ctx.restore();
+      }
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    /* ---------- Crosshair fixo do drone ---------- */
+    ctx.strokeStyle = 'rgba(93,255,155,0.95)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx-26,cy); ctx.lineTo(cx-9,cy);
+    ctx.moveTo(cx+9,cy);  ctx.lineTo(cx+26,cy);
+    ctx.moveTo(cx,cy-7);  ctx.lineTo(cx,cy-2);
+    ctx.stroke();
+    ctx.lineWidth = 1.4;
+
+    /* ---------- Fita de bússola (topo) ---------- */
+    const cw = Math.min(460, W*0.5);
+    const cyTop = 42;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(cx-cw/2, cyTop-16, cw, 32); ctx.clip();
+    ctx.strokeStyle = DIM; ctx.fillStyle = OSD;
+    ctx.textAlign='center';
+    const hdg = (s.heading*R2D + 360) % 360;
+    const pxPerDeg = cw/120;
+    for (let d=-70; d<=70; d+=5){
+      const deg = hdg + d;
+      const x = cx + d*pxPerDeg;
+      const dd = ((Math.round(deg)%360)+360)%360;
+      if (dd % 45 === 0){
+        const lab = {0:'N',45:'NE',90:'E',135:'SE',180:'S',225:'SO',270:'O',315:'NO'}[dd] || dd;
+        ctx.fillStyle = OSD; ctx.font='700 11px Consolas, monospace';
+        ctx.fillText(lab, x, cyTop+7);
+        ctx.beginPath(); ctx.moveTo(x, cyTop-12); ctx.lineTo(x, cyTop-5); ctx.stroke();
+      } else if (dd % 15 === 0){
+        ctx.beginPath(); ctx.moveTo(x, cyTop-11); ctx.lineTo(x, cyTop-6); ctx.stroke();
+      }
+    }
+    ctx.restore();
+    ctx.fillStyle = 'rgba(57,215,255,1)';
+    ctx.beginPath();
+    ctx.moveTo(cx, cyTop-19); ctx.lineTo(cx-5, cyTop-26); ctx.lineTo(cx+5, cyTop-26);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = OSD; ctx.font='600 12px Consolas, monospace'; ctx.textAlign='center';
+    ctx.fillText(String(Math.round(hdg)).padStart(3,'0')+'°', cx, cyTop+26);
+
+    /* ---------- Fita de velocidade (esquerda) ---------- */
+    this._tape(ctx, 70, H/2, s.speedKmh, 'KM/H', -1);
+    /* ---------- Fita de altitude AGL (direita) ---------- */
+    this._tape(ctx, W-70, H/2, s.agl, 'AGL m', 1);
+
+    /* ---------- Bloco inferior esquerdo: modo, bateria, corrente, RSSI ---------- */
+    const bx = 26, by = H-26;
+    ctx.textAlign='left';
+    ctx.font='700 17px Consolas, monospace';
+    ctx.fillStyle = s.mode==='acro' ? 'rgba(255,176,58,1)' : 'rgba(93,255,155,1)';
+    ctx.fillText(s.mode==='acro' ? 'ACRO' : 'SPORT', bx, by-96);
+    if (s.turbo){ ctx.fillStyle='rgba(255,77,94,1)'; ctx.font='700 12px Consolas, monospace';
+      ctx.fillText('TURBO', bx+78, by-95); }
+
+    // barra de bateria
+    ctx.font='600 12px Consolas, monospace';
+    const bw = 148, bh = 12;
+    const bPct = clamp(s.battery/100, 0, 1);
+    ctx.fillStyle='rgba(0,0,0,0.42)'; ctx.fillRect(bx, by-78, bw, bh);
+    const bc = bPct>0.45 ? '93,255,155' : (bPct>0.18 ? '255,176,58' : '255,77,94');
+    ctx.fillStyle=`rgba(${bc},0.92)`; ctx.fillRect(bx+1, by-77, (bw-2)*bPct, bh-2);
+    ctx.strokeStyle='rgba(216,245,255,0.4)'; ctx.strokeRect(bx, by-78, bw, bh);
+    ctx.fillStyle=OSD;
+    ctx.fillText(`${Math.round(s.battery)}%  ${s.current.toFixed(1)}A`, bx+bw+10, by-72);
+
+    // linhas de telemetria
+    const rows = [
+      ['MSL',  `${s.msl.toFixed(0)} m`],
+      ['VSI',  `${s.vsi>=0?'+':''}${s.vsi.toFixed(1)} m/s`],
+      ['RSSI', `${s.rssi}%`],
+      ['VENTO',`${s.wind.toFixed(1)} m/s`],
+    ];
+    ctx.font='600 12px Consolas, monospace';
+    rows.forEach((r,i)=>{
+      ctx.fillStyle = DIM; ctx.fillText(r[0], bx, by-52+i*16);
+      ctx.fillStyle = OSD; ctx.fillText(r[1], bx+50, by-52+i*16);
+    });
+
+    /* ---------- Bloco inferior direito: tempo, throttle ---------- */
+    ctx.textAlign='right';
+    ctx.fillStyle = DIM; ctx.font='600 11px Consolas, monospace';
+    ctx.fillText('THR', W-26-104, by-96);
+    ctx.fillStyle='rgba(0,0,0,0.42)'; ctx.fillRect(W-26-96, by-104, 96, 10);
+    ctx.fillStyle='rgba(57,215,255,0.9)'; ctx.fillRect(W-25-96, by-103, 94*clamp(s.throttle,0,1), 8);
+    ctx.strokeStyle='rgba(216,245,255,0.4)'; ctx.strokeRect(W-26-96, by-104, 96, 10);
+
+    ctx.fillStyle = OSD; ctx.font='600 13px Consolas, monospace';
+    ctx.fillText(s.timeStr, W-26, by-74);
+    ctx.fillStyle = DIM; ctx.font='600 11px Consolas, monospace';
+    ctx.fillText(currentPreset.name.toUpperCase() + ' · ' + s.camMode.toUpperCase(), W-26, by-56);
+    ctx.fillText('SEED ' + CONFIG.world.seed, W-26, by-40);
+
+    /* ---------- Avisos ---------- */
+    const warns = [];
+    if (s.battery < 20 && !CONFIG.game.infiniteBattery) warns.push(['BATERIA BAIXA','255,77,94']);
+    if (s.msl > CONFIG.world.ceiling*0.92) warns.push(['TETO DE VOO','255,176,58']);
+    if (s.agl < 1.2 && s.speedKmh > 30) warns.push(['SOLO','255,176,58']);
+    ctx.textAlign='center'; ctx.font='700 14px Consolas, monospace';
+    warns.forEach((w,i)=>{
+      const blink = (performance.now()*0.005|0)%2===0 ? 1 : 0.35;
+      ctx.fillStyle = `rgba(${w[1]},${blink})`;
+      ctx.fillText(w[0], cx, H*0.30 + i*22);
+    });
+
+    /* ---------- Minimapa ---------- */
+    this._minimap(ctx, W-136, 66, 108, s);
+
+    ctx.restore();
+  }
+
+  /** Fita vertical de valor (velocidade / altitude) */
+  _tape(ctx, x, y, value, label, side){
+    const h = 190, step = 10, pxPer = 3.6;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x-46, y-h/2, 92, h); ctx.clip();
+    ctx.strokeStyle='rgba(216,245,255,0.32)';
+    ctx.fillStyle='rgba(216,245,255,0.55)';
+    ctx.font='500 10px Consolas, monospace';
+    ctx.textAlign = side<0 ? 'right' : 'left';
+    const base = Math.floor(value/step)*step;
+    for (let i=-10;i<=10;i++){
+      const v = base + i*step;
+      const yy = y + (value - v)*pxPer;
+      if (yy < y-h/2 || yy > y+h/2) continue;
+      const long = (v % (step*5) === 0);
+      const w = long ? 16 : 8;
+      ctx.beginPath();
+      ctx.moveTo(x + side*22, yy); ctx.lineTo(x + side*(22+w), yy); ctx.stroke();
+      if (long) ctx.fillText(String(v), x + side*(22+w+4), yy);
+    }
+    ctx.restore();
+    // caixa do valor atual
+    ctx.fillStyle='rgba(6,16,22,0.82)';
+    ctx.strokeStyle='rgba(57,215,255,0.8)';
+    const bw=58,bh=24;
+    ctx.beginPath(); ctx.rect(x-bw/2, y-bh/2, bw, bh); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='rgba(216,245,255,0.98)';
+    ctx.font='700 15px Consolas, monospace'; ctx.textAlign='center';
+    ctx.fillText(String(Math.round(value)), x, y);
+    ctx.fillStyle='rgba(216,245,255,0.42)';
+    ctx.font='600 10px Consolas, monospace';
+    ctx.fillText(label, x, y+bh/2+12);
+  }
+
+  /** Minimapa com relevo, água e posição/orientação do drone */
+  _minimap(ctx, cx, cy, r, s){
+    if (!this.mapImg) return;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.clip();
+    const sz = r*2;
+    const S = CONFIG.world.size;
+    // 1 px do minimapa = S/sz metros
+    ctx.drawImage(this.mapImg, cx-r, cy-r, sz, sz);
+    // posição do drone
+    const px = cx + (s.pos.x/S)*sz;
+    const py = cy + (s.pos.z/S)*sz;
+    ctx.restore();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.clip();
+    ctx.translate(px, py); ctx.rotate(s.heading);
+    ctx.fillStyle='rgba(57,215,255,1)';
+    ctx.beginPath(); ctx.moveTo(0,-7); ctx.lineTo(5,6); ctx.lineTo(0,3); ctx.lineTo(-5,6);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle='rgba(216,245,255,0.45)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, TAU); ctx.stroke();
+    // norte
+    ctx.fillStyle='rgba(216,245,255,0.7)'; ctx.font='700 10px Consolas, monospace';
+    ctx.textAlign='center'; ctx.fillText('N', cx, cy-r-8);
+  }
+
+  /** Renderiza o minimapa (relevo sombreado) uma vez após gerar o mundo */
+  buildMap(){
+    const N = 256;
+    const { c, ctx } = makeCanvas(N);
+    const img = ctx.createImageData(N,N);
+    const d = img.data;
+    const S = CONFIG.world.size;
+    for (let j=0;j<N;j++) for (let i=0;i<N;i++){
+      const x = (i/N)*S - S/2, z = (j/N)*S - S/2;
+      const h = sampleHeight(x,z);
+      const k = (i+j*N)*4;
+      if (h < CONFIG.world.waterLevel){
+        const dp = clamp(-h/60,0,1);
+        d[k]=18+ (1-dp)*30; d[k+1]=54+(1-dp)*50; d[k+2]=86+(1-dp)*60;
+      } else {
+        // hillshade
+        const hx = sampleHeight(x+S/N, z) - h;
+        const hz = sampleHeight(x, z+S/N) - h;
+        const sh = clamp(0.55 + (-hx-hz)*0.05, 0.15, 1.3);
+        const t = clamp(h/CONFIG.world.maxHeight, 0, 1);
+        let r,g,b;
+        if (t<0.03){ r=196;g=178;b=132; }
+        else if (t<0.32){ r=72+t*60; g=110+t*70; b=52; }
+        else if (t<0.62){ r=104; g=96; b=88; }
+        else { r=222;g=232;b=240; }
+        d[k]=r*sh; d[k+1]=g*sh; d[k+2]=b*sh;
+      }
+      d[k+3]=255;
+    }
+    ctx.putImageData(img,0,0);
+    this.mapImg = c;
+  }
+}
+
+/* ==================================================================================
+   13) ESTADO DO JOGO / ORQUESTRAÇÃO
+   ================================================================================== */
+const state = {
+  running: false,
+  paused:  true,
+  time:    0,
+  flightTime: 0,
+  slowmo:  false,
+  timeScale: 1,
+  quality: 'high',
+  shadowExt: -1,          // extensão atual da caixa de sombra (quantizada)
+};
+
+let terrain, water, drone, phys, chaseCam, input, hud, particles;
+let texSand, texGrass, texRock, texSnow, texCarbon, texDisc, texWave, texDot;
+
+const rPos  = new THREE.Vector3();
+const rQuat = new THREE.Quaternion();
+
+/* ---------- Callback de crash ---------- */
+function onCrash(speed, pos, normal){
+  chaseCam.addShake(clamp(speed/14, 0.3, 1.6));
+  toast('CRASH — RESPAWN', 1.6);
+  // faíscas + fumaça
+  const q = CONFIG.quality[state.quality];
+  const n = Math.floor(70*q.particles);
+  for (let i=0;i<n;i++){
+    const a = Math.random()*TAU, e = Math.random();
+    const sp = 2 + Math.random()*speed*0.7;
+    const vx = Math.cos(a)*sp*(1-e), vy = e*sp*1.4 + normal.y*sp*0.4, vz = Math.sin(a)*sp*(1-e);
+    if (i%3===0) particles.spawn(pos.x,pos.y,pos.z, vx,vy,vz, 0.10, 0.55+Math.random()*0.4, 1.0,0.72,0.28);
+    else         particles.spawn(pos.x,pos.y,pos.z, vx*0.35,vy*0.35,vz*0.35, 0.55+Math.random()*0.7,
+                                 1.4+Math.random(), 0.32,0.31,0.30);
+  }
+  // slow-mo curto no impacto
+  state.slowmo = true;
+  clearTimeout(state._slowTO);
+  state._slowTO = setTimeout(()=>{ if (!input.slowmo) state.slowmo = false; }, 520);
+}
+
+function respawn(){
+  const p = phys.spawn.clone();
+  p.y = Math.max(sampleHeight(p.x,p.z), CONFIG.world.waterLevel) + CONFIG.game.respawnHeight;
+  phys.reset(p);
+  phys.battery = CONFIG.physics.batteryCapacity;
+  chaseCam.pos.copy(p).add(new THREE.Vector3(0,2,6));
+  toast('RESPAWN');
+}
+function togglePhysMode(){
+  phys.mode = phys.mode === 'sport' ? 'acro' : 'sport';
+  if (phys.mode === 'acro') phys.throttle = clamp(phys.throttle, phys.hoverThrottle, 1);
+  toast('MODO ' + phys.mode.toUpperCase());
+}
+function toggleCamMode(){
+  chaseCam.mode = chaseCam.mode === 'chase' ? 'orbit' : 'chase';
+  if (chaseCam.mode === 'orbit'){
+    // entra no orbit a partir do ângulo atual, para não haver salto
+    const d = new THREE.Vector3().subVectors(chaseCam.pos, drone.root.position);
+    const len = d.length() || 1;
+    chaseCam.orbitYaw   = Math.atan2(d.x, d.z);
+    chaseCam.orbitPitch = clamp(Math.asin(clamp(d.y/len,-1,1)), -0.45, 1.25);
+  }
+  toast('CÂMERA ' + chaseCam.mode.toUpperCase());
+}
+
+function handleKeyDown(e){
+  if (!state.running) return;
+  switch (e.code){
+    case 'Space':   e.preventDefault(); togglePhysMode(); break;
+    case 'KeyC':    toggleCamMode(); break;
+    case 'KeyR':    respawn(); break;
+    case 'KeyH':    hud.visible = !hud.visible; break;
+    case 'KeyM':
+      input.mouseSteer = !input.mouseSteer;
+      CONFIG.input.mouseSteer = input.mouseSteer;
+      toast(input.mouseSteer ? 'DIREÇÃO PELO MOUSE: ON' : 'DIREÇÃO PELO MOUSE: OFF');
+      break;
+    case 'Escape':  togglePause(); break;
+    case 'Tab':     e.preventDefault(); toast('MAPA COMPLETO — FASE 3'); break;
+    case 'KeyP':    toast('MODO FOTO — FASE 4'); break;
+  }
+}
+
+function togglePause(){
+  state.paused = !state.paused;
+  document.getElementById('menu').classList.toggle('on', state.paused);
+  document.getElementById('btn-play').textContent = state.paused ? 'CONTINUAR' : 'INICIAR VOO';
+}
+
+/* ==================================================================================
+   14) CARREGAMENTO / CONSTRUÇÃO DO MUNDO
+   ================================================================================== */
+const barEl = document.getElementById('bar');
+const ltxtEl = document.getElementById('ltxt');
+function setProgress(p, txt){
+  barEl.style.width = (clamp(p,0,1)*100).toFixed(1)+'%';
+  if (txt) ltxtEl.textContent = txt;
+}
+
+async function buildTextures(){
+  setProgress(0.02, 'gerando texturas procedurais…');
+  await nextFrame();
+  texSand  = makeSurfaceTexture(512, 101, [206,188,146],[164,146,110],[233,221,186], 0.16, 0.52, 5.0);
+  await nextFrame(); setProgress(0.05);
+  texGrass = makeSurfaceTexture(512, 202, [ 78,104, 50],[ 44, 64, 30],[124,146, 68], 0.20, 0.55, 6.5);
+  await nextFrame(); setProgress(0.08);
+  texRock  = makeSurfaceTexture(512, 303, [104, 98, 92],[ 56, 52, 50],[158,152,146], 0.26, 0.58, 4.0);
+  await nextFrame(); setProgress(0.11);
+  texSnow  = makeSurfaceTexture(512, 404, [226,234,244],[188,200,216],[255,255,255], 0.12, 0.44, 7.0);
+  await nextFrame(); setProgress(0.14);
+  texCarbon= makeCarbonTexture(256);
+  texDisc  = makePropDiscTexture(256, 55);
+  texWave  = makeWaterNormal(256, 606);
+  texDot   = makeSoftDot(64);
+  await nextFrame(); setProgress(0.17, 'texturas prontas');
+}
+
+async function buildWorld(seed){
+  CONFIG.world.seed = seed;
+
+  setProgress(0.18, 'esculpindo o terreno…');
+  await generateHeightmap(seed, p=> setProgress(0.18 + p*0.42, `esculpindo o terreno… ${(p*100)|0}%`));
+
+  setProgress(0.61, 'construindo aceleradores de LOD…');
+  await nextFrame();
+  buildMinMaxPyramid();
+
+  terrainShared.uHeightTex.value = World.heightTex;
+  terrainShared.uSnowLine.value  = World.maxH*0.62;
+
+  setProgress(0.66, 'calculando sombras do relevo…');
+  await buildSunShadowMask(p=> setProgress(0.66 + p*0.16, `calculando sombras do relevo… ${(p*100)|0}%`));
+  terrainShared.uShadowTex.value = World.shadowTex;
+  terrainShared.uTexSand.value  = texSand;
+  terrainShared.uTexGrass.value = texGrass;
+  terrainShared.uTexRock.value  = texRock;
+  terrainShared.uTexSnow.value  = texSnow;
+
+  setProgress(0.84, 'montando geometria…');
+  await nextFrame();
+
+  if (terrain){ scene.remove(terrain.group); }
+  terrain = new Terrain(scene);
+
+  if (!water){ water = buildWater(texWave); scene.add(water); }
+
+  setProgress(0.90, 'desenhando o minimapa…');
+  await nextFrame();
+  hud.buildMap();
+
+  // ponto de spawn: procura um lugar plano e seco perto do centro
+  setProgress(0.94, 'escolhendo ponto de decolagem…');
+  await nextFrame();
+  let best = null;
+  for (let i=0;i<300;i++){
+    const a = (i/300)*TAU*7, r = 40 + (i/300)*700;
+    const x = Math.cos(a)*r, z = Math.sin(a)*r;
+    const h = sampleHeight(x,z);
+    if (h < CONFIG.world.waterLevel + 4) continue;
+    const n = terrainNormal(x,z,4);
+    const flat = n.y;
+    if (!best || flat > best.flat){ best = { x, z, h, flat }; }
+    if (flat > 0.995) break;
+  }
+  if (!best) best = { x:0, z:0, h: sampleHeight(0,0) };
+  phys.spawn.set(best.x, best.h + CONFIG.game.respawnHeight, best.z);
+  phys.reset(phys.spawn);
+  chaseCam.pos.copy(phys.spawn).add(new THREE.Vector3(0,2,6));
+  chaseCam.smoothLook.copy(phys.spawn);
+
+  setProgress(1.0, 'pronto');
+}
+
+/* ==================================================================================
+   15) MENU / QUALIDADE
+   ================================================================================== */
+function applyQuality(name){
+  state.quality = name;
+  const q = CONFIG.quality[name];
+  renderer.setPixelRatio(Math.min(devicePixelRatio, q.pixelRatio));
+  sunLight.shadow.mapSize.set(q.shadowMap, q.shadowMap);
+  if (sunLight.shadow.map){ sunLight.shadow.map.dispose(); sunLight.shadow.map = null; }
+  state.shadowExt = -1;    // força o recálculo da caixa de sombra no próximo frame
+  if (terrain) terrain.lodBias = q.lodBias;
+  buildComposer(q);
+  onResize();
+}
+
+function readMenu(){
+  const $ = id=>document.getElementById(id);
+  CONFIG.world.seed          = parseInt($('opt-seed').value) || 1337;
+  CONFIG.physics.windBase    = parseFloat($('opt-wind').value);
+  CONFIG.gfx.exposure        = parseFloat($('opt-exposure').value);
+  CONFIG.gfx.bloomOn         = $('opt-bloom').checked;
+  CONFIG.gfx.grain           = $('opt-grain').checked ? 0.035 : 0.0;
+  CONFIG.input.sens          = parseFloat($('opt-sens').value);
+  CONFIG.input.expo          = parseFloat($('opt-expo').value);
+  CONFIG.input.deadzone      = parseFloat($('opt-dead').value);
+  CONFIG.input.invertPitch   = $('opt-invp').checked;
+  CONFIG.game.infiniteBattery= $('opt-batt').checked;
+  if (gradePass) gradePass.uniforms.uGrain.value = CONFIG.gfx.grain;
+}
+
+function wireMenu(){
+  const $ = id=>document.getElementById(id);
+
+  $('btn-play').addEventListener('click', ()=>{
+    readMenu();
+    applyTimePreset($('opt-time').value);
+    state.paused = false;
+    $('menu').classList.remove('on');
+    $('btn-play').textContent = 'CONTINUAR';
+  });
+
+  $('btn-regen').addEventListener('click', async ()=>{
+    readMenu();
+    $('menu').classList.remove('on');
+    document.getElementById('loading').style.display = 'flex';
+    applyTimePreset($('opt-time').value);
+    await buildWorld(CONFIG.world.seed);
+    document.getElementById('loading').style.display = 'none';
+    state.paused = true;
+    $('menu').classList.add('on');
+  });
+
+  $('opt-quality').addEventListener('change', e=> applyQuality(e.target.value));
+
+  $('opt-time').addEventListener('change', async e=>{
+    applyTimePreset(e.target.value);
+    ltxtEl.textContent = 'recalculando a luz…';
+    document.getElementById('loading').style.display = 'flex';
+    await buildSunShadowMask(p=> setProgress(p, `recalculando a luz… ${(p*100)|0}%`));
+    document.getElementById('loading').style.display = 'none';
+  });
+
+  $('opt-exposure').addEventListener('input', e=>{
+    CONFIG.gfx.exposure = parseFloat(e.target.value);
+    renderer.toneMappingExposure = CONFIG.gfx.exposure * currentPreset.exp;
+  });
+  $('opt-bloom').addEventListener('change', e=>{
+    CONFIG.gfx.bloomOn = e.target.checked;
+    buildComposer(CONFIG.quality[state.quality]); onResize();
+  });
+  $('opt-grain').addEventListener('change', e=>{
+    CONFIG.gfx.grain = e.target.checked ? 0.035 : 0;
+    if (gradePass) gradePass.uniforms.uGrain.value = CONFIG.gfx.grain;
+  });
+  ['opt-sens','opt-expo','opt-dead','opt-invp','opt-batt','opt-wind'].forEach(id=>{
+    $(id).addEventListener('input', readMenu);
+    $(id).addEventListener('change', readMenu);
+  });
+
+  document.querySelectorAll('#modes .mode').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      if (el.classList.contains('off')){ toast('MODO DISPONÍVEL EM FASES FUTURAS'); return; }
+      document.querySelectorAll('#modes .mode').forEach(m=>m.classList.remove('sel'));
+      el.classList.add('sel');
+      CONFIG.game.mode = el.dataset.mode;
+    });
+  });
+}
+
+/* ==================================================================================
+   16) RESIZE
+   ================================================================================== */
+function onResize(){
+  const w = innerWidth, h = innerHeight;
+  camera.aspect = w/h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w,h);
+  if (composer){
+    composer.setSize(w,h);
+    if (bloomPass) bloomPass.setSize(w,h);
+    if (smaaPass)  smaaPass.setSize(w,h);
+  }
+  if (gradePass) gradePass.uniforms.uAspect.value = w/h;
+  if (starPoints) starPoints.material.uniforms.uPR.value = renderer.getPixelRatio();
+  if (hud) hud.resize();
+}
+addEventListener('resize', onResize);
+
+/* ==================================================================================
+   17) GAME LOOP — fixed timestep + render interpolado
+   ================================================================================== */
+let accumulator = 0;
+let lastTime = performance.now()/1000;
+let fpsAcc = 0, fpsFrames = 0, fpsVal = 0;
+const fpsEl = document.getElementById('fps');
+const _sunScreen = new THREE.Vector3();
+const _shadowCenter = new THREE.Vector3();
+const _shadowHit = new THREE.Vector3();
+const _dVel = new THREE.Vector3();
+
+/** Onde a sombra do drone toca o solo (marcha ao longo de -sunDir). */
+function sunGroundHit(p, out){
+  if (sunDir.y < 0.06) return false;
+  const maxT = Math.min(700, (p.y - World.minH)/sunDir.y + 5);
+  if (maxT <= 0) return false;
+  let prevT = 0;
+  let prevD = p.y - Math.max(sampleHeight(p.x, p.z), CONFIG.world.waterLevel);
+  const steps = 20;
+  for (let i=1;i<=steps;i++){
+    const t = maxT*i/steps;
+    const x = p.x - sunDir.x*t, y = p.y - sunDir.y*t, z = p.z - sunDir.z*t;
+    const d = y - Math.max(sampleHeight(x,z), CONFIG.world.waterLevel);
+    if (d <= 0){
+      const f = prevD/(prevD - d);                       // refino linear entre as amostras
+      const tt = prevT + (t - prevT)*clamp(f,0,1);
+      out.set(p.x - sunDir.x*tt, p.y - sunDir.y*tt, p.z - sunDir.z*tt);
+      return true;
+    }
+    prevT = t; prevD = d;
+  }
+  return false;
+}
+
+function loop(){
+  requestAnimationFrame(loop);
+  if (!state.running) return;
+
+  const now = performance.now()/1000;
+  let frameDt = Math.min(now - lastTime, 0.25);
+  lastTime = now;
+
+  /* ---------- FPS ---------- */
+  fpsAcc += frameDt; fpsFrames++;
+  if (fpsAcc >= 0.4){ fpsVal = fpsFrames/fpsAcc; fpsAcc=0; fpsFrames=0;
+    fpsEl.textContent = `${fpsVal.toFixed(0)} FPS · ${terrain?terrain.active:0} chunks · ${state.quality.toUpperCase()}`;
+  }
+
+  /* ---------- Toast ---------- */
+  if (toastT > 0){ toastT -= frameDt; if (toastT<=0) toastEl.style.opacity='0'; }
+
+  if (state.paused){
+    // ainda renderiza (menu com o mundo ao fundo)
+    render(frameDt, 1);
+    return;
+  }
+
+  /* ---------- Input ---------- */
+  input.update(frameDt);
+  phys.turbo = input.turbo;
+  // state.slowmo = slow-mo temporário do impacto (limpo por timeout em onCrash);
+  // input.slowmo = tecla F / gatilho segurado. São independentes — misturar os dois
+  // faria o slow-mo travar ligado para sempre depois do primeiro F.
+  const targetScale = (input.slowmo || state.slowmo) ? CONFIG.game.slowmoScale : 1;
+  state.timeScale = lerp(state.timeScale, targetScale, dmp(9, frameDt));
+
+  /* ---------- Física em passo fixo ---------- */
+  const dtFixed = 1/CONFIG.physics.hz;
+  accumulator += frameDt * state.timeScale;
+  let steps = 0;
+  const inp = {
+    throttle: input.stick.throttle, yaw: input.stick.yaw,
+    pitch: input.stick.pitch, roll: input.stick.roll,
+  };
+  while (accumulator >= dtFixed && steps < CONFIG.physics.maxSubSteps){
+    phys.step(dtFixed, inp, World);
+    accumulator -= dtFixed;
+    steps++;
+    state.flightTime += dtFixed;
+  }
+  if (steps === CONFIG.physics.maxSubSteps) accumulator = 0;   // anti espiral da morte
+
+  const alpha = clamp(accumulator/dtFixed, 0, 1);
+  render(frameDt, alpha);
+}
+
+function render(frameDt, alpha){
+  const dt = frameDt * state.timeScale;
+
+  /* ---------- Estado interpolado do drone ---------- */
+  phys.interpolate(alpha, rPos, rQuat);
+  drone.root.position.copy(rPos);
+  drone.root.quaternion.copy(rQuat);
+  _dVel.copy(phys.vel);
+
+  drone.updateVisual(Math.max(dt, 1e-4), phys.motorOut, phys.throttle, phys.accel,
+                     phys.battery < 20 && !CONFIG.game.infiniteBattery);
+
+  /* ---------- Câmera ---------- */
+  // orbit livre: modo Orbit sempre, ou temporariamente com o botão direito do mouse
+  if (chaseCam.mode === 'orbit' || input.rmb){
+    chaseCam.orbitYaw  -= input.viewDX * CONFIG.camera.orbitSens;
+    chaseCam.orbitPitch = clamp(chaseCam.orbitPitch - input.viewDY * CONFIG.camera.orbitSens,
+                                -0.45, 1.25);
+    chaseCam.orbiting = true;
+  } else {
+    chaseCam.orbiting = false;
+  }
+  input.viewDX = 0; input.viewDY = 0;
+  // zoom pela roda do mouse
+  if (input.wheel !== 0){
+    chaseCam.dist = clamp(chaseCam.dist + input.wheel*0.45,
+                          CONFIG.camera.distMin, CONFIG.camera.distMax);
+    input.wheel = 0;
+  }
+  chaseCam.update(Math.max(frameDt,1e-4), rPos, rQuat, _dVel, phys.throttle, phys.agl);
+
+  /* ---------- Terreno LOD ---------- */
+  terrain.update(camera.position, camera);
+
+  /* ---------- Sol / sombras ----------
+     O drone é o único caster (o relevo usa a máscara solar analítica), então a
+     caixa de sombra é apertada em volta do segmento drone → sombra no solo.
+     Com o sol baixo essa sombra cai longe; centrar só no drone a deixaria de fora. */
+  const q = CONFIG.quality[state.quality];
+  let ext = q.shadowDist;
+  _shadowCenter.copy(rPos);
+  if (sunGroundHit(rPos, _shadowHit)){
+    _shadowCenter.addVectors(rPos, _shadowHit).multiplyScalar(0.5);
+    ext = Math.max(ext, rPos.distanceTo(_shadowHit)*0.5 + 4);
+  }
+  // quantiza a extensão para não remontar a projeção (e tremer) a cada frame
+  ext = Math.min(Math.ceil(ext/8)*8, 176);
+  if (ext !== state.shadowExt){
+    state.shadowExt = ext;
+    const sc = sunLight.shadow.camera;
+    sc.left=-ext; sc.right=ext; sc.top=ext; sc.bottom=-ext;
+    sc.near=1; sc.far=ext*5 + 40;
+    sc.updateProjectionMatrix();
+  }
+  // snap por texel para eliminar shimmering das bordas da sombra
+  const texelSize = (ext*2)/q.shadowMap;
+  _shadowCenter.x = Math.round(_shadowCenter.x/texelSize)*texelSize;
+  _shadowCenter.z = Math.round(_shadowCenter.z/texelSize)*texelSize;
+  sunLight.target.position.copy(_shadowCenter);
+  sunLight.position.copy(_shadowCenter).addScaledVector(sunDir, ext*2.2 + 20);
+  sunLight.target.updateMatrixWorld();
+  sunLight.updateMatrixWorld();
+
+  /* ---------- Água ---------- */
+  if (water){
+    water.userData.u.uTime.value += dt;
+    water.position.x = rPos.x; water.position.z = rPos.z;   // segue a câmera (plano infinito)
+  }
+
+  /* ---------- Céu e estrelas acompanham a câmera (domo "infinito") ---------- */
+  sky.position.copy(camera.position);
+  if (starPoints){
+    starPoints.position.copy(camera.position);
+    starPoints.material.uniforms.uTime.value += frameDt;
+  }
+
+  /* ---------- Partículas: poeira do solo ---------- */
+  const pq = CONFIG.quality[state.quality].particles;
+  if (phys.agl < 2.2 && phys.agl > -0.5 && phys.throttle > 0.12 && pq > 0){
+    const n = Math.floor((1 - phys.agl/2.2) * 5 * pq);
+    for (let i=0;i<n;i++){
+      const a = Math.random()*TAU, r = 0.4 + Math.random()*1.7;
+      const gx = rPos.x + Math.cos(a)*r, gz = rPos.z + Math.sin(a)*r;
+      const gy = sampleHeight(gx,gz) + 0.05;
+      particles.spawn(gx, gy, gz,
+        Math.cos(a)*(1.6+Math.random()*2.4) + phys.vel.x*0.25,
+        0.5 + Math.random()*1.4,
+        Math.sin(a)*(1.6+Math.random()*2.4) + phys.vel.z*0.25,
+        0.20+Math.random()*0.34, 0.9+Math.random()*0.8,
+        0.62,0.56,0.44);
+    }
+  }
+  particles.update(Math.max(dt,1e-4));
+
+  /* ---------- Lens flare: posição do sol na tela + oclusão ---------- */
+  _sunScreen.copy(sunDir).multiplyScalar(9000).add(camera.position).project(camera);
+  let sunVis = 0;
+  if (_sunScreen.z < 1 && Math.abs(_sunScreen.x) < 1.4 && Math.abs(_sunScreen.y) < 1.4 && sunDir.y > 0.01){
+    // oclusão: marcha do terreno entre a câmera e o sol
+    let occluded = false;
+    let t = 12;
+    for (let i=0;i<16;i++){
+      const px = camera.position.x + sunDir.x*t;
+      const py = camera.position.y + sunDir.y*t;
+      const pz = camera.position.z + sunDir.z*t;
+      if (py > World.maxH) break;
+      if (py < sampleHeight(px,pz)){ occluded = true; break; }
+      t *= 1.6;
+      if (t > 4000) break;
+    }
+    if (!occluded){
+      const edge = 1 - smooth(0.55, 1.15, Math.max(Math.abs(_sunScreen.x), Math.abs(_sunScreen.y)));
+      sunVis = edge * clamp(sunDir.y*3.2, 0, 1);
+    }
+  }
+  if (gradePass){
+    const gu = gradePass.uniforms;
+    gu.uSunScreen.value.set(_sunScreen.x, _sunScreen.y);
+    gu.uSunVis.value = lerp(gu.uSunVis.value, sunVis, dmp(8, frameDt));
+    gu.uTime.value += frameDt;
+    gu.uSunColor.value.setHex(currentPreset.sun);
+  }
+
+  /* ---------- HUD ---------- */
+  const att = phys.attitude();
+  const spd = phys.vel.length();
+  hud.draw({
+    speedKmh: spd*3.6,
+    agl: phys.agl,
+    msl: rPos.y,
+    vsi: phys.vel.y,
+    battery: CONFIG.game.infiniteBattery ? 100 : phys.battery,
+    current: phys.current,
+    rssi: Math.max(28, 100 - Math.floor(rPos.distanceTo(phys.spawn)/28)),
+    wind: phys.wind.length(),
+    throttle: phys.throttle,
+    mode: phys.mode,
+    turbo: phys.turbo,
+    roll: att.roll, pitch: att.pitch, heading: att.yaw,
+    pos: rPos,
+    camMode: chaseCam.mode,
+    timeStr: formatTime(state.flightTime),
+  });
+
+  /* ---------- Render ---------- */
+  composer.render();
+}
+
+function formatTime(t){
+  const m = Math.floor(t/60), s = Math.floor(t%60), c = Math.floor((t%1)*100);
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(c).padStart(2,'0')}`;
+}
+
+/* ==================================================================================
+   18) BOOT
+   ================================================================================== */
+async function boot(){
+  try {
+    buildStars();
+    applyTimePreset('golden');
+
+    hud = new HUD(document.getElementById('hud'));
+    input = new Input();
+    phys  = new DronePhysics();
+    chaseCam = new ChaseCamera(camera);
+
+    await buildTextures();
+
+    drone = new Drone(texCarbon, texDisc);
+    scene.add(drone.root);
+
+    particles = new Particles(scene, texDot, 1200);
+
+    await buildWorld(CONFIG.world.seed);
+
+    applyQuality('high');
+    applyTimePreset(document.getElementById('opt-time').value);
+    await buildSunShadowMask(()=>{});
+    terrainShared.uShadowTex.value = World.shadowTex;
+
+    wireMenu();
+    onResize();
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('menu').classList.add('on');
+
+    state.running = true;
+    state.paused = true;
+    lastTime = performance.now()/1000;
+    loop();
+  } catch (err){
+    console.error(err);
+    ltxtEl.innerHTML = '<span style="color:#ff4d5e">ERRO: '+ (err && err.message ? err.message : err) +'</span>';
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
