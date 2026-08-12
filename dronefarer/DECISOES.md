@@ -152,3 +152,56 @@ reproducao do fantasma e rearme instantaneo no R.
 **Nota de teste:** as esperas do teste sao por FRAME (`requestAnimationFrame`),
 nao por milissegundo — no rasterizador de software um frame passa de 200 ms e
 espera por relogio nao garante que um passo de fisica aconteceu.
+
+---
+
+## FASE 3 — Cidade aberta
+
+### Decisoes
+
+- **Um InstancedMesh de predios por chunk, com ATLAS DE FACHADA.** O problema
+  central era ter milhares de predios de alturas diferentes sem virar milhares
+  de draw calls. Cada instancia carrega `aVariant` (faixa do atlas), `aFloors`
+  e `aTilesX`, e o shader remonta a UV. Sem essa remontagem, escalar a caixa
+  esticaria a textura e todo predio alto viraria um borrao de janela gigante.
+- **`textureGrad` com o gradiente da coordenada CONTINUA.** Tiling manual com
+  `fract()` da um salto de 1.0 na costura de cada tile; o GPU le derivada
+  enorme, escolhe o mip mais baixo e a fachada inteira cintila a distancia.
+  Passar o gradiente na mao e o que mantem o mipmap correto.
+- **Geracao fatiada por ORCAMENTO DE TEMPO no frame, nao Web Worker.** O
+  roadmap permitia worker; medindo, um chunk custa fracao de milissegundo, e a
+  fila ordenada por distancia com teto de ~4 ms/frame ja elimina o engasgo. Um
+  worker exigiria serializar geometria e materiais de volta, com ganho nulo
+  neste custo. Se a Fase 8 mostrar chunk caro, o ponto de corte ja esta isolado
+  numa funcao (`generate`).
+- **Distritos por REGIAO, nao por ruido.** Um bairro antigo espalhado em
+  manchas nao daria identidade; cada distrito precisa ser contiguo pra o
+  jogador saber onde esta so de olhar pra fora.
+- **CENTRO vai ate r=3.** Os chunks -2..1 sao o quarteirao da Fase 1 e nao sao
+  gerados. Com o centro parando em r=1, o distrito de arranha-ceus — o cartao
+  postal do jogo — simplesmente nao existiria.
+- **Interiores tem material proprio.** O environment map ilumina sem saber que
+  existe parede, entao garagem/tunel usariam a mesma luz da rua.
+
+### Bugs reais achados e corrigidos
+
+- **`InstancedMesh` NAO clona a geometria.** Escrever os atributos por
+  instancia na `boxGeo` compartilhada fazia cada chunk sobrescrever o anterior:
+  o ultimo vencia e os demais liam `aFloors = 0`, virando UM andar esticado no
+  predio inteiro — as janelas apareciam como listras verticais do chao ao topo.
+  Agora cada chunk clona a geometria.
+- **Aberracao cromatica DESLIGADA.** O bloco re-amostrava R e B da textura sem
+  borrao enquanto G vinha do caminho borrado; a simples mistura de canal
+  nitido com canal borrado pintava franja verde/magenta em toda silhueta,
+  independente do tamanho do deslocamento. Fazer certo custaria borrar os tres
+  canais (3x amostras) por um efeito que nem estava no escopo do roadmap.
+- **`mergeGeometries` falhava na arvore**: `CylinderGeometry` vem indexada e
+  `IcosahedronGeometry` nao. Sem `toNonIndexed()` o merge devolvia null e a
+  arvore ficava so tronco.
+- **`flat` e palavra reservada no GLSL ES 3.00** (qualificador de
+  interpolacao) — quebrava a compilacao do shader de fachada.
+
+### Verificacao
+Smoke test cobre: streaming (53 chunks / ~1500 predios), os cinco distritos nas
+posicoes certas, descarregamento ao voltar, queda de sinal com a distancia,
+alarme + perseguicao em zona restrita e recarga de bateria.

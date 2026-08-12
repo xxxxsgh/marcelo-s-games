@@ -26,6 +26,8 @@ export function createDrone(scene, bus, envMap) {
     lastSafe: new THREE.Vector3(0, DRONE.spawnHeight, 0),
     lastSafeHeading: 0,
     payload: 0,          // kg de carga (Fase 4)
+    // multiplicadores vindos do hangar (Fase 5)
+    capacityScale: 1, drainScale: 1, windSens: 1,
     noRisk: false,       // modo treino (Fase 6)
     crashCount: 0,
     distanceFlown: 0,
@@ -45,10 +47,10 @@ export function createDrone(scene, bus, envMap) {
     _prevVel.copy(st.vel);
     physics.step(dt, cmd, wind);
 
-    // --- bateria ---
+    // --- bateria (capacidade e consumo saem da build do hangar) ---
     const th = Math.pow(st.throttleIn, BATTERY.throttleGamma);
-    const drain = BATTERY.idleDrain + th * BATTERY.throttleDrain
-      + status.payload * BATTERY.payloadDrain;
+    const drain = (BATTERY.idleDrain + th * BATTERY.throttleDrain
+      + status.payload * BATTERY.payloadDrain) * status.drainScale;
     status.battery = Math.max(0, status.battery - drain * dt);
     if (status.battery <= BATTERY.deadLevel) {
       // Sem bateria nao ha empuxo: o drone cai de verdade.
@@ -136,7 +138,7 @@ export function createDrone(scene, bus, envMap) {
   /** Reinicio total (corrida, missao): zera bateria e estado. */
   function reset(pos, heading = 0) {
     physics.reset(pos, heading);
-    status.battery = BATTERY.capacity;
+    status.battery = BATTERY.capacity * status.capacityScale;
     status.crashed = false;
     status.respawnTimer = 0;
     status.crashCount = 0;
@@ -161,9 +163,13 @@ export function createDrone(scene, bus, envMap) {
     toggleMode: () => physics.toggleMode(),
     setMode: (m) => physics.setMode(m),
     recharge(dt) {
-      status.battery = Math.min(BATTERY.capacity, status.battery + BATTERY.rechargeRate * dt);
+      status.battery = Math.min(BATTERY.capacity * status.capacityScale,
+        status.battery + BATTERY.rechargeRate * dt);
     },
-    get batteryRatio() { return clamp01(status.battery / BATTERY.capacity); },
+    get maxBattery() { return BATTERY.capacity * status.capacityScale; },
+    get batteryRatio() {
+      return clamp01(status.battery / (BATTERY.capacity * status.capacityScale));
+    },
     setEnvMap(env) { model.setEnvMap(env); },
     toggleHeadlight() { return model.setHeadlight(!model.headlightOn); },
     setHeadlight(on) { return model.setHeadlight(on); },

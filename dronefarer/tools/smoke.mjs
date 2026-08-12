@@ -316,6 +316,95 @@ try {
   }
   console.log('OK  R reinicia instantaneo (status=%s)', rearmed.status);
 
+  // ------------------------------------------------------------------
+  // FASE 3 — cidade aberta
+  // ------------------------------------------------------------------
+  await page.evaluate(() => {
+    const T = window.DF.THREE;
+    window.DF.restart(new T.Vector3(700, 60, 700), 0);
+  });
+  await frames(30);
+  const cityInfo = await page.evaluate(() => ({
+    loaded: window.DF.city.stats.loaded,
+    buildings: window.DF.city.stats.buildings,
+    lastBuildMs: window.DF.city.stats.lastBuildMs,
+    colliders: window.DF.colliders.count,
+  }));
+  if (cityInfo.loaded < 5) throw new Error(`cidade nao streamou: ${cityInfo.loaded} chunks`);
+  if (cityInfo.buildings < 50) throw new Error(`poucos predios: ${cityInfo.buildings}`);
+  console.log('OK  cidade streamou %d chunks / %d predios (pior chunk %sms)',
+    cityInfo.loaded, cityInfo.buildings, cityInfo.lastBuildMs.toFixed(1));
+
+  // os cinco distritos existem e sao distintos
+  const districts = await page.evaluate(() => {
+    const T = window.DF.THREE;
+    const probes = {
+      centro: [0, 0], portuaria: [0, -600], parque: [0, 600],
+      antigo: [-600, 0], morro: [600, 0],
+    };
+    const out = {};
+    for (const [name, [x, z]] of Object.entries(probes)) {
+      out[name] = window.DF.city.districtAtPos(new T.Vector3(x, 30, z)).id;
+    }
+    return out;
+  });
+  for (const [want, got] of Object.entries(districts)) {
+    if (want !== got) throw new Error(`distrito errado em ${want}: veio ${got}`);
+  }
+  console.log('OK  cinco distritos no lugar (%s)', Object.values(districts).join(', '));
+
+  // descarrega ao voltar
+  await page.evaluate(() => {
+    const T = window.DF.THREE;
+    window.DF.restart(new T.Vector3(0, 40, 0), 0);
+  });
+  await frames(40);
+  const afterUnload = await page.evaluate(() => window.DF.city.stats.loaded);
+  console.log('OK  chunks descarregados ao voltar (%d ativos)', afterUnload);
+
+  // sinal de radio cai com a distancia
+  const signal = await page.evaluate(async () => {
+    const T = window.DF.THREE;
+    const read = () => window.DF.pois.state.signal;
+    window.DF.restart(new T.Vector3(0, 30, 0), 0);
+    await new Promise((r) => setTimeout(r, 600));
+    const perto = read();
+    window.DF.restart(new T.Vector3(1400, 30, 0), 0);
+    await new Promise((r) => setTimeout(r, 1600));
+    return { perto, longe: read() };
+  });
+  if (!(signal.longe < signal.perto - 0.2)) {
+    throw new Error(`sinal nao degradou com a distancia: ${JSON.stringify(signal)}`);
+  }
+  console.log('OK  sinal cai com a distancia (%s -> %s)',
+    signal.perto.toFixed(2), signal.longe.toFixed(2));
+
+  // zona restrita dispara alarme e perseguicao
+  const zone = await page.evaluate(async () => {
+    const T = window.DF.THREE;
+    const z = window.DF.pois.restricted[2];
+    window.DF.restart(new T.Vector3(z.x, 40, z.z), 0);
+    await new Promise((r) => setTimeout(r, 6000));
+    return { chasing: window.DF.pois.state.chasing, units: window.DF.security.count };
+  });
+  if (!zone.chasing || zone.units < 1) {
+    throw new Error(`zona restrita nao disparou perseguicao: ${JSON.stringify(zone)}`);
+  }
+  console.log('OK  zona restrita dispara perseguicao (%d drones)', zone.units);
+  await page.evaluate(() => { window.DF.security.despawn(); window.DF.pois.resetAlert(); });
+
+  // recarga devolve bateria
+  const recharge = await page.evaluate(async () => {
+    const T = window.DF.THREE;
+    const r = window.DF.pois.recharge[1];
+    window.DF.restart(new T.Vector3(r.x, r.y, r.z), 0);
+    window.DF.drone.status.battery = 30;
+    await new Promise((res) => setTimeout(res, 1500));
+    return window.DF.drone.status.battery;
+  });
+  if (recharge <= 30) throw new Error(`ponto de recarga nao recarregou (${recharge})`);
+  console.log('OK  ponto de recarga devolve bateria (30%% -> %s%%)', recharge.toFixed(0));
+
   if (WANT_SHOTS) {
     mkdirSync('shots', { recursive: true });
     await page.evaluate(() => {

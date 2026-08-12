@@ -17,6 +17,7 @@ export const DEFAULT_BINDINGS = {
   restart:      ['KeyR'],      // reinicio instantaneo
   respawn:      ['KeyT'],
   map:          ['KeyN'],
+  board:        ['KeyB'],      // quadro de missoes / hangar
   nextCircuit:  ['Tab'],       // troca de circuito
   toggleGhost:  ['KeyG'],
   photo:        ['KeyP'],
@@ -36,6 +37,7 @@ export const ACTION_LABELS = {
   restart: 'Reiniciar corrida', respawn: 'Respawn', map: 'Mapa',
   photo: 'Photo mode', options: 'Opcoes', debug: 'Debug',
   nextCircuit: 'Trocar circuito', toggleGhost: 'Mostrar fantasma',
+  board: 'Quadro de missoes',
   brake: 'Freio', lights: 'Luzes', interact: 'Interagir',
 };
 

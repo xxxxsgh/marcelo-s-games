@@ -21,6 +21,13 @@ import { createDust } from './fx/dust.js';
 import { createHud } from './hud.js';
 import { createRace } from './race/index.js';
 import { createSave } from './save.js';
+import { createCity } from './world/city.js';
+import { createPoiSystem, createSecurity } from './world/pois.js';
+import { createLife } from './world/life.js';
+import { createMap } from './ui/map.js';
+import { createMissions } from './missions/index.js';
+import { createHangar } from './hangar/index.js';
+import { createBoard } from './ui/board.js';
 import { CAMERA, QUALITY, WORLD } from './config.js';
 
 const boot = {
@@ -82,6 +89,12 @@ async function start() {
   const block = createBlock(scene, colliders, mats, WORLD.seed);
   const wind = createWind(WORLD.seed);
   const dust = createDust(scene, settings);
+
+  // Cidade aberta ao redor do quarteirao. Os chunks -2..1 sao do quarteirao
+  // da Fase 1, entao a cidade nao gera por cima deles.
+  const city = createCity(scene, colliders, mats, settings, env.envMap);
+  city.setExclusion((cx, cz) => cx >= -2 && cx <= 1 && cz >= -2 && cz <= 1);
+  const life = createLife(scene, settings, env.envMap);
   await new Promise((r) => requestAnimationFrame(r));
 
   // ------------------------------------------------------------ drone
@@ -106,9 +119,17 @@ async function start() {
 
   // ------------------------------------------------------------ corrida
   const save = createSave();
+  const pois = createPoiSystem(scene, bus, save, colliders);
+  const security = createSecurity(scene, bus, drone.model);
+  const map = createMap(pois);
+  const hangar = createHangar(save, bus);
+  hangar.apply(drone);
   const race = createRace(scene, bus, save, drone.model);
   race.load(save.get('lastCircuit', 'aberto'));
   hud.setRaceVisible(true);
+
+  const missions = createMissions(scene, bus, save, drone, camera, race);
+  const board = createBoard(missions, hangar, save, bus);
 
   /** Reinicio de corrida: arma o circuito e nasce na largada. */
   function restartRace() {
@@ -136,13 +157,61 @@ async function start() {
     hud.flash(m === 'fpv' ? 'FPV' : '3a PESSOA', 1.0);
   });
   // R reinicia NA HORA: sem menu, sem loading. E o coracao do loop.
-  bus.on('action:restart', () => { restartRace(); });
+  // Se ha missao ativa, R refaz a missao — falhar nunca abre game over.
+  bus.on('action:restart', () => {
+    if (missions.isActive || missions.state.status === 'failed') {
+      const m = missions.retry();
+      if (m && m.type === 'corrida') restartRace();
+      hud.hideMissionResult();
+      hud.flash('RECOMECANDO', 0.8);
+      return;
+    }
+    restartRace();
+  });
   bus.on('action:nextCircuit', () => {
     const c = race.next();
     save.set('lastCircuit', c.id);
     restartRace();
     hud.flash(c.name, 1.2);
   });
+  bus.on('action:board', () => {
+    const on = board.toggle();
+    hud.setVisible(!on);
+  });
+  bus.on('board:accept', (id) => {
+    const m = missions.start(id);
+    if (!m) return;
+    if (m.type === 'corrida') restartRace();
+    hud.flash(m.name.toUpperCase(), 1.8);
+  });
+  bus.on('hangar:changed', () => {
+    hangar.apply(drone);
+    hud.flash(hangar.summary(), 2.6);
+  });
+  bus.on('mission:complete', ({ mission, reward, first }) => {
+    hud.flash(`MISSAO COMPLETA  +$${reward}${first ? '' : ' (repeticao)'}`, 2.6);
+    hud.showMissionResult(mission, reward, true);
+  });
+  bus.on('mission:fail', ({ reason }) => {
+    hud.flash(`FALHOU — ${reason}`, 2.2, 'crash');
+    hud.showMissionResult(null, 0, false, reason);
+  });
+  bus.on('mission:capture', ({ index, total }) => {
+    hud.flash(`FOTO ${index}/${total}`, 0.8);
+    rig.addShake(0.04);
+  });
+  bus.on('mission:pickup', () => hud.flash('CARGA A BORDO', 1.4));
+  bus.on('action:map', () => {
+    const on = map.toggle();
+    hud.setVisible(!on);
+  });
+  bus.on('poi:discovered', (p) => hud.flash(`DESCOBERTO: ${p.name}`, 1.6));
+  bus.on('zone:enter', (z) => hud.flash(`ZONA RESTRITA: ${z.name}`, 1.6, 'crash'));
+  bus.on('zone:alarm', (z) => {
+    security.spawn(z, 3);
+    hud.flash('ALARME — SEGURANCA A CAMINHO', 2.2, 'crash');
+  });
+  bus.on('zone:clear', () => { security.despawn(); hud.flash('DESPISTADO', 1.2); });
   bus.on('action:toggleGhost', () => {
     hud.flash(race.toggleGhost() ? 'FANTASMA ON' : 'FANTASMA OFF', 0.9);
   });
@@ -189,6 +258,9 @@ async function start() {
     fixed(dt) {
       wind.update(dt);
       windVec = wind.sample(drone.state.pos);
+      // Helice agil e chassis leve sofrem mais com rajada — o trade-off do
+      // hangar tem que ser sentido no ar, nao so lido na tela.
+      if (drone.status.windSens !== 1) windVec.multiplyScalar(drone.status.windSens);
       cmd.throttle = input.state.throttle;
       cmd.pitch = input.state.pitch;
       cmd.roll = input.state.roll;
@@ -196,6 +268,26 @@ async function start() {
       cmd.brake = input.state.brake;
       drone.step(dt, cmd, windVec, colliders);
       race.step(dt, drone.state.pos, drone.state.quat);
+      pois.update(dt, drone.state.pos, drone);
+      missions.update(dt);
+
+      // Perda de sinal trava o comando: e o custo real de voar longe demais
+      // ou de se enfiar numa garagem.
+      if (pois.state.signal < 0.6) {
+        const loss = 1 - pois.state.signal;
+        if (Math.random() < loss * 0.35) {
+          cmd.pitch *= 0.2; cmd.roll *= 0.2; cmd.yaw *= 0.2;
+        }
+      }
+
+      if (security.count) {
+        const near = security.update(dt, drone.state.pos);
+        if (near !== null && near < 2.2) {
+          drone.crash('seguranca', 12);
+          security.despawn();
+          pois.resetAlert();
+        }
+      }
     },
 
     render(dt) {
@@ -207,7 +299,17 @@ async function start() {
       env.updateShadow(st.pos);
       dust.update(dt, st.pos, st.vel, windVec);
 
+      // Streaming da cidade com orcamento de tempo por frame.
+      city.update(st.pos, 4);
+      life.update(dt, loop.stats.elapsed, st.pos);
+      pois.animate(dt, loop.stats.elapsed);
+      missions.animate(dt, loop.stats.elapsed);
       race.update(dt, camera.position);
+
+      if (map.visible) {
+        const e = new THREE.Euler().setFromQuaternion(st.quat, 'YXZ');
+        map.draw(st.pos, e.y);
+      }
 
       // --- seta guia pro gate atual ---
       const gate = race.activeGate();
@@ -225,6 +327,14 @@ async function start() {
       }
       hud.updateRace(race.state, race.gates.length);
 
+      hud.setMission(missions.state);
+      hud.setStatus({
+        district: city.districtAtPos(st.pos).name,
+        signal: pois.state.signal,
+        alert: pois.state.alertLevel,
+        chasing: security.count > 0,
+        recharging: !!pois.state.recharging,
+      });
       hud.update(dt, st, {
         battery: drone.status.battery,
         fps: loop.stats.fps,
@@ -237,6 +347,7 @@ async function start() {
         speed: st.speed,
         velocity: st.vel,
         distortion: rig.rig.lensDistortion,
+        signal: pois.state.signal,
         elapsed: loop.stats.elapsed,
       });
     },
@@ -249,7 +360,8 @@ async function start() {
   window.DF = {
     scene, camera, renderer, loop, quality, bus, drone, rig, input,
     colliders, env, mats, pipeline, block, wind, hud, restart,
-    race, save, restartRace, THREE,
+    race, save, restartRace, city, pois, security, map, life,
+    missions, hangar, board, THREE,
   };
 }
 

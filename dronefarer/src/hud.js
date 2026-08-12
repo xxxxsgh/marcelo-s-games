@@ -5,6 +5,7 @@
 import { clamp01 } from './core/mathx.js';
 import { formatTime, formatDelta } from './core/mathx.js';
 import { MEDAL_LABEL, MEDAL_COLOR } from './race/circuits.js';
+import { MISSION_TYPES } from './missions/defs.js';
 
 const CSS = `
 .hud { position:fixed; inset:0; pointer-events:none; z-index:10;
@@ -80,6 +81,43 @@ const CSS = `
   text-align:left; display:inline-block; font-variant-numeric:tabular-nums; }
 .hud .finish .again { margin-top:16px; font-size:10px; letter-spacing:.2em; opacity:.75; }
 
+/* --- missao: UMA linha de objetivo, sempre --- */
+.hud .mission { position:absolute; left:50%; bottom:74px; transform:translateX(-50%);
+  text-align:center; max-width:70vw; display:none; }
+.hud .mission.on { display:block; }
+.hud .mtype { font-size:9px; letter-spacing:.28em; font-weight:600; }
+.hud .mobj { font-size:13px; margin-top:3px; }
+.hud .mdetail { font-size:11px; opacity:.7; letter-spacing:.16em; margin-top:3px; }
+.hud .mbar { width:220px; height:3px; background:rgba(255,255,255,.14); margin:7px auto 0; }
+.hud .mbar i { display:block; height:100%; background:#5be08a; width:0%; }
+.hud .mhold { width:120px; height:3px; background:rgba(255,255,255,.12); margin:6px auto 0; }
+.hud .mhold i { display:block; height:100%; background:#37d5ff; width:0%; }
+
+/* resultado de missao */
+.hud .mres { position:absolute; left:50%; top:38%; transform:translate(-50%,-50%);
+  background:rgba(6,10,16,.9); border:1px solid rgba(120,170,220,.25);
+  padding:20px 34px; text-align:center; display:none; }
+.hud .mres.on { display:block; }
+.hud .mres .t { font-size:13px; letter-spacing:.3em; font-weight:600; }
+.hud .mres .r { font-size:26px; color:#ffcf4a; margin-top:8px; }
+.hud .mres .s { font-size:10px; opacity:.6; letter-spacing:.18em; margin-top:10px; }
+
+/* --- status urbano: distrito, sinal, alerta --- */
+.hud .urban { position:absolute; left:18px; top:132px; }
+.hud .district { font-size:11px; letter-spacing:.28em; font-weight:600; }
+.hud .sig { display:flex; gap:2px; align-items:flex-end; height:12px; margin-top:6px; }
+.hud .sig i { width:4px; background:#5be08a; opacity:.25; }
+.hud .sig i.on { opacity:1; }
+.hud .sig.weak i.on { background:#ffb03a; }
+.hud .sig.lost i.on { background:#ff3d5a; }
+.hud .siglabel { font-size:9px; letter-spacing:.2em; opacity:.5; margin-top:4px; }
+.hud .alert { margin-top:8px; font-size:10px; letter-spacing:.22em; color:#ff3d5a;
+  opacity:0; transition:opacity .2s; }
+.hud .alert.on { opacity:1; animation:battpulse .7s infinite; }
+.hud .recharge { margin-top:6px; font-size:10px; letter-spacing:.2em; color:#5be08a;
+  opacity:0; transition:opacity .2s; }
+.hud .recharge.on { opacity:1; }
+
 /* horizonte artificial minimo: 2 tracinhos que giram com o roll */
 .hud .horizon { position:absolute; left:50%; top:50%; width:220px; height:2px;
   margin-left:-110px; opacity:.35; }
@@ -117,6 +155,31 @@ export function createHud() {
     <div class="corner br">
       <div id="hud-mode" class="mode angle">ANGLE</div>
       <div class="hint" id="hud-hint" style="margin-top:10px"></div>
+    </div>
+
+    <div class="urban">
+      <div class="district" id="hud-district"></div>
+      <div class="sig" id="hud-sig">
+        <i style="height:3px"></i><i style="height:6px"></i>
+        <i style="height:9px"></i><i style="height:12px"></i>
+      </div>
+      <div class="siglabel" id="hud-siglabel">SINAL</div>
+      <div class="alert" id="hud-alert">ALERTA — SEGURANCA</div>
+      <div class="recharge" id="hud-recharge">RECARREGANDO</div>
+    </div>
+
+    <div class="mission" id="hud-mission">
+      <div class="mtype" id="hud-mtype"></div>
+      <div class="mobj" id="hud-mobj"></div>
+      <div class="mdetail" id="hud-mdetail"></div>
+      <div class="mbar"><i id="hud-mbar"></i></div>
+      <div class="mhold" id="hud-mholdwrap"><i id="hud-mhold"></i></div>
+    </div>
+
+    <div class="mres" id="hud-mres">
+      <div class="t" id="hud-mres-t"></div>
+      <div class="r" id="hud-mres-r"></div>
+      <div class="s">R  TENTAR DE NOVO   ·   B  QUADRO</div>
     </div>
 
     <div class="race" id="hud-race" style="display:none">
@@ -168,6 +231,16 @@ export function createHud() {
   const fTime = $('#hud-finish-time'), fMedal = $('#hud-finish-medal');
   const fRec = $('#hud-finish-rec'), fSplits = $('#hud-finish-splits');
 
+  const districtEl = $('#hud-district'), sigEl = $('#hud-sig');
+  const sigBars = [...sigEl.querySelectorAll('i')];
+  const sigLabel = $('#hud-siglabel'), alertEl = $('#hud-alert');
+  const rechargeEl = $('#hud-recharge');
+
+  const missionEl = $('#hud-mission'), mType = $('#hud-mtype'), mObj = $('#hud-mobj');
+  const mDetail = $('#hud-mdetail'), mBar = $('#hud-mbar');
+  const mHoldWrap = $('#hud-mholdwrap'), mHold = $('#hud-mhold');
+  const mRes = $('#hud-mres'), mResT = $('#hud-mres-t'), mResR = $('#hud-mres-r');
+
   let flashTimer = 0;
   let visible = true;
 
@@ -218,6 +291,49 @@ export function createHud() {
         flashTimer -= dt;
         if (flashTimer <= 0) flashEl.classList.remove('on');
       }
+    },
+
+    /** Missao ativa: tipo, UMA linha de objetivo, detalhe curto e progresso. */
+    setMission(ms) {
+      const on = ms.status === 'running' && !!ms.active;
+      missionEl.className = `mission${on ? ' on' : ''}`;
+      if (!on) return;
+      const t = MISSION_TYPES[ms.active.type];
+      if (mType.textContent !== t.label) {
+        mType.textContent = t.label;
+        mType.style.color = t.color;
+      }
+      if (mObj.textContent !== ms.objective) mObj.textContent = ms.objective;
+      mDetail.textContent = ms.detail;
+      mBar.style.width = `${clamp01(ms.progress) * 100}%`;
+      const showHold = ms.holdMeter > 0.01;
+      mHoldWrap.style.opacity = showHold ? '1' : '0';
+      mHold.style.width = `${clamp01(ms.holdMeter) * 100}%`;
+    },
+
+    showMissionResult(mission, reward, ok, reason = '') {
+      mResT.textContent = ok ? 'MISSAO COMPLETA' : 'MISSAO FALHOU';
+      mResT.style.color = ok ? '#5be08a' : '#ff6a7a';
+      mResR.textContent = ok ? `+$ ${reward}` : reason;
+      mResR.style.fontSize = ok ? '26px' : '13px';
+      mRes.classList.add('on');
+    },
+    hideMissionResult() { mRes.classList.remove('on'); },
+
+    /** Distrito, sinal de radio, alerta de zona restrita e recarga. */
+    setStatus({ district, signal, alert, chasing, recharging }) {
+      if (district !== api._district) {
+        api._district = district;
+        districtEl.textContent = district;
+      }
+      const bars = Math.round(clamp01(signal) * 4);
+      sigEl.className = `sig${signal < 0.35 ? ' lost' : signal < 0.7 ? ' weak' : ''}`;
+      sigBars.forEach((b, i) => b.classList.toggle('on', i < bars));
+      sigLabel.textContent = signal < 0.12 ? 'SINAL PERDIDO'
+        : signal < 0.6 ? 'SINAL FRACO' : 'SINAL';
+      alertEl.className = `alert${chasing || alert > 0.35 ? ' on' : ''}`;
+      alertEl.textContent = chasing ? 'PERSEGUICAO ATIVA' : 'ALERTA — ZONA RESTRITA';
+      rechargeEl.className = `recharge${recharging ? ' on' : ''}`;
     },
 
     /* ------------------------------------------------------------------ *

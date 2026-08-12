@@ -20,11 +20,11 @@ const _tmp = new THREE.Vector3();
 /** Presets de hora do dia. Fim de tarde e o padrao: sol raso, sombra longa. */
 export const TIME_PRESETS = {
   amanhecer: { elevation: 6, azimuth: 95, turbidity: 6, rayleigh: 2.4, mie: 0.008, exposure: 0.95,
-    sunColor: 0xffb27a, sunIntensity: 2.0, fog: 0xb9c6d6, ambient: 0.16 },
+    sunColor: 0xffb27a, sunIntensity: 2.0, fog: 0xb9c6d6, ambient: 0.30 },
   meiodia: { elevation: 62, azimuth: 170, turbidity: 3.2, rayleigh: 1.1, mie: 0.004, exposure: 1.0,
-    sunColor: 0xfff4e2, sunIntensity: 2.6, fog: 0xa9c0d8, ambient: 0.20 },
+    sunColor: 0xfff4e2, sunIntensity: 2.6, fog: 0xa9c0d8, ambient: 0.34 },
   tarde: { elevation: 16, azimuth: 248, turbidity: 3.4, rayleigh: 1.9, mie: 0.004, exposure: 0.98,
-    sunColor: 0xffb066, sunIntensity: 1.9, fog: 0xd9b393, ambient: 0.15 },
+    sunColor: 0xffb066, sunIntensity: 1.9, fog: 0xd9b393, ambient: 0.30 },
   noite: { elevation: -6, azimuth: 260, turbidity: 9, rayleigh: 0.6, mie: 0.002, exposure: 1.5,
     sunColor: 0x5f7fbf, sunIntensity: 0.30, fog: 0x141c2c, ambient: 0.10 },
 };

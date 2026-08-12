@@ -11,6 +11,8 @@ import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 
 const TIER = process.argv[2] || 'alto';
+// filtro opcional de poses: node tools/shot.mjs alto centro,morro
+const ONLY = (process.argv[3] || '').split(',').filter(Boolean);
 const PORT = 4174;
 const URL = `http://127.0.0.1:${PORT}/?q=${TIER}`;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -29,6 +31,12 @@ const POSES = [
     desc: 'altura de telhado, caixas d agua e antenas' },
   { name: 'gates', pos: [0, 7, 62], vel: [0, 0, -14], yaw: Math.PI,
     desc: 'largada do circuito aberto, gate ativo destacado', hud: true },
+  { name: 'centro', pos: [330, 46, 330], vel: [-16, 0, -16], yaw: Math.PI * 0.75,
+    desc: 'canyon de vidro do centro (cidade aberta)' },
+  { name: 'morro', pos: [640, 70, 60], vel: [-18, 0, 0], yaw: Math.PI / 2,
+    desc: 'encosta do morro com lajes em niveis' },
+  { name: 'porto', pos: [120, 44, -680], vel: [0, 0, 20], yaw: 0,
+    desc: 'zona portuaria, espaco aberto' },
   { name: 'garagem', pos: [-13.5, -1.6, -70], vel: [0, 0, 3], yaw: 0,
     desc: 'interior escuro da garagem' },
   { name: 'rampa', pos: [-4.2, 1.2, -49], vel: [0, -1, -7], yaw: Math.PI,
@@ -65,7 +73,7 @@ try {
   if (TIER === 'alto' && !info.postfx) throw new Error('tier alto sem pos-processamento');
 
   mkdirSync('shots', { recursive: true });
-  for (const p of POSES) {
+  for (const p of POSES.filter((x) => !ONLY.length || ONLY.includes(x.name))) {
     await page.evaluate((pose) => {
       const T = window.DF.THREE;
       window.DF.restart(new T.Vector3(...pose.pos), pose.yaw);

@@ -19,7 +19,10 @@ export function createBlock(scene, colliders, mats, seed = WORLD.seed) {
   scene.add(root);
   const rng = createRng(`block-${seed}`);
 
-  const EXTENT = 260;            // meio-lado do chao
+  // Meio-lado do chao. 240 = exatamente 2 chunks de 120, entao a cidade
+  // aberta da Fase 3 encaixa na borda do quarteirao sem sobrepor nem deixar
+  // buraco (a cidade pula os chunks -2..1).
+  const EXTENT = 240;
   const half = B.streetWidth / 2;
   const walkOuter = half + B.sidewalkWidth;
 

@@ -14,7 +14,7 @@ export const GradeShader = {
     uBlurStrength: { value: 0.0 },   // 0..1
     uBlurCenter: { value: [0.5, 0.5] },
     uDistortion: { value: 0.0 },     // barril do FPV
-    uChroma: { value: 0.004 },  // so um fio na borda; acima disso vira defeito
+    uChroma: { value: 0.0 },    // ver nota no fragment shader: fica desligada
     uVignette: { value: 0.28 },
     uSaturation: { value: 1.06 },
     uContrast: { value: 1.04 },
@@ -89,9 +89,15 @@ export const GradeShader = {
         color = texture2D(tDiffuse, uv);
       }
 
-      // --- 3. aberracao cromatica so na borda ---
+      // --- 3. aberracao cromatica (DESLIGADA por padrao) ---
+      // Este bloco re-amostra R e B da textura SEM borrao enquanto G vem do
+      // caminho borrado. O tamanho do deslocamento e irrelevante: a simples
+      // mistura de canal borrado com canal nitido ja pinta franja verde/
+      // magenta em toda silhueta quando ha motion blur. Fazer certo custaria
+      // borrar os tres canais (3x as amostras) por um efeito que nem estava
+      // no escopo — entao uChroma nasce em 0. Ver DECISOES.md.
       float edge = dot(uv - 0.5, uv - 0.5);
-      if (uChroma > 0.001) {
+      if (uChroma > 0.0005 && uBlurStrength < 0.02) {
         vec2 off = (uv - 0.5) * uChroma * edge * 0.9;
         color.r = texture2D(tDiffuse, uv + off).r;
         color.b = texture2D(tDiffuse, uv - off).b;
