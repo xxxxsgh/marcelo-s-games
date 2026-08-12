@@ -211,6 +211,111 @@ try {
   if (batt >= 100) throw new Error('bateria nao drenou');
   console.log('OK  bateria drena (%s%%)', batt.toFixed(1));
 
+  // ------------------------------------------------------------------
+  // FASE 2 — corrida
+  // ------------------------------------------------------------------
+  // Percorre o circuito teleportando de um lado ao outro de cada gate. A
+  // deteccao e por cruzamento de plano entre dois passos, entao isso exercita
+  // exatamente o caminho real (inclusive o sentido de passagem).
+  // Espera FRAMES de verdade, nao milissegundos: com o rasterizador de
+  // software um frame passa de 200 ms e um wait fixo nao garante nada.
+  const frames = (n = 3) => page.evaluate((k) => new Promise((res) => {
+    let i = 0;
+    const tick = () => { i += 1; if (i >= k) res(); else requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  }), n);
+
+  async function runCircuit(id) {
+    await page.evaluate((cid) => {
+      window.DF.race.load(cid);
+      window.DF.restartRace();
+    }, id);
+    await frames(3);
+
+    const n = await page.evaluate(() => window.DF.race.gates.length);
+    for (let i = 0; i < n; i++) {
+      // atras do gate
+      await page.evaluate((gi) => {
+        const g = window.DF.race.gates[gi];
+        const d = window.DF.drone.state;
+        d.pos.copy(g.center).addScaledVector(g.normal, -5);
+        d.vel.set(0, 0, 0);
+      }, i);
+      await frames(3);
+      // na frente do gate (cruza o plano pelo centro)
+      await page.evaluate((gi) => {
+        const g = window.DF.race.gates[gi];
+        const d = window.DF.drone.state;
+        d.pos.copy(g.center).addScaledVector(g.normal, 5);
+        d.vel.set(0, 0, 0);
+      }, i);
+      await frames(3);
+    }
+    return page.evaluate(() => ({
+      status: window.DF.race.state.status,
+      gateIndex: window.DF.race.state.gateIndex,
+      time: window.DF.race.state.time,
+      splits: window.DF.race.state.splits.length,
+      medal: window.DF.race.state.medal,
+      newRecord: window.DF.race.state.newRecord,
+      total: window.DF.race.gates.length,
+    }));
+  }
+
+  for (const cid of ['aberto', 'tecnico', 'vertical']) {
+    const r = await runCircuit(cid);
+    if (r.status !== 'finished') {
+      throw new Error(`circuito "${cid}" nao terminou: ${r.gateIndex}/${r.total} gates`);
+    }
+    if (r.splits !== r.total) {
+      throw new Error(`circuito "${cid}": ${r.splits} splits pra ${r.total} gates`);
+    }
+    console.log('OK  circuito "%s" completo: %d gates, %ss, medalha=%s',
+      cid, r.total, r.time.toFixed(2), r.medal || 'nenhuma');
+  }
+
+  // recorde persistido + ghost gravado
+  const persisted = await page.evaluate(() => {
+    const raw = localStorage.getItem('dronefarer.save.v1');
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    const rec = s.records && s.records.vertical;
+    return rec ? { time: rec.time, ghostSamples: (rec.ghost || []).length / 8,
+      splits: rec.splits.length, medal: rec.medal } : null;
+  });
+  if (!persisted) throw new Error('recorde nao foi salvo no localStorage');
+  if (persisted.ghostSamples < 3) {
+    throw new Error(`ghost gravado com ${persisted.ghostSamples} amostras`);
+  }
+  console.log('OK  recorde salvo (%ss, %d amostras de fantasma)',
+    persisted.time.toFixed(2), persisted.ghostSamples);
+
+  // o fantasma tem que reproduzir a volta salva
+  const ghostOk = await page.evaluate(() => {
+    window.DF.race.load('vertical');
+    window.DF.restartRace();
+    const g = window.DF.race.ghost;
+    if (!g.hasData) return { ok: false, why: 'sem dados' };
+    const p = g.update(g.duration * 0.5, true);
+    return { ok: !!p && Number.isFinite(p.x), duration: g.duration };
+  });
+  if (!ghostOk.ok) throw new Error(`fantasma nao reproduz: ${ghostOk.why || ''}`);
+  console.log('OK  fantasma reproduz a volta salva (%ss)', ghostOk.duration.toFixed(2));
+
+  // reinicio instantaneo: R rearma sem loading
+  await page.evaluate(() => { window.DF.race.state.time = 9; });
+  await page.keyboard.press('KeyR');
+  await wait(500);
+  const rearmed = await page.evaluate(() => ({
+    status: window.DF.race.state.status,
+    time: window.DF.race.state.time,
+    gate: window.DF.race.state.gateIndex,
+  }));
+  if (rearmed.status !== 'armed' || rearmed.gate !== 0) {
+    throw new Error(`R nao rearmou a corrida: ${JSON.stringify(rearmed)}`);
+  }
+  console.log('OK  R reinicia instantaneo (status=%s)', rearmed.status);
+
   if (WANT_SHOTS) {
     mkdirSync('shots', { recursive: true });
     await page.evaluate(() => {

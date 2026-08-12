@@ -43,12 +43,14 @@ export function createInput(bus, canvas) {
   const TAP_ACTIONS = new Set([
     'toggleMode', 'toggleView', 'restart', 'respawn', 'map',
     'photo', 'options', 'debug', 'lights', 'interact',
+    'nextCircuit', 'toggleGhost',
   ]);
 
   function onKeyDown(e) {
     const action = keyToAction.get(e.code);
     if (!action) return;
-    if (action === 'debug' || action === 'options') e.preventDefault();
+    // Tab e F3 tem comportamento padrao do browser que atrapalha o jogo.
+    if (action === 'debug' || action === 'options' || action === 'nextCircuit') e.preventDefault();
     if (down.has(e.code)) return;       // ignora auto-repeat
     down.add(e.code);
     state.source = 'keyboard';

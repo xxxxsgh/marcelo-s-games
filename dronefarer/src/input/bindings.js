@@ -17,6 +17,8 @@ export const DEFAULT_BINDINGS = {
   restart:      ['KeyR'],      // reinicio instantaneo
   respawn:      ['KeyT'],
   map:          ['KeyN'],
+  nextCircuit:  ['Tab'],       // troca de circuito
+  toggleGhost:  ['KeyG'],
   photo:        ['KeyP'],
   options:      ['Escape'],
   debug:        ['F3'],
@@ -33,6 +35,7 @@ export const ACTION_LABELS = {
   toggleMode: 'Modo ANGLE/ACRO', toggleView: 'Camera 3a pessoa/FPV',
   restart: 'Reiniciar corrida', respawn: 'Respawn', map: 'Mapa',
   photo: 'Photo mode', options: 'Opcoes', debug: 'Debug',
+  nextCircuit: 'Trocar circuito', toggleGhost: 'Mostrar fantasma',
   brake: 'Freio', lights: 'Luzes', interact: 'Interagir',
 };
 

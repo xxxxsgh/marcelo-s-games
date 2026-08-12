@@ -115,3 +115,40 @@ Regra de desempate do projeto: **melhor resultado em GPU dedicada de PC**.
   ~5 fps), que sempre cai no tier minimo. Os quatro tiers existem e o caminho
   de tier alto foi exercitado (bloom+GTAO+SMAA+grade ativos), mas o numero de
   fps precisa ser medido numa maquina com GPU.
+
+---
+
+## FASE 2 — Corrida e progressao
+
+### Decisoes
+
+- **Deteccao de gate por CRUZAMENTO DE PLANO, nao por proximidade.** Proximidade
+  deixa passar por fora e contar, e falha quando o drone atravessa entre dois
+  frames. Aqui compara-se de que lado do plano o drone estava no passo anterior
+  e no atual, acha-se o ponto exato de interseccao e mede-se a distancia radial
+  ali. Funciona a 60 m/s e exige atravessar de verdade, no sentido certo.
+- **O cronometro so comeca no gate 1.** Reiniciar nao cobra tempo de reacao —
+  se comecasse no respawn, o jogador seria punido por apertar R rapido, que e
+  exatamente o comportamento que o loop quer incentivar.
+- **Fantasma gravado em array plano de numeros** (8 por amostra, arredondados),
+  nao array de objetos: cabe no localStorage sem estourar cota.
+- **Ghost roda no tempo da corrida atual**, nao em loop. O ponto dele nao e
+  "ir mais rapido", e ver ONDE se perde tempo — por isso tambem existe delta
+  ao vivo por split.
+- **Ouro pede ACRO.** Os tempos de ouro foram postos abaixo do que da pra fazer
+  nivelando a cada curva; em ANGLE o auto-nivelamento cobra tempo em toda
+  mudanca de direcao.
+- **Raspar e penalidade visual, nao morte** (roadmap). O gate registra `graze`
+  e o HUD avisa, mas a corrida continua.
+- **Save com versao de schema e migracao**, tudo em try/catch: modo privado,
+  cota cheia ou storage bloqueado nao podem derrubar o jogo.
+
+### Verificacao
+Os tres circuitos sao percorridos gate a gate pelo smoke test (teleporte de um
+lado ao outro de cada gate, que exercita o caminho real de cruzamento de plano),
+validando ordem obrigatoria, splits, gravacao de recorde no localStorage,
+reproducao do fantasma e rearme instantaneo no R.
+
+**Nota de teste:** as esperas do teste sao por FRAME (`requestAnimationFrame`),
+nao por milissegundo — no rasterizador de software um frame passa de 200 ms e
+espera por relogio nao garante que um passo de fisica aconteceu.

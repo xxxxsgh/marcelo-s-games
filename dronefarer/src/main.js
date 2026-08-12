@@ -19,6 +19,8 @@ import { createBlock } from './world/block.js';
 import { createWind } from './world/wind.js';
 import { createDust } from './fx/dust.js';
 import { createHud } from './hud.js';
+import { createRace } from './race/index.js';
+import { createSave } from './save.js';
 import { CAMERA, QUALITY, WORLD } from './config.js';
 
 const boot = {
@@ -98,8 +100,28 @@ async function start() {
   const hud = createHud();
   hud.setHint(
     'W/S acelera · A/D gira · setas inclina<br>'
-    + 'M ANGLE/ACRO · C camera · R reinicia · clique = mouse',
+    + 'M ANGLE/ACRO · C camera · R reinicia · TAB circuito<br>'
+    + 'G fantasma · L farol · clique = mouse',
   );
+
+  // ------------------------------------------------------------ corrida
+  const save = createSave();
+  const race = createRace(scene, bus, save, drone.model);
+  race.load(save.get('lastCircuit', 'aberto'));
+  hud.setRaceVisible(true);
+
+  /** Reinicio de corrida: arma o circuito e nasce na largada. */
+  function restartRace() {
+    const c = race.circuit;
+    race.arm();
+    restart(
+      new THREE.Vector3(c.start.x, c.start.y, c.start.z),
+      THREE.MathUtils.degToRad(c.start.heading),
+    );
+    hud.hideFinish();
+    hud.setCircuit(c, save.getRecord(c.id));
+  }
+  restartRace();
 
   const pipeline = createPipeline(renderer, scene, camera, settings);
   boot.set(1.0, 'PRONTO');
@@ -113,9 +135,27 @@ async function start() {
     const m = rig.toggleMode();
     hud.flash(m === 'fpv' ? 'FPV' : '3a PESSOA', 1.0);
   });
-  bus.on('action:restart', () => {
-    restart();
-    hud.flash('REINICIADO', 0.8);
+  // R reinicia NA HORA: sem menu, sem loading. E o coracao do loop.
+  bus.on('action:restart', () => { restartRace(); });
+  bus.on('action:nextCircuit', () => {
+    const c = race.next();
+    save.set('lastCircuit', c.id);
+    restartRace();
+    hud.flash(c.name, 1.2);
+  });
+  bus.on('action:toggleGhost', () => {
+    hud.flash(race.toggleGhost() ? 'FANTASMA ON' : 'FANTASMA OFF', 0.9);
+  });
+
+  bus.on('race:gate', (g) => {
+    // Feedback forte: flash no anel (no gate), shake leve e texto.
+    rig.addShake(g.centered ? 0.06 : 0.03);
+    if (g.centered) hud.flash(`CENTRO  +${g.points}`, 0.7);
+    else if (g.graze) hud.flash('RASPOU', 0.5);
+  });
+  bus.on('race:finish', (r) => {
+    hud.showFinish({ ...r, bestSplits: race.state.bestSplits });
+    rig.addShake(0.12);
   });
   bus.on('action:respawn', () => { drone.respawn(); rig.snap(drone); });
   bus.on('action:lights', () => {
@@ -142,6 +182,7 @@ async function start() {
 
   // ------------------------------------------------------------ loop
   const cmd = { throttle: 0, pitch: 0, roll: 0, yaw: 0, brake: false };
+  const _guide = new THREE.Vector3();
   let windVec = null;
 
   const loop = createLoop({
@@ -154,6 +195,7 @@ async function start() {
       cmd.yaw = input.state.yaw;
       cmd.brake = input.state.brake;
       drone.step(dt, cmd, windVec, colliders);
+      race.step(dt, drone.state.pos, drone.state.quat);
     },
 
     render(dt) {
@@ -164,6 +206,24 @@ async function start() {
       rig.update(dt, drone, input.consumeMouse());
       env.updateShadow(st.pos);
       dust.update(dt, st.pos, st.vel, windVec);
+
+      race.update(dt, camera.position);
+
+      // --- seta guia pro gate atual ---
+      const gate = race.activeGate();
+      if (gate && race.state.status !== 'finished') {
+        _guide.copy(gate.center);
+        const dist = _guide.distanceTo(st.pos);
+        _guide.project(camera);
+        const behind = _guide.z > 1;
+        const gx = behind ? -_guide.x : _guide.x;
+        const gy = behind ? -_guide.y : _guide.y;
+        hud.setGuide(Math.atan2(gx, gy), dist,
+          !behind && Math.abs(_guide.x) < 0.95 && Math.abs(_guide.y) < 0.95);
+      } else {
+        hud.setGuide(0, null, false);
+      }
+      hud.updateRace(race.state, race.gates.length);
 
       hud.update(dt, st, {
         battery: drone.status.battery,
@@ -188,7 +248,8 @@ async function start() {
   console.info('[DRONEFARER] tier:', quality.detected, '| colisores:', colliders.count);
   window.DF = {
     scene, camera, renderer, loop, quality, bus, drone, rig, input,
-    colliders, env, mats, pipeline, block, wind, hud, restart, THREE,
+    colliders, env, mats, pipeline, block, wind, hud, restart,
+    race, save, restartRace, THREE,
   };
 }
 

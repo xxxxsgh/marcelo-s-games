@@ -27,6 +27,8 @@ const POSES = [
     desc: 'rasante na fachada, testa normal map e reflexo' },
   { name: 'telhados', pos: [30, 34, 30], vel: [-10, 0, -6], yaw: Math.PI * 0.8,
     desc: 'altura de telhado, caixas d agua e antenas' },
+  { name: 'gates', pos: [0, 7, 62], vel: [0, 0, -14], yaw: Math.PI,
+    desc: 'largada do circuito aberto, gate ativo destacado', hud: true },
   { name: 'garagem', pos: [-13.5, -1.6, -70], vel: [0, 0, 3], yaw: 0,
     desc: 'interior escuro da garagem' },
   { name: 'rampa', pos: [-4.2, 1.2, -49], vel: [0, -1, -7], yaw: Math.PI,
@@ -70,7 +72,7 @@ try {
       window.DF.drone.state.vel.set(...pose.vel);
       // deixa a camera assentar na pose sem varrer o mapa
       window.DF.rig.snap(window.DF.drone);
-      window.DF.hud.setVisible(false);
+      window.DF.hud.setVisible(!!pose.hud);
       // farol ligado quando a pose e subterranea
       window.DF.drone.setHeadlight(pose.pos[1] < 0.5);
     }, p);
