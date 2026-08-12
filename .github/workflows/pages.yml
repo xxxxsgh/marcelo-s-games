@@ -1,0 +1,46 @@
+name: Deploy DRONEFARER to GitHub Pages
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dronefarer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dronefarer/package-lock.json
+      - run: npm ci
+      - name: Build
+        # base absoluta com o nome do repo, exigida por project site do Pages
+        run: BASE_PATH="/${GITHUB_REPOSITORY#*/}/" npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dronefarer/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

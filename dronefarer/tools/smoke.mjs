@@ -383,9 +383,19 @@ try {
   const zone = await page.evaluate(async () => {
     const T = window.DF.THREE;
     const z = window.DF.pois.restricted[2];
-    window.DF.restart(new T.Vector3(z.x, 40, z.z), 0);
-    await new Promise((r) => setTimeout(r, 6000));
-    return { chasing: window.DF.pois.state.chasing, units: window.DF.security.count };
+    // Bem acima dos predios: dentro de estrutura o drone bate, respawna fora
+    // da zona e o alerta nunca acumula.
+    window.DF.restart(new T.Vector3(z.x, 120, z.z), 0);
+    await new Promise((r) => setTimeout(r, 7000));
+    const p = window.DF.drone.state.pos;
+    return {
+      chasing: window.DF.pois.state.chasing,
+      units: window.DF.security.count,
+      alert: window.DF.pois.state.alertLevel,
+      inside: !!window.DF.pois.state.inRestricted,
+      pos: [Math.round(p.x), Math.round(p.y), Math.round(p.z)],
+      crashes: window.DF.drone.status.crashCount,
+    };
   });
   if (!zone.chasing || zone.units < 1) {
     throw new Error(`zona restrita nao disparou perseguicao: ${JSON.stringify(zone)}`);
@@ -404,6 +414,204 @@ try {
   });
   if (recharge <= 30) throw new Error(`ponto de recarga nao recarregou (${recharge})`);
   console.log('OK  ponto de recarga devolve bateria (30%% -> %s%%)', recharge.toFixed(0));
+
+  // ------------------------------------------------------------------
+  // FASES 4-8 — missoes, hangar, dano, clima, audio, opcoes
+  // ------------------------------------------------------------------
+  await page.evaluate(() => { window.DF.restart(); window.DF.save.addMoney(20000); });
+  await frames(3);
+
+  // --- inspecao: fotografar enquadrando os pontos ---
+  const insp = await page.evaluate(async () => {
+    const T = window.DF.THREE;
+    window.DF.missions.start('insp-fachada');
+    const m = window.DF.missions.state.active;
+    for (const p of m.points) {
+      // Nao adianta mover a camera na mao: o rig a reposiciona todo frame.
+      // Posiciona o DRONE no ponto de aproximacao com o nariz no alvo — a
+      // camera de perseguicao entao enquadra naturalmente.
+      const target = new T.Vector3(p.x, p.y, p.z);
+      const from = target.clone().add(
+        new T.Vector3(m.approach.x, m.approach.y, m.approach.z),
+      );
+      const dir = target.clone().sub(from).normalize();
+      const yaw = Math.atan2(-dir.x, -dir.z);
+      window.DF.restart(from, yaw);
+      const t0 = performance.now();
+      // holdTime e em tempo SIMULADO; com ~5 fps o loop de fisica anda em
+      // camera lenta, entao 0.9 s de jogo pede varios segundos de relogio.
+      while (performance.now() - t0 < 5000) {
+        await new Promise((r) => requestAnimationFrame(r));
+      }
+    }
+    return { status: window.DF.missions.state.status, detail: window.DF.missions.state.detail };
+  });
+  if (insp.status !== 'done') throw new Error(`inspecao nao completou: ${JSON.stringify(insp)}`);
+  console.log('OK  missao de inspecao completa (%s)', insp.detail);
+
+  // --- entrega: coleta, peso extra, pouso ---
+  const ent = await page.evaluate(async () => {
+    const T = window.DF.THREE;
+    const m = window.DF.missions.start('ent-sacada');
+    const d = window.DF.drone;
+    d.state.pos.set(m.pickup.x, m.pickup.y, m.pickup.z);
+    d.state.vel.set(0, 0, 0);
+    await new Promise((r) => setTimeout(r, 600));
+    const carrying = d.status.payload;
+    d.state.pos.set(m.dropoff.x, m.dropoff.y, m.dropoff.z);
+    d.state.vel.set(0, 0, 0);
+    await new Promise((r) => setTimeout(r, 800));
+    return { carrying, status: window.DF.missions.state.status, payloadAfter: d.status.payload };
+  });
+  if (!(ent.carrying > 0)) throw new Error('entrega nao aplicou peso da carga');
+  if (ent.status !== 'done') throw new Error(`entrega nao completou: ${ent.status}`);
+  console.log('OK  missao de entrega: carga %skg a bordo, pouso valido', ent.carrying);
+
+  // --- busca: o sinal esquenta perto do alvo ---
+  const busca = await page.evaluate(async () => {
+    const T = window.DF.THREE;
+    const m = window.DF.missions.start('busca-carro');
+    const d = window.DF.drone;
+    d.state.pos.set(m.area.x + m.area.r * 1.4, 30, m.area.z);
+    await new Promise((r) => setTimeout(r, 500));
+    const longe = window.DF.missions.state.heat;
+    d.state.pos.set(m.area.x, 30, m.area.z);
+    await new Promise((r) => setTimeout(r, 500));
+    return { longe, perto: window.DF.missions.state.heat };
+  });
+  if (!(busca.perto > busca.longe)) throw new Error('busca: sinal nao esquenta perto');
+  console.log('OK  missao de busca: sinal esquenta (%s -> %s)',
+    busca.longe.toFixed(2), busca.perto.toFixed(2));
+
+  // --- vigilancia: acumula tempo enquadrado ---
+  const vig = await page.evaluate(async () => {
+    window.DF.missions.start('vig-carro');
+    const st = window.DF.missions.state;
+    const d = window.DF.drone;
+    const T = window.DF.THREE;
+    const t0 = performance.now();
+    while (performance.now() - t0 < 2500) {
+      const car = window.DF.missions.root.children.find((c) => c.isMesh);
+      if (car) {
+        const from = car.position.clone().add(new T.Vector3(0, 18, 18));
+        d.state.pos.copy(from);
+        window.DF.camera.position.copy(from);
+        window.DF.camera.lookAt(car.position);
+      }
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    return { hold: st.holdMeter, detail: st.detail };
+  });
+  if (!(vig.hold > 0)) throw new Error(`vigilancia nao acumulou tempo: ${JSON.stringify(vig)}`);
+  console.log('OK  missao de vigilancia acumula enquadramento (%s)', vig.detail);
+  await page.evaluate(() => window.DF.missions.abort());
+
+  // --- hangar: upgrade muda o voo, com trade-off ---
+  const build = await page.evaluate(() => {
+    const h = window.DF.hangar;
+    const d = window.DF.drone;
+    const before = { ...h.stats };
+    h.buy('motores'); h.buy('motores');
+    h.buy('helices');
+    h.apply(d);
+    const after = { ...h.stats };
+    return { before, after, resumo: h.summary(), money: window.DF.save.data.money };
+  });
+  if (!(build.after.thrust > build.before.thrust)) throw new Error('upgrade nao aumentou empuxo');
+  if (!(build.after.drain > build.before.drain)) throw new Error('upgrade de motor sem trade-off de consumo');
+  if (!(build.after.windSens > build.before.windSens)) throw new Error('helice sem trade-off de vento');
+  console.log('OK  hangar: empuxo %s->%s, consumo %s->%s, vento %s->%s',
+    build.before.thrust.toFixed(2), build.after.thrust.toFixed(2),
+    build.before.drain.toFixed(2), build.after.drain.toFixed(2),
+    build.before.windSens.toFixed(2), build.after.windSens.toFixed(2));
+
+  // duas builds voam diferente
+  const twoBuilds = await page.evaluate(() => {
+    const h = window.DF.hangar;
+    const d = window.DF.drone;
+    h.setChassis('leve'); h.apply(d);
+    const leve = { ag: d.state.agilityScale, th: d.state.thrustScale };
+    h.setChassis('cargueiro'); h.apply(d);
+    const pesado = { ag: d.state.agilityScale, th: d.state.thrustScale };
+    h.setChassis('equilibrado'); h.apply(d);
+    return { leve, pesado };
+  });
+  if (Math.abs(twoBuilds.leve.ag - twoBuilds.pesado.ag) < 0.2) {
+    throw new Error('chassis diferentes voam igual');
+  }
+  console.log('OK  chassis mudam o voo (agilidade leve %s vs cargueiro %s)',
+    twoBuilds.leve.ag.toFixed(2), twoBuilds.pesado.ag.toFixed(2));
+
+  // --- dano por partes ---
+  const dmg = await page.evaluate(() => {
+    const D = window.DF.damage;
+    D.setNoRisk(false);
+    D.applyImpact(26, 'poste');
+    const parts = { ...D.parts };
+    const total = Object.values(parts).reduce((a, b) => a + b, 0);
+    return { parts, total, bill: D.state.repairBill };
+  });
+  if (dmg.total <= 0) throw new Error('impacto forte nao gerou dano de parte');
+  console.log('OK  dano por partes (conserto $ %d)', dmg.bill);
+
+  // --- clima muda o mundo, nao so a cor ---
+  const clima = await page.evaluate(async () => {
+    const W = window.DF.weather;
+    W.setPreset('claro');
+    await new Promise((r) => setTimeout(r, 300));
+    const claro = { fog: window.DF.scene.fog.density, wind: W.windMultiplier(null) };
+    W.setPreset('chuva');
+    await new Promise((r) => setTimeout(r, 900));
+    const chuva = { fog: window.DF.scene.fog.density, wind: W.windMultiplier(null) };
+    W.setPreset('noite');
+    await new Promise((r) => setTimeout(r, 600));
+    const noite = { night: W.isNight };
+    W.setPreset('claro');
+    return { claro, chuva, noite };
+  });
+  if (!(clima.chuva.fog > clima.claro.fog)) throw new Error('chuva nao mudou a visibilidade');
+  if (!(clima.chuva.wind > clima.claro.wind)) throw new Error('chuva nao mudou o vento');
+  if (!clima.noite.night) throw new Error('preset de noite nao ativou');
+  console.log('OK  clima muda visibilidade e vento (fog %s->%s, vento %s->%s)',
+    clima.claro.fog.toFixed(4), clima.chuva.fog.toFixed(4),
+    clima.claro.wind.toFixed(2), clima.chuva.wind.toFixed(2));
+
+  // --- audio sintetizado ---
+  const som = await page.evaluate(async () => {
+    const a = window.DF.audio;
+    a.start();
+    await new Promise((r) => setTimeout(r, 250));
+    return { running: !!a.context, mix: a.mix.master };
+  });
+  if (!som.running) throw new Error('AudioContext nao iniciou');
+  console.log('OK  audio inicia (master %s)', som.mix);
+
+  // --- opcoes escalam a qualidade ---
+  const opts = await page.evaluate(() => {
+    const q = window.DF.quality;
+    q.setTier('minimo');
+    const min = { ...q.settings };
+    q.setTier('alto');
+    const alto = { ...q.settings };
+    return { min, alto };
+  });
+  if (!(opts.alto.shadowMapSize > opts.min.shadowMapSize)
+      || !(opts.alto.drawDistance > opts.min.drawDistance)) {
+    throw new Error('presets de qualidade nao escalam');
+  }
+  console.log('OK  presets escalam (sombra %d->%d, distancia %d->%d m)',
+    opts.min.shadowMapSize, opts.alto.shadowMapSize,
+    opts.min.drawDistance, opts.alto.drawDistance);
+
+  // --- painel de debug e photo mode ---
+  const tools = await page.evaluate(() => {
+    const d = window.DF.debugPanel.toggle();
+    const p = window.DF.photo.toggle();
+    window.DF.photo.toggle();
+    return { debug: d, photo: p };
+  });
+  if (!tools.debug || !tools.photo) throw new Error('debug/photo mode nao abrem');
+  console.log('OK  painel de debug (F3) e photo mode abrem');
 
   if (WANT_SHOTS) {
     mkdirSync('shots', { recursive: true });

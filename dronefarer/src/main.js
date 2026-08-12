@@ -28,6 +28,12 @@ import { createMap } from './ui/map.js';
 import { createMissions } from './missions/index.js';
 import { createHangar } from './hangar/index.js';
 import { createBoard } from './ui/board.js';
+import { createDamage } from './damage/index.js';
+import { createWeather } from './world/weather.js';
+import { createAudio } from './audio/index.js';
+import { createOptions } from './ui/options.js';
+import { createDebug, createTutorial } from './ui/debug.js';
+import { createPhotoMode, createKillcam } from './ui/photo.js';
 import { CAMERA, QUALITY, WORLD } from './config.js';
 
 const boot = {
@@ -48,6 +54,9 @@ const boot = {
 
 async function start() {
   const app = document.getElementById('app');
+  // O painel de debug precisa das estatisticas do loop, que so nasce la
+  // embaixo; este objeto e preenchido quando o loop e criado.
+  const loopRef = { stats: { fps: 0, frameMs: 0, physMs: 0, renderMs: 0, steps: 0 } };
   const bus = createBus();
   const quality = createQuality();
   const settings = quality.settings;
@@ -124,6 +133,13 @@ async function start() {
   const map = createMap(pois);
   const hangar = createHangar(save, bus);
   hangar.apply(drone);
+  const damage = createDamage(bus, drone);
+  const audio = createAudio(bus);
+  // Web Audio so pode nascer depois de um gesto do usuario.
+  const kickAudio = () => { audio.resume(); };
+  window.addEventListener('pointerdown', kickAudio, { once: false });
+  window.addEventListener('keydown', kickAudio, { once: false });
+  const weather = createWeather(scene, env, mats, city, life, settings);
   const race = createRace(scene, bus, save, drone.model);
   race.load(save.get('lastCircuit', 'aberto'));
   hud.setRaceVisible(true);
@@ -145,6 +161,20 @@ async function start() {
   restartRace();
 
   const pipeline = createPipeline(renderer, scene, camera, settings);
+
+  // ------------------------------------------------------ UI da Fase 8
+  const options = createOptions(
+    quality, pipeline, renderer, camera, input, audio, save, bus, damage,
+  );
+  options.restore();
+  const debugPanel = createDebug(renderer, loopRef, city, colliders, drone, pois);
+  const tutorial = createTutorial(bus, save);
+  const photo = createPhotoMode(renderer, scene, camera, input, hud);
+  const killcam = createKillcam(camera, drone, bus);
+  const killGhost = drone.model.makeGhost(0.85);
+  killGhost.visible = false;
+  scene.add(killGhost);
+
   boot.set(1.0, 'PRONTO');
 
   // ------------------------------------------------------------ eventos
@@ -201,6 +231,15 @@ async function start() {
     rig.addShake(0.04);
   });
   bus.on('mission:pickup', () => hud.flash('CARGA A BORDO', 1.4));
+  bus.on('action:debug', () => debugPanel.toggle());
+  bus.on('action:options', () => {
+    const on = options.toggle();
+    hud.setVisible(!on);
+  });
+  bus.on('action:photo', () => {
+    const on = photo.toggle();
+    if (!on) rig.snap(drone);
+  });
   bus.on('action:map', () => {
     const on = map.toggle();
     hud.setVisible(!on);
@@ -234,8 +273,27 @@ async function start() {
     rig.addShake(Math.min(1.4, CAMERA.shakeCrash * (impact / 12)));
     hud.flash('CRASH', 1.2, 'crash');
   });
-  bus.on('drone:graze', ({ impact }) => {
+  bus.on('drone:graze', ({ impact, tag }) => {
     if (impact > 2) rig.addShake(Math.min(0.35, impact * 0.02));
+    // Fio de alta tensao no poste: choque tira o controle por instantes.
+    if (tag === 'poste' && impact > 4 && Math.random() < 0.4) damage.shock(1.3);
+  });
+  bus.on('damage:shock', () => {
+    rig.addShake(0.5);
+    hud.flash('CHOQUE — CONTROLE PERDIDO', 1.4, 'crash');
+  });
+  bus.on('damage:part', ({ part }) => hud.flash(`DANO: ${part.toUpperCase()}`, 1.2, 'crash'));
+  bus.on('damage:cargo', () => hud.flash('CARGA PERDIDA', 1.8, 'crash'));
+  bus.on('action:weather', () => {
+    const ids = Object.keys(weather.presets);
+    const i = (ids.indexOf(weather.state.preset) + 1) % ids.length;
+    const p = weather.setPreset(ids[i]);
+    drone.setEnvMap(env.envMap);
+    hud.flash(p.name, 1.6);
+  });
+  bus.on('action:noRisk', () => {
+    const on = damage.setNoRisk(!damage.state.noRisk);
+    hud.flash(on ? 'MODO TREINO — SEM RISCO' : 'RISCO ATIVO', 1.6);
   });
 
   // ------------------------------------------------------------ resize
@@ -246,6 +304,7 @@ async function start() {
     renderer.setPixelRatio(basePR * quality.settings.renderScale);
     renderer.setSize(w, h);
     pipeline.setSize(w, h);
+    photo.setSize(w, h);
   }
   window.addEventListener('resize', onResize);
 
@@ -259,13 +318,24 @@ async function start() {
       wind.update(dt);
       windVec = wind.sample(drone.state.pos);
       // Helice agil e chassis leve sofrem mais com rajada — o trade-off do
-      // hangar tem que ser sentido no ar, nao so lido na tela.
-      if (drone.status.windSens !== 1) windVec.multiplyScalar(drone.status.windSens);
+      // hangar tem que ser sentido no ar, nao so lido na tela. O clima e o
+      // distrito entram no mesmo multiplicador.
+      const districtNow = city.districtAtPos(drone.state.pos);
+      windVec.multiplyScalar(
+        drone.status.windSens * weather.windMultiplier(districtNow),
+      );
       cmd.throttle = input.state.throttle;
       cmd.pitch = input.state.pitch;
       cmd.roll = input.state.roll;
       cmd.yaw = input.state.yaw;
       cmd.brake = input.state.brake;
+
+      // Ordem importa: o hangar DEFINE os multiplicadores da build (valores
+      // absolutos) e o dano MULTIPLICA por cima. Invertido, um sobrescreveria
+      // o outro e o drone quebrado voaria como novo.
+      hangar.apply(drone);
+      damage.modulate(dt);
+
       drone.step(dt, cmd, windVec, colliders);
       race.step(dt, drone.state.pos, drone.state.quat);
       pois.update(dt, drone.state.pos, drone);
@@ -294,14 +364,25 @@ async function start() {
       input.update(dt);
       const st = drone.state;
 
+      // --- photo mode congela o jogo e assume a camera ---
+      if (photo.active) {
+        photo.update(dt);
+        photo.render();
+        debugPanel.update(dt);
+        return;
+      }
+
       drone.updateVisual(dt);
-      rig.update(dt, drone, input.consumeMouse());
+      // O killcam assume a camera por 8 s depois do crash.
+      const inKillcam = killcam.update(dt, killGhost);
+      if (!inKillcam) rig.update(dt, drone, input.consumeMouse());
       env.updateShadow(st.pos);
       dust.update(dt, st.pos, st.vel, windVec);
 
       // Streaming da cidade com orcamento de tempo por frame.
       city.update(st.pos, 4);
       life.update(dt, loop.stats.elapsed, st.pos);
+      weather.update(dt, st.pos);
       pois.animate(dt, loop.stats.elapsed);
       missions.animate(dt, loop.stats.elapsed);
       race.update(dt, camera.position);
@@ -327,6 +408,17 @@ async function start() {
       }
       hud.updateRace(race.state, race.gates.length);
 
+      // audio: contexto da musica + motor/vento/doppler
+      audio.setContext(
+        drone.batteryRatio < 0.18 ? 'critical'
+          : missions.isActive ? 'mission'
+            : race.state.status === 'running' ? 'race' : 'explore',
+      );
+      audio.update(dt, st, camera.position,
+        colliders.nearestDistance(st.pos, 8), drone.batteryRatio);
+
+      tutorial.update(dt, { drone, race });
+      debugPanel.update(dt);
       hud.setMission(missions.state);
       hud.setStatus({
         district: city.districtAtPos(st.pos).name,
@@ -348,11 +440,13 @@ async function start() {
         velocity: st.vel,
         distortion: rig.rig.lensDistortion,
         signal: pois.state.signal,
+        damage: damage.cameraGlitch,
         elapsed: loop.stats.elapsed,
       });
     },
   });
 
+  loopRef.stats = loop.stats;
   loop.start();
   boot.done();
 
@@ -361,7 +455,8 @@ async function start() {
     scene, camera, renderer, loop, quality, bus, drone, rig, input,
     colliders, env, mats, pipeline, block, wind, hud, restart,
     race, save, restartRace, city, pois, security, map, life,
-    missions, hangar, board, THREE,
+    missions, hangar, board, damage, weather, audio,
+    options, debugPanel, photo, killcam, tutorial, THREE,
   };
 }
 

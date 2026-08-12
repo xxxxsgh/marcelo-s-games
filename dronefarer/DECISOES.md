@@ -205,3 +205,63 @@ espera por relogio nao garante que um passo de fisica aconteceu.
 Smoke test cobre: streaming (53 chunks / ~1500 predios), os cinco distritos nas
 posicoes certas, descarregamento ao voltar, queda de sinal com a distancia,
 alarme + perseguicao em zona restrita e recarga de bateria.
+
+---
+
+## FASES 4 a 8 — missoes, hangar, risco, audio e entrega
+
+### Decisoes
+
+- **Missoes usam a camera de verdade como mecanica** (inspecao e vigilancia):
+  o alvo precisa estar dentro de um cone E de uma faixa de distancia, e o
+  medidor so enche enquanto o enquadramento se mantem. Nao ha "aperte E perto
+  do objeto".
+- **Cone de 20 graus, nao 14.** Com camera de perseguicao a mira nao e a do
+  jogador diretamente — a mola e o look-ahead deslocam o alvo. Cone apertado
+  demais transformava a missao em briga com a camera.
+- **Pontos de inspecao na FACE voltada pra rua.** Ponto no meio do quarteirao
+  obrigaria o jogador a entrar na geometria pra enquadrar.
+- **Ordem hangar → dano no passo de fisica.** O hangar DEFINE os
+  multiplicadores da build (valores absolutos) e o dano MULTIPLICA por cima.
+  Invertido, um sobrescreveria o outro e o drone quebrado voaria como novo.
+- **Nenhum upgrade e so beneficio.** Motor da empuxo e cobra bateria; bateria
+  da autonomia e cobra peso (inercia); helice da agilidade e cobra
+  estabilidade no vento; camera da zoom e cobra peso na frente; antena da
+  alcance e cobra arrasto. Sem isso, progressao vira "numero maior".
+- **Ciclo dia/noite por MISSAO, nao global.** O jogador escolhe o cenario em
+  vez de esperar o relogio.
+- **Audio 100% sintetizado.** O motor nao e um loop com pitch: sao quatro
+  parciais (uma por helice) mais ruido de passagem de pa, com frequencia
+  ligada ao RPM, volume ao throttle e timbre a CARGA.
+- **Doppler feito na mao.** A spec do Web Audio removeu o `dopplerFactor` do
+  `PannerNode`, entao a velocidade radial em relacao a camera desloca a
+  frequencia diretamente.
+- **Photo mode usa composer PROPRIO** (RenderPass + Bokeh + Output) em vez de
+  enfiar um passe no pipeline do jogo: o modo esta pausado, entao pode custar
+  caro, e o pipeline principal fica intocado.
+- **PNG do photo mode sai por `readRenderTargetPixels`**, nao por
+  `toDataURL` — assim nao e preciso ligar `preserveDrawingBuffer`, que cobraria
+  desempenho o jogo inteiro por causa de um botao.
+- **Aberracao cromatica removida** (ver Fase 3): efeito fora do escopo que
+  produzia franja verde/magenta sempre que havia motion blur.
+
+### Nao entregue / limitacoes conhecidas
+
+- **Alvos de fps nao verificados.** O container so tem rasterizador de
+  software (SwiftShader, ~5 fps), que sempre cai no tier minimo. Os quatro
+  tiers existem e o caminho do tier alto foi exercitado (bloom + GTAO + SMAA +
+  grade ativos), mas 60 fps em GPU integrada e 120+ em dedicada precisam ser
+  medidos numa maquina com GPU.
+- **Sem Web Worker.** A geracao de chunk mede fracao de milissegundo; a fila
+  com orcamento de tempo por frame ja resolve. O ponto de corte esta isolado
+  em `city.generate()` se um perfil real mostrar necessidade.
+- **Sem KTX2/Basis nem Draco/meshopt.** Nao ha um unico asset binario no
+  projeto — textura e geometria sao geradas em runtime — entao compressao de
+  asset nao se aplica. O bundle e ~1 MB (300 KB gzip), quase todo Three.js.
+- **Volumetria e SSR estao no menu e nos tiers, mas o pipeline nao os
+  implementa** como passes proprios: os toggles existem e sao persistidos, e
+  hoje nao mudam a imagem. Ficam como o proximo passo natural do render.
+- **Alguns itens de conteudo da Fase 3 ficaram de fora**: shopping com vao
+  central, galeria de metro, prediso em construcao, andaimes, pedestres
+  impostor e decals de pichacao. Telhado navegavel, garagem, POIs, zonas
+  restritas, transito e pombos estao no jogo.

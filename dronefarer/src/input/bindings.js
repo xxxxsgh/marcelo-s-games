@@ -18,6 +18,8 @@ export const DEFAULT_BINDINGS = {
   respawn:      ['KeyT'],
   map:          ['KeyN'],
   board:        ['KeyB'],      // quadro de missoes / hangar
+  weather:      ['KeyV'],      // cicla o clima
+  noRisk:       ['KeyK'],      // modo treino
   nextCircuit:  ['Tab'],       // troca de circuito
   toggleGhost:  ['KeyG'],
   photo:        ['KeyP'],
@@ -37,7 +39,7 @@ export const ACTION_LABELS = {
   restart: 'Reiniciar corrida', respawn: 'Respawn', map: 'Mapa',
   photo: 'Photo mode', options: 'Opcoes', debug: 'Debug',
   nextCircuit: 'Trocar circuito', toggleGhost: 'Mostrar fantasma',
-  board: 'Quadro de missoes',
+  board: 'Quadro de missoes', weather: 'Trocar clima', noRisk: 'Modo treino',
   brake: 'Freio', lights: 'Luzes', interact: 'Interagir',
 };
 

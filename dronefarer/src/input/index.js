@@ -43,7 +43,7 @@ export function createInput(bus, canvas) {
   const TAP_ACTIONS = new Set([
     'toggleMode', 'toggleView', 'restart', 'respawn', 'map',
     'photo', 'options', 'debug', 'lights', 'interact',
-    'nextCircuit', 'toggleGhost', 'board',
+    'nextCircuit', 'toggleGhost', 'board', 'weather', 'noRisk',
   ]);
 
   function onKeyDown(e) {

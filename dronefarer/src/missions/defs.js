@@ -31,21 +31,25 @@ export const MISSIONS = [
   // ---------------------------------------------------------- inspecao
   {
     id: 'insp-fachada', type: 'inspecao', name: 'Vistoria de fachada',
-    brief: 'Fotografe os 4 pontos marcados na fachada, entre 6 e 18 m.',
+    brief: 'Fotografe os 4 pontos marcados na fachada, entre 6 e 20 m.',
     difficulty: 1, reward: 420, requires: null, district: 'centro',
-    minDist: 6, maxDist: 18, coneDeg: 16, holdTime: 0.9,
+    // Pontos na FACE do predio voltada pra rua (x=11.4): assim o drone tem
+    // ar livre na frente pra enquadrar sem entrar na geometria.
+    minDist: 6, maxDist: 20, coneDeg: 20, holdTime: 0.9,
+    approach: { x: -11, y: 0, z: 0 },
     points: [
-      { x: 26, y: 10, z: 44 }, { x: 26, y: 19, z: 44 },
-      { x: 26, y: 28, z: 44 }, { x: 26, y: 34, z: 44 },
+      { x: 11.4, y: 8, z: 44 }, { x: 11.4, y: 14, z: 44 },
+      { x: 11.4, y: 20, z: 44 }, { x: 11.4, y: 26, z: 44 },
     ],
   },
   {
     id: 'insp-antena', type: 'inspecao', name: 'Laudo da torre',
-    brief: 'Fotografe os 3 pontos da torre de TV, entre 8 e 22 m.',
+    brief: 'Fotografe os 3 pontos da torre de TV, entre 8 e 24 m.',
     difficulty: 2, reward: 660, requires: 'camera1', district: 'centro',
-    minDist: 8, maxDist: 22, coneDeg: 14, holdTime: 1.0,
+    minDist: 8, maxDist: 24, coneDeg: 20, holdTime: 1.0,
+    approach: { x: 0, y: 0, z: 14 },
     points: [
-      { x: 60, y: 62, z: 60 }, { x: 60, y: 84, z: 60 }, { x: 60, y: 104, z: 60 },
+      { x: 0, y: 62, z: 60 }, { x: 0, y: 84, z: 60 }, { x: 0, y: 104, z: 60 },
     ],
   },
 
@@ -97,9 +101,10 @@ export const MISSIONS = [
     brief: 'Fotografe 3 pontos DENTRO da zona restrita. Pagamento alto, risco alto.',
     difficulty: 5, reward: 2600, requires: 'antena1', district: 'centro',
     restricted: true,
-    minDist: 5, maxDist: 20, coneDeg: 18, holdTime: 0.8,
+    minDist: 5, maxDist: 22, coneDeg: 20, holdTime: 0.8,
+    approach: { x: 0, y: 0, z: 12 },
     points: [
-      { x: 40, y: 24, z: -60 }, { x: 58, y: 34, z: -74 }, { x: 22, y: 30, z: -46 },
+      { x: 0, y: 40, z: -60 }, { x: 4, y: 52, z: -74 }, { x: -4, y: 46, z: -46 },
     ],
   },
 ];
