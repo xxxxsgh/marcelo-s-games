@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DRONEFARER</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: #05070c; }
+      body {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        color: #e8f0ff;
+        -webkit-font-smoothing: antialiased;
+      }
+      #app { position: fixed; inset: 0; }
+      canvas { display: block; width: 100%; height: 100%; }
+      #boot {
+        position: fixed; inset: 0; display: grid; place-content: center;
+        gap: 14px; justify-items: center; background: #05070c; z-index: 100;
+        transition: opacity .5s ease;
+      }
+      #boot h1 { font-size: 34px; letter-spacing: .42em; font-weight: 600; }
+      #boot .sub { font-size: 11px; letter-spacing: .3em; color: #5d7290; }
+      #boot .bar { width: 260px; height: 2px; background: #16202f; overflow: hidden; }
+      #boot .bar i { display: block; height: 100%; width: 0%; background: #37d5ff; transition: width .2s; }
+      #boot .pct { font-size: 10px; color: #37d5ff; letter-spacing: .2em; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="boot">
+      <h1>DRONEFARER</h1>
+      <div class="sub">CARREGANDO</div>
+      <div class="bar"><i id="boot-bar"></i></div>
+      <div class="pct" id="boot-pct">0%</div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
