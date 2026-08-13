@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>DRONE FPV — Simulador de Drone em 3ª Pessoa</title>
 <style>
   /* ============================================================
@@ -83,6 +83,57 @@
   #toast{position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:7;
     font-size:12px;letter-spacing:3px;padding:8px 18px;border-radius:20px;
     background:rgba(6,16,22,.8);border:1px solid var(--panel-b);opacity:0;transition:opacity .3s;pointer-events:none}
+
+  /* ---------- CONTROLES DE TOQUE (mobile) ---------- */
+  html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent;
+    -webkit-user-select:none;user-select:none;touch-action:none}
+  #tui{position:fixed;inset:0;z-index:8;display:none;pointer-events:none;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  #tui.on{display:block}
+  /* zonas de captura: o analógico nasce onde o dedo encosta (stick flutuante) */
+  .tzone{position:absolute;bottom:0;height:62%;width:42%;pointer-events:auto;touch-action:none}
+  #tz-left{left:0}
+  #tz-right{right:0}
+  .tbase{position:fixed;width:132px;height:132px;margin:-66px 0 0 -66px;border-radius:50%;
+    border:2px solid rgba(120,220,255,.30);background:radial-gradient(circle,rgba(10,26,36,.42),rgba(10,26,36,.10) 70%,transparent);
+    opacity:0;transition:opacity .12s;pointer-events:none}
+  .tbase.on{opacity:1}
+  .tknob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;
+    background:radial-gradient(circle at 38% 34%,rgba(160,240,255,.85),rgba(45,150,190,.55));
+    border:1px solid rgba(200,245,255,.7);box-shadow:0 0 20px rgba(57,215,255,.55)}
+  .tlabel{position:absolute;left:50%;bottom:-24px;transform:translateX(-50%);white-space:nowrap;
+    font-size:9px;letter-spacing:2px;color:rgba(216,245,255,.7)}
+  /* dicas de repouso, mostram onde ficam os analógicos antes do primeiro toque */
+  .thint{position:absolute;bottom:26px;width:120px;height:120px;border-radius:50%;
+    border:1px dashed rgba(120,220,255,.22);pointer-events:none;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    font-size:9px;line-height:1.5;letter-spacing:1px;color:rgba(216,245,255,.42)}
+  #th-left{left:26px}
+  #th-right{right:26px}
+  #tui.hide-hints .thint{opacity:0;transition:opacity .4s}
+  /* botões */
+  #tui-top{position:absolute;top:8px;left:50%;transform:translateX(-50%);
+    display:flex;gap:8px;pointer-events:auto}
+  #tui-bottom{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+    display:flex;gap:10px;pointer-events:auto}
+  .tbtn{min-width:52px;height:38px;padding:0 12px;border-radius:19px;
+    background:rgba(6,18,26,.72);border:1px solid rgba(120,220,255,.34);
+    color:var(--osd);font:inherit;font-size:11px;letter-spacing:2px;
+    display:flex;align-items:center;justify-content:center;touch-action:none;cursor:pointer}
+  .tbtn:active,.tbtn.on{background:rgba(57,215,255,.34);border-color:rgba(160,240,255,.9)}
+  .tbtn.wide{min-width:96px;height:44px;border-radius:22px;font-size:12px}
+  #tb-turbo.on{background:rgba(255,77,94,.42);border-color:rgba(255,150,160,.9)}
+  /* aviso de orientação (retrato em celular) */
+  #rotate{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
+    flex-direction:column;gap:14px;background:rgba(3,7,11,.94);text-align:center;padding:30px}
+  #rotate.on{display:flex}
+  #rotate .ico{font-size:44px}
+  @media (max-width:900px){
+    .panel{padding:18px 16px}
+    .panel h2{font-size:18px;letter-spacing:6px}
+    .grid{grid-template-columns:1fr}
+    button{padding:13px 18px}
+  }
 </style>
 </head>
 <body>
@@ -91,6 +142,36 @@
 <canvas id="hud"></canvas>
 <div id="fps"></div>
 <div id="toast"></div>
+
+<!-- ============ CONTROLES DE TOQUE ============ -->
+<div id="tui">
+  <div class="tzone" id="tz-left"></div>
+  <div class="tzone" id="tz-right"></div>
+
+  <div class="thint" id="th-left">FRENTE / TRÁS<br>ESQUERDA / DIREITA</div>
+  <div class="thint" id="th-right">SOBE / DESCE<br>GIRA</div>
+
+  <div class="tbase" id="tb-left"><div class="tknob"></div><div class="tlabel">MOVER</div></div>
+  <div class="tbase" id="tb-right"><div class="tknob"></div><div class="tlabel">ALTURA / GIRO</div></div>
+
+  <div id="tui-top">
+    <div class="tbtn" id="tb-menu">☰</div>
+    <div class="tbtn" id="tb-mode">SPORT</div>
+    <div class="tbtn" id="tb-cam">CAM</div>
+    <div class="tbtn" id="tb-reset">RST</div>
+    <div class="tbtn" id="tb-full">⛶</div>
+  </div>
+  <div id="tui-bottom">
+    <div class="tbtn wide" id="tb-turbo">TURBO</div>
+  </div>
+</div>
+
+<!-- ============ AVISO DE ORIENTAÇÃO ============ -->
+<div id="rotate">
+  <div class="ico">📱↻</div>
+  <div style="font-size:14px;letter-spacing:4px">GIRE O APARELHO</div>
+  <div style="font-size:11px;color:var(--osd-dim);letter-spacing:2px">o jogo foi feito para modo paisagem</div>
+</div>
 
 <!-- ============ TELA DE CARREGAMENTO ============ -->
 <div id="loading">
@@ -164,6 +245,12 @@
         <div class="row"><label>Deadzone</label><input id="opt-dead" type="range" min="0" max="0.3" step="0.01" value="0.06"></div>
         <div class="row"><label>Inverter pitch</label><input id="opt-invp" type="checkbox"></div>
         <div class="row"><label>Bateria infinita</label><input id="opt-batt" type="checkbox" checked></div>
+        <div class="row"><label>Gamepad</label>
+          <select id="opt-pad">
+            <option value="arcade" selected>Arcade</option>
+            <option value="mode2">Rádio (Mode 2)</option>
+          </select></div>
+        <div class="row"><label>Controles de toque</label><input id="opt-touch" type="checkbox"></div>
       </div>
     </div>
 
@@ -180,11 +267,17 @@
         <div><span>Reset / respawn</span><b>R</b></div>
         <div><span>Slow-motion</span><b>F</b></div>
         <div><span>Menu / pausa</span><b>Esc</b></div>
-        <div><span>Gamepad (Mode 2)</span><b>auto</b></div>
         <div><span>HUD on/off</span><b>H</b></div>
+        <div><span>Tela cheia (toque)</span><b>⛶</b></div>
       </div>
       <div class="note">*Segure o botão direito do mouse para orbitar a câmera. Com <b>M</b> ativo, o mouse
         vira o stick direito (pitch/roll) e a câmera fica travada atrás do drone.</div>
+      <div class="note"><b>Gamepad — Arcade (padrão):</b> analógico <b>esquerdo</b> move (frente/trás e
+        esquerda/direita), analógico <b>direito</b> sobe/desce e gira. Gatilhos: turbo e slow-motion.
+        <b>A</b> troca o modo de voo, <b>B</b> reseta, <b>X</b> troca a câmera.<br>
+        <b>Rádio (Mode 2):</b> layout de rádio de FPV — esquerdo throttle+yaw, direito pitch+roll.</div>
+      <div class="note"><b>Celular:</b> os analógicos são <b>flutuantes</b> — encoste o polegar em qualquer
+        lugar da metade de baixo (esquerda ou direita) e o controle nasce ali. Mesmo layout do Arcade.</div>
     </div>
 
     <div class="btns">
@@ -306,6 +399,10 @@ const CONFIG = {
     expo:            0.35,      // curva expo dos sticks
     deadzone:        0.06,
     invertPitch:     false,
+    // 'arcade' = esquerdo move (frente/trás, lados), direito sobe/desce e gira
+    // 'mode2'  = layout de rádio FPV: esquerdo throttle+yaw, direito pitch+roll
+    gamepadLayout:  'arcade',
+    touchSens:       1.0,       // sensibilidade dos analógicos virtuais
     mouseSteer:      false,     // mouse como stick direito
     mouseSens:       0.0022,
     keyRamp:         5.5,       // velocidade de subida dos "sticks virtuais" do teclado
@@ -364,7 +461,7 @@ const CONFIG = {
   /* ---------- PRESETS DE QUALIDADE ---------- */
   quality: {
     low:   { pixelRatio:1.0, shadowMap:1024, shadowDist:14, lodBias:0.62, bloom:false, smaa:false, particles:0.3,
-             veg:0.0,  vegRadius:0.0,  ssao:false, godrays:false, motionBlur:false },
+             veg:0.40, vegRadius:0.45, ssao:false, godrays:false, motionBlur:false },
     med:   { pixelRatio:1.25,shadowMap:2048, shadowDist:20, lodBias:0.82, bloom:true,  smaa:true,  particles:0.6,
              veg:0.45, vegRadius:0.55, ssao:false, godrays:true,  motionBlur:false },
     high:  { pixelRatio:1.5, shadowMap:3072, shadowDist:28, lodBias:1.00, bloom:true,  smaa:true,  particles:1.0,
@@ -3168,6 +3265,64 @@ class ChaseCamera {
 /* ==================================================================================
   11) INPUT — teclado, mouse e gamepad (layout de rádio Mode 2)
    ================================================================================== */
+/**
+ * Analógico virtual FLUTUANTE: a base nasce onde o dedo encosta dentro da zona,
+ * em vez de ficar fixa num canto. Em celular isso é o que faz a diferença — o
+ * polegar não precisa achar o controle, o controle é que vai até ele.
+ * Usa Pointer Events, então funciona igual com toque, caneta ou mouse.
+ */
+class TouchStick {
+  constructor(zone, base){
+    this.zone = zone;
+    this.base = base;
+    this.knob = base.querySelector('.tknob');
+    this.radius = 62;
+    this.x = 0; this.y = 0;          // -1..1 (y positivo = para cima)
+    this.pointerId = null;
+    this.cx = 0; this.cy = 0;
+
+    zone.addEventListener('pointerdown', e=>this._down(e));
+    zone.addEventListener('pointermove', e=>this._move(e));
+    zone.addEventListener('pointerup',     e=>this._up(e));
+    zone.addEventListener('pointercancel', e=>this._up(e));
+    zone.addEventListener('lostpointercapture', e=>this._up(e));
+  }
+  _down(e){
+    if (this.pointerId !== null) return;
+    this.pointerId = e.pointerId;
+    try { this.zone.setPointerCapture(e.pointerId); } catch(_){}
+    this.cx = e.clientX; this.cy = e.clientY;
+    this.base.style.left = this.cx + 'px';
+    this.base.style.top  = this.cy + 'px';
+    this.base.classList.add('on');
+    this._set(0, 0);
+    e.preventDefault();
+    if (onTouchUsed) onTouchUsed();
+  }
+  _move(e){
+    if (e.pointerId !== this.pointerId) return;
+    let dx = e.clientX - this.cx, dy = e.clientY - this.cy;
+    const l = Math.hypot(dx, dy);
+    if (l > this.radius){ dx = dx/l*this.radius; dy = dy/l*this.radius; }
+    this._set(dx, dy);
+    e.preventDefault();
+  }
+  _up(e){
+    if (e.pointerId !== this.pointerId) return;
+    this.pointerId = null;
+    this.base.classList.remove('on');
+    this._set(0, 0);
+  }
+  _set(dx, dy){
+    this.knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    this.x =  dx / this.radius;
+    this.y = -dy / this.radius;      // tela cresce para baixo; queremos cima = +
+  }
+  reset(){ this.pointerId = null; this.base.classList.remove('on'); this._set(0,0); }
+}
+
+let onTouchUsed = null;
+
 class Input {
   constructor(){
     this.keys = Object.create(null);
@@ -3183,7 +3338,59 @@ class Input {
     this.hadGamepad = false;
     this.mouseSteer = CONFIG.input.mouseSteer;
     this.mPitch = 0; this.mRoll = 0;
+    this.touchOn = false;
+    this.tLeft = null; this.tRight = null;
+    this.tTurbo = false;
     this._bind();
+    this._bindTouch();
+  }
+
+  /** Monta os analógicos virtuais e os botões da UI de toque. */
+  _bindTouch(){
+    const $ = id=>document.getElementById(id);
+    this.tui = $('tui');
+    this.tLeft  = new TouchStick($('tz-left'),  $('tb-left'));
+    this.tRight = new TouchStick($('tz-right'), $('tb-right'));
+
+    // esconde as dicas de repouso depois do primeiro toque
+    onTouchUsed = ()=> this.tui.classList.add('hide-hints');
+
+    const hold = (el, on, off)=>{
+      el.addEventListener('pointerdown', e=>{ e.preventDefault(); el.classList.add('on'); on(); });
+      const end = e=>{ e.preventDefault(); el.classList.remove('on'); if (off) off(); };
+      el.addEventListener('pointerup', end);
+      el.addEventListener('pointercancel', end);
+      el.addEventListener('pointerleave', end);
+    };
+    const tap = (el, fn)=>{
+      el.addEventListener('pointerdown', e=>{ e.preventDefault(); fn(); });
+    };
+
+    // TURBO é ALTERNÁVEL no toque, não "segurar": com os dois polegares nos
+    // analógicos não sobra dedo para manter um botão pressionado.
+    const turboEl = $('tb-turbo');
+    tap(turboEl, ()=>{
+      this.tTurbo = !this.tTurbo;
+      turboEl.classList.toggle('on', this.tTurbo);
+      toast(this.tTurbo ? 'TURBO LIGADO' : 'TURBO DESLIGADO');
+    });
+    tap($('tb-mode'),  ()=>{ togglePhysMode(); $('tb-mode').textContent = phys.mode.toUpperCase(); });
+    tap($('tb-cam'),   ()=> toggleCamMode());
+    tap($('tb-reset'), ()=> respawn());
+    tap($('tb-menu'),  ()=> togglePause());
+    tap($('tb-full'),  ()=>{
+      const d = document.documentElement;
+      if (!document.fullscreenElement) (d.requestFullscreen || d.webkitRequestFullscreen)?.call(d);
+      else (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+    });
+  }
+
+  /** Liga/desliga a UI de toque (e avisa o HUD para não colidir com os sticks). */
+  setTouch(on){
+    this.touchOn = on;
+    this.tui.classList.toggle('on', on);
+    if (!on){ this.tLeft.reset(); this.tRight.reset(); this.tTurbo = false; }
+    if (hud) hud.setTouchLayout(on);
   }
   _bind(){
     addEventListener('keydown', e=>{
@@ -3255,14 +3462,26 @@ class Input {
       this.viewDX = this.mouseDX; this.viewDY = this.mouseDY;
     }
 
-    /* ---- gamepad (Mode 2): L=throttle+yaw, R=pitch+roll ---- */
+    /* ---- gamepad ----
+       ARCADE (padrão): analógico ESQUERDO move o drone (frente/trás e
+         esquerda/direita), analógico DIREITO controla altura (cima/baixo) e
+         giro (esquerda/direita). É o layout de jogo de console.
+       MODE 2: layout de rádio de FPV — esquerdo = throttle+yaw,
+         direito = pitch+roll. */
     let gThr=0,gYaw=0,gPit=0,gRol=0, gTurbo=false, gSlow=false, hasGp=false;
     const pads = navigator.getGamepads ? navigator.getGamepads() : [];
     for (const gp of pads){
       if (!gp || !gp.connected) continue;
       hasGp = true;
-      gThr = -gp.axes[1]; gYaw = gp.axes[0];
-      gPit = -(gp.axes[3] ?? 0); gRol = gp.axes[2] ?? 0;
+      const lx = gp.axes[0] ?? 0, ly = gp.axes[1] ?? 0;
+      const rx = gp.axes[2] ?? 0, ry = gp.axes[3] ?? 0;
+      if (CONFIG.input.gamepadLayout === 'mode2'){
+        gThr = -ly; gYaw = lx;
+        gPit = -ry; gRol = rx;
+      } else {
+        gPit = -ly; gRol = lx;     // esquerdo: frente/trás e lados
+        gThr = -ry; gYaw = rx;     // direito: sobe/desce e gira
+      }
       gTurbo = (gp.buttons[7]?.value ?? 0) > 0.3 || (gp.buttons[5]?.pressed ?? false);
       gSlow  = (gp.buttons[6]?.value ?? 0) > 0.3 || (gp.buttons[4]?.pressed ?? false);
       // botões: A=modo de voo, B=reset, X=câmera
@@ -3276,14 +3495,23 @@ class Input {
     }
     if (hasGp && !this.hadGamepad){ this.hadGamepad = true; }
 
+    /* ---- toque: mesmo layout do gamepad ARCADE ----
+       esquerdo = frente/trás + lados, direito = sobe/desce + gira */
+    let tThr=0, tYaw=0, tPit=0, tRol=0;
+    if (this.touchOn){
+      const ts = CONFIG.input.touchSens;
+      tPit = this.tLeft.y  * ts; tRol = this.tLeft.x  * ts;
+      tThr = this.tRight.y * ts; tYaw = this.tRight.x * ts;
+    }
+
     /* ---- mistura ---- */
     const inv = CONFIG.input.invertPitch ? -1 : 1;
-    this.stick.throttle = clamp(this._shape(this.raw.throttle) + this._shape(gThr), -1, 1);
-    this.stick.yaw      = clamp(this._shape(this.raw.yaw)      + this._shape(gYaw), -1, 1);
-    this.stick.pitch    = clamp((this._shape(this.raw.pitch) + this._shape(gPit) + this.mPitch) * inv, -1, 1);
-    this.stick.roll     = clamp(this._shape(this.raw.roll)  + this._shape(gRol) + this.mRoll, -1, 1);
+    this.stick.throttle = clamp(this._shape(this.raw.throttle) + this._shape(gThr) + this._shape(tThr), -1, 1);
+    this.stick.yaw      = clamp(this._shape(this.raw.yaw)      + this._shape(gYaw) + this._shape(tYaw), -1, 1);
+    this.stick.pitch    = clamp((this._shape(this.raw.pitch) + this._shape(gPit) + this._shape(tPit) + this.mPitch) * inv, -1, 1);
+    this.stick.roll     = clamp(this._shape(this.raw.roll)  + this._shape(gRol) + this._shape(tRol) + this.mRoll, -1, 1);
 
-    this.turbo  = !!K['ShiftLeft'] || !!K['ShiftRight'] || gTurbo;
+    this.turbo  = !!K['ShiftLeft'] || !!K['ShiftRight'] || gTurbo || this.tTurbo;
     this.slowmo = !!K['KeyF'] || gSlow;
 
     this.mouseDX = 0; this.mouseDY = 0;
@@ -3378,11 +3606,26 @@ class HUD {
     this.c = canvas;
     this.ctx = canvas.getContext('2d');
     this.visible = true;
+    this.padBottom = 0;      // espaço reservado para os analógicos de toque
+    this.mapR = 108;         // raio do minimapa (encolhe em tela pequena)
     this.dpr = Math.min(devicePixelRatio, 2);
     this.resize();
   }
+  /** Com os analógicos na tela, os blocos de baixo sobem para não ficar embaixo do polegar. */
+  setTouchLayout(on){ this.touchLayout = on; this.resize(); }
+
   resize(){
     this.dpr = Math.min(devicePixelRatio, 2);
+    // Em tela baixa (celular deitado tem ~390 px de altura) as fitas verticais
+    // invadiam o bloco de telemetria. No modo compacto elas encurtam, a bússola
+    // desce para não ficar sob os botões de toque e o minimapa diminui.
+    this.compact   = Math.min(innerWidth, innerHeight) < 560 || innerWidth < 820;
+    this.mapR      = this.compact ? 56 : 108;
+    this.tapeH     = this.compact ? 120 : 190;
+    this.compassY  = this.compact ? 96 : 42;
+    // os analógicos são flutuantes (nascem sob o dedo), então não precisam de
+    // espaço reservado — só empurramos o HUD quando não estamos no compacto.
+    this.padBottom = (this.touchLayout && !this.compact) ? 120 : 0;
     this.c.width  = Math.floor(innerWidth*this.dpr);
     this.c.height = Math.floor(innerHeight*this.dpr);
     this.c.style.width = innerWidth+'px';
@@ -3440,7 +3683,7 @@ class HUD {
 
     /* ---------- Fita de bússola (topo) ---------- */
     const cw = Math.min(460, W*0.5);
-    const cyTop = 42;
+    const cyTop = this.compassY;
     ctx.save();
     ctx.beginPath(); ctx.rect(cx-cw/2, cyTop-16, cw, 32); ctx.clip();
     ctx.strokeStyle = DIM; ctx.fillStyle = OSD;
@@ -3469,12 +3712,12 @@ class HUD {
     ctx.fillText(String(Math.round(hdg)).padStart(3,'0')+'°', cx, cyTop+26);
 
     /* ---------- Fita de velocidade (esquerda) ---------- */
-    this._tape(ctx, 70, H/2, s.speedKmh, 'KM/H', -1);
+    this._tape(ctx, 70, H/2, s.speedKmh, 'KM/H', -1, this.tapeH);
     /* ---------- Fita de altitude AGL (direita) ---------- */
-    this._tape(ctx, W-70, H/2, s.agl, 'AGL m', 1);
+    this._tape(ctx, W-70, H/2, s.agl, 'AGL m', 1, this.tapeH);
 
     /* ---------- Bloco inferior esquerdo: modo, bateria, corrente, RSSI ---------- */
-    const bx = 26, by = H-26;
+    const bx = 26, by = H - 26 - this.padBottom;
     ctx.textAlign='left';
     ctx.font='700 17px Consolas, monospace';
     ctx.fillStyle = s.mode==='acro' ? 'rgba(255,176,58,1)' : 'rgba(93,255,155,1)';
@@ -3533,14 +3776,14 @@ class HUD {
     });
 
     /* ---------- Minimapa ---------- */
-    this._minimap(ctx, W-136, 66, 108, s);
+    this._minimap(ctx, W - this.mapR - 28, this.mapR + 14, this.mapR, s);
 
     ctx.restore();
   }
 
   /** Fita vertical de valor (velocidade / altitude) */
-  _tape(ctx, x, y, value, label, side){
-    const h = 190, step = 10, pxPer = 3.6;
+  _tape(ctx, x, y, value, label, side, h = 190){
+    const step = 10, pxPer = 3.6;
     ctx.save();
     ctx.beginPath(); ctx.rect(x-46, y-h/2, 92, h); ctx.clip();
     ctx.strokeStyle='rgba(216,245,255,0.32)';
@@ -3686,7 +3929,24 @@ function respawn(){
 function togglePhysMode(){
   phys.mode = phys.mode === 'sport' ? 'acro' : 'sport';
   if (phys.mode === 'acro') phys.throttle = clamp(phys.throttle, phys.hoverThrottle, 1);
+  const b = document.getElementById('tb-mode');
+  if (b) b.textContent = phys.mode.toUpperCase();
   toast('MODO ' + phys.mode.toUpperCase());
+}
+
+/* ---------- Detecção de dispositivo de toque ---------- */
+const Device = {
+  hasTouch: (('ontouchstart' in window) || navigator.maxTouchPoints > 0),
+  // ponteiro "grosso" = dedo. Um laptop com tela de toque tem touch mas ponteiro fino,
+  // então não faz sentido baixar a qualidade nem forçar os analógicos nele.
+  coarse: matchMedia('(pointer: coarse)').matches,
+};
+
+/** Aviso de "gire o aparelho": só em celular de verdade e em retrato. */
+function checkOrientation(){
+  const el = document.getElementById('rotate');
+  const portrait = innerHeight > innerWidth;
+  el.classList.toggle('on', Device.coarse && portrait);
 }
 function toggleCamMode(){
   chaseCam.mode = chaseCam.mode === 'chase' ? 'orbit' : 'chase';
@@ -3847,6 +4107,8 @@ function readMenu(){
   CONFIG.gfx.motionOn        = $('opt-motion').checked;
   CONFIG.gfx.speedLinesOn    = $('opt-speed').checked;
   CONFIG.day.auto            = $('opt-auto').checked;
+  CONFIG.input.gamepadLayout = $('opt-pad').value;
+  if (input) input.setTouch($('opt-touch').checked);
   syncPostUniforms();
 }
 
@@ -3911,6 +4173,8 @@ function wireMenu(){
   $('opt-godrays').addEventListener('change', e=>{ CONFIG.gfx.godraysOn = e.target.checked; rebuild(); });
   $('opt-motion').addEventListener('change',  e=>{ CONFIG.gfx.motionOn = e.target.checked; rebuild(); });
   $('opt-speed').addEventListener('change',   e=>{ CONFIG.gfx.speedLinesOn = e.target.checked; });
+  $('opt-pad').addEventListener('change',     e=>{ CONFIG.input.gamepadLayout = e.target.value; });
+  $('opt-touch').addEventListener('change',   e=>{ input.setTouch(e.target.checked); });
   // densidade/distância da vegetação reconstroem as células em cache
   const vegApply = ()=>{
     if (!scatter) return;
@@ -3950,8 +4214,10 @@ function onResize(){
   if (gradePass) gradePass.uniforms.uAspect.value = w/h;
   if (starPoints) starPoints.material.uniforms.uPR.value = renderer.getPixelRatio();
   if (hud) hud.resize();
+  checkOrientation();
 }
 addEventListener('resize', onResize);
+addEventListener('orientationchange', ()=> setTimeout(onResize, 120));
 
 /* ==================================================================================
   18) GAME LOOP — fixed timestep + render interpolado
@@ -4279,6 +4545,20 @@ async function boot(){
     SunBaker.reset();          // marca a direção já assada, evita re-bake imediato
 
     wireMenu();
+
+    // Em aparelho de toque os analógicos entram ligados; num celular de verdade
+    // (ponteiro grosso) o preset também cai para Baixo, que é o único sem os
+    // passes de profundidade e sem vegetação pesada.
+    if (Device.hasTouch){
+      document.getElementById('opt-touch').checked = true;
+      input.setTouch(true);
+      document.getElementById('tb-mode').textContent = phys.mode.toUpperCase();
+    }
+    if (Device.coarse){
+      document.getElementById('opt-quality').value = 'low';
+      applyQuality('low');
+      toast('MODO CELULAR — PRESET BAIXO', 3.0);
+    }
     onResize();
 
     document.getElementById('loading').style.display = 'none';
