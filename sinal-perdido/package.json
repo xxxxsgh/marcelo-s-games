@@ -1,0 +1,20 @@
+{
+  "name": "sinal-perdido",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SINAL PERDIDO — shooter 2D de visao de cima. Voce cai num planeta desconhecido e precisa reerguer a nave antes que o ninho acorde. Canvas 2D + Vite, zero dependencia em runtime.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4174",
+    "smoke": "node tools/smoke.mjs",
+    "sim": "node tools/simtest.mjs",
+    "shots": "node tools/shot.mjs",
+    "deploy": "BASE_PATH=/marcelo-s-games/ vite build"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1",
+    "vite": "^7.1.0"
+  }
+}
