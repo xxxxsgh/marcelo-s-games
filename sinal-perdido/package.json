@@ -11,7 +11,8 @@
     "smoke": "node tools/smoke.mjs",
     "sim": "node tools/simtest.mjs",
     "shots": "node tools/shot.mjs",
-    "deploy": "BASE_PATH=/marcelo-s-games/ vite build"
+    "deploy": "BASE_PATH=/marcelo-s-games/ vite build",
+    "unico": "node tools/arquivo-unico.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.1",

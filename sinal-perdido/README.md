@@ -16,6 +16,7 @@ npm run preview    # serve o dist
 npm run smoke      # joga sozinho num Chromium e falha se algo quebrar
 npm run sim        # roda so a simulacao no Node (sem navegador), minutos de partida em segundos
 npm run shots      # capturas encenadas em shots/ (dia, noite, ninho, rainha)
+npm run unico      # empacota tudo num HTML unico jogavel por file:// e testa o resultado
 ```
 
 ---
@@ -120,6 +121,7 @@ tools/
   smoke.mjs          joga sozinho num Chromium e falha se algo quebrar
   simtest.mjs        simulacao pura em Node, sem canvas: 180 s de cerco em 1,6 s
   shot.mjs           capturas encenadas pra revisar arte
+  arquivo-unico.mjs  gera um HTML autocontido (96 KB) e prova que ele roda em file://
 ```
 
 Decisoes tecnicas e o porque de cada uma: [`DECISOES.md`](DECISOES.md).
