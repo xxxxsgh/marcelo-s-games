@@ -245,6 +245,7 @@
         <div class="row"><label>Deadzone</label><input id="opt-dead" type="range" min="0" max="0.3" step="0.01" value="0.06"></div>
         <div class="row"><label>Inverter pitch</label><input id="opt-invp" type="checkbox"></div>
         <div class="row"><label>Bateria infinita</label><input id="opt-batt" type="checkbox" checked></div>
+        <div class="row"><label>Evento do teto</label><input id="opt-heaven" type="checkbox" checked></div>
         <div class="row"><label>Gamepad</label>
           <select id="opt-pad">
             <option value="arcade" selected>Arcade</option>
@@ -324,6 +325,7 @@ const CONFIG = {
     waterLevel:      0,         // altitude do mar/lago (m)
     shadowMaskRes:   512,       // resolução da máscara de sombra solar analítica do terreno
     ceiling:         900,       // teto de voo — acima disso a névoa fecha e há aviso
+    heavenAt:       1010,       // acima disso... Ele desce. (easter egg do teto)
   },
 
   /* ---------- TERRENO / LOD ---------- */
@@ -500,6 +502,7 @@ const CONFIG = {
   /* ---------- GAMEPLAY ---------- */
   game: {
     mode:            'free',
+    heavenEvent:     true,      // easter egg: passar do teto termina com "foi com Deus"
     infiniteBattery: true,
     slowmoScale:     0.22,
     respawnHeight:   45,
@@ -785,6 +788,7 @@ const GradeShader = {
     uFlare:     { value: CONFIG.gfx.lensFlare },
     uAspect:    { value: 1 },
     uSpeed:     { value: 0 },     // 0..1 — intensidade das speed lines
+    uFlash:     { value: 0 },     // 0..1 — clarão branco (evento do teto)
   },
   vertexShader: /* glsl */`
     varying vec2 vUv;
@@ -792,7 +796,7 @@ const GradeShader = {
   `,
   fragmentShader: /* glsl */`
     uniform sampler2D tDiffuse;
-    uniform float uTime, uVignette, uChroma, uGrain, uSunVis, uFlare, uAspect, uSpeed;
+    uniform float uTime, uVignette, uChroma, uGrain, uSunVis, uFlare, uAspect, uSpeed, uFlash;
     uniform vec2  uSunScreen;
     uniform vec3  uSunColor;
     varying vec2 vUv;
@@ -865,6 +869,9 @@ const GradeShader = {
       // grão de filme fino, animado
       float g = hash12(uv * vec2(1920.0, 1080.0) + fract(uTime)*137.0) - 0.5;
       col += g * uGrain * (0.35 + 0.65*(1.0 - dot(col, vec3(0.333))));
+
+      // clarão (a luz que recolhe o drone)
+      col = mix(col, vec3(1.0, 0.98, 0.92), uFlash);
 
       gl_FragColor = vec4(col, 1.0);
     }
@@ -2901,6 +2908,7 @@ class DronePhysics {
     this.windTime  = 0;
     this.wind      = new THREE.Vector3();
     this.turbo     = false;
+    this.frozen    = false;         // congelado durante cutscenes
     this.hoverThrottle = 1/P.twr;
     this._up   = new THREE.Vector3();
     this._fwd  = new THREE.Vector3();
@@ -2943,6 +2951,14 @@ class DronePhysics {
     const P = CONFIG.physics;
     this.prevPos.copy(this.pos);
     this.prevQuat.copy(this.quat);
+
+    // congelado durante uma cutscene: o drone fica pairando, sem controle
+    if (this.frozen){
+      this.vel.multiplyScalar(1 - 3.0*dt);
+      this.angVel.multiplyScalar(1 - 2.0*dt);
+      this.motorOut[0]=this.motorOut[1]=this.motorOut[2]=this.motorOut[3]=0.18;
+      return;
+    }
 
     /* ---------- Vento com ruído Perlin variando no tempo e na altitude ---------- */
     this.windTime += dt;
@@ -3079,10 +3095,14 @@ class DronePhysics {
     this._integrateRotation(dt);
     this._collide(dt);
 
-    // teto: freia suavemente (sem parede invisível)
+    // Teto: o ar rarefeito segura a subida, mas não é parede — dá para insistir.
     if (this.pos.y > CONFIG.world.ceiling){
       const over = this.pos.y - CONFIG.world.ceiling;
-      this.vel.y -= over*0.55*dt*8;
+      this.vel.y -= over*0.06*dt*8;
+    }
+    // E quem insiste demais encontra o dono do espaço aéreo.
+    if (CONFIG.game.heavenEvent && this.pos.y > CONFIG.world.heavenAt && !Heaven.active){
+      Heaven.trigger(this);
     }
   }
 
@@ -3162,6 +3182,8 @@ class ChaseCamera {
     this._tmp = new THREE.Vector3();
     this._tmp2 = new THREE.Vector3();
     this.dist = CONFIG.camera.distance;
+    this.cineFocus = null;    // ponto a enquadrar durante uma cutscene
+    this.cineDist  = 0;
   }
 
   addShake(v){ this.shake = Math.min(2.5, this.shake + v); }
@@ -3170,9 +3192,13 @@ class ChaseCamera {
     const C = CONFIG.camera;
     this.t += dt;
 
+    // Numa cutscene a câmera passa a orbitar o ponto de interesse por conta própria.
+    const cine = this.cineFocus;
+    if (cine) this.orbitYaw += dt*0.28;
+
     /* ---- direção base do braço da câmera ---- */
     let armDir = this._tmp;
-    if (this.mode === 'orbit' || this.orbiting){
+    if (cine || this.mode === 'orbit' || this.orbiting){
       const cp = Math.cos(this.orbitPitch), sp = Math.sin(this.orbitPitch);
       armDir.set(Math.sin(this.orbitYaw)*cp, sp, Math.cos(this.orbitYaw)*cp);
     } else {
@@ -3190,16 +3216,17 @@ class ChaseCamera {
     }
 
     /* ---- posição desejada (spring arm) ---- */
-    let dist = this.dist;
-    const desired = this._desired.copy(dPos).addScaledVector(armDir, dist);
+    const anchor = cine || dPos;                    // o que a câmera acompanha
+    let dist = cine ? this.cineDist : this.dist;
+    const desired = this._desired.copy(anchor).addScaledVector(armDir, dist);
     desired.y += C.height;
 
     /* ---- colisão de câmera contra o terreno (marcha ao longo do braço) ---- */
     const steps = 8;
     for (let i=1;i<=steps;i++){
       const t = i/steps;
-      const px = lerp(dPos.x, desired.x, t), pz = lerp(dPos.z, desired.z, t);
-      const py = lerp(dPos.y + C.height*0.4, desired.y, t);
+      const px = lerp(anchor.x, desired.x, t), pz = lerp(anchor.z, desired.z, t);
+      const py = lerp(anchor.y + C.height*0.4, desired.y, t);
       const h = Math.max(sampleHeight(px,pz), CONFIG.world.waterLevel) + C.collisionPad;
       if (py < h){
         // aproxima suavemente em vez de atravessar
@@ -3232,12 +3259,13 @@ class ChaseCamera {
     }
 
     /* ---- alvo com leve antecipação na direção do movimento ---- */
-    const look = this._tmp.copy(dPos).addScaledVector(dVel, 0.09);
+    const look = this._tmp.copy(anchor);
+    if (!cine) look.addScaledVector(dVel, 0.09);
     look.y += 0.25;
-    this.smoothLook.lerp(look, dmp(C.rotLag, dt));
+    this.smoothLook.lerp(look, dmp(cine ? 2.4 : C.rotLag, dt));
 
     /* ---- FOV dinâmico com a velocidade ---- */
-    const spd = dVel.length();
+    const spd = cine ? 0 : dVel.length();
     const tgtFov = lerp(C.fovMin, C.fovMax, smooth(4, C.fovSpeed, spd));
     this.curFov = lerp(this.curFov, tgtFov, dmp(3.5, dt));
 
@@ -3599,6 +3627,265 @@ class Particles {
 }
 
 /* ==================================================================================
+  12B) EVENTO DO TETO — "FOI COM DEUS"
+       Passar do teto de voo não bate numa parede invisível: aparece Ele,
+       o drone é recolhido e você volta ao ponto de partida.
+   ================================================================================== */
+
+/** Personagem construído com geometria primitiva, no mesmo estilo do resto do jogo. */
+function buildJesus(){
+  const g = new THREE.Group();
+  const H = 6.2;                                    // altura total, em metros
+
+  const matRobe = new THREE.MeshStandardMaterial({
+    color: 0xdccdaa, roughness: 0.76, metalness: 0.0,
+    emissive: 0xffe6ac, emissiveIntensity: 0.03 });
+  const matSash = new THREE.MeshStandardMaterial({
+    color: 0xb03a2e, roughness: 0.66, emissive: 0x612018, emissiveIntensity: 0.08 });
+  const matSkin = new THREE.MeshStandardMaterial({ color: 0xdcae86, roughness: 0.62 });
+  const matHair = new THREE.MeshStandardMaterial({ color: 0x3b2517, roughness: 0.88 });
+  const matGold = new THREE.MeshBasicMaterial({ color: 0xffd97a, toneMapped: false });
+
+  /* Proporções humanas (cabeça ≈ 1/7,5 da altura), em frações de H:
+       saia da túnica  0.00 → 0.56      tronco 0.56 → 0.80
+       ombros          0.775            cabeça centro 0.865
+     Sem o tronco, a cabeça ficava boiando sobre um cone. */
+  const yHem = 0.00, yWaist = 0.56, ySh = 0.775, yHead = 0.865;
+
+  // ---- saia da túnica ----
+  const skirt = new THREE.Mesh(
+    new THREE.CylinderGeometry(H*0.170, H*0.300, H*(yWaist-yHem), 24, 4), matRobe);
+  skirt.position.y = H*(yHem + (yWaist-yHem)/2);
+  g.add(skirt);
+  // dobras do tecido
+  for (let i=0;i<3;i++){
+    const t = 0.22 + i*0.24;
+    const r = lerp(H*0.300, H*0.170, t) * 1.014;
+    const fold = new THREE.Mesh(new THREE.TorusGeometry(r, H*0.006, 6, 24), matRobe);
+    fold.rotation.x = Math.PI/2;
+    fold.position.y = H*(yWaist*t);
+    g.add(fold);
+  }
+
+  // ---- tronco ----
+  const torso = new THREE.Mesh(
+    new THREE.CylinderGeometry(H*0.120, H*0.172, H*(ySh-yWaist+0.03), 20, 2), matRobe);
+  torso.position.y = H*(yWaist + (ySh-yWaist)/2);
+  g.add(torso);
+  // faixa vermelha na cintura
+  const sash = new THREE.Mesh(new THREE.TorusGeometry(H*0.171, H*0.020, 8, 24), matSash);
+  sash.rotation.x = Math.PI/2; sash.position.y = H*yWaist;
+  g.add(sash);
+  // ombros: esfera achatada fecha a silhueta no alto do tronco
+  const shoulders = new THREE.Mesh(new THREE.SphereGeometry(H*0.125, 20, 12), matRobe);
+  shoulders.scale.set(1.0, 0.52, 0.82);
+  shoulders.position.y = H*ySh;
+  g.add(shoulders);
+
+  // ---- pescoço, cabeça, cabelo, barba ----
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(H*0.030, H*0.036, H*0.045, 10), matSkin);
+  neck.position.y = H*(ySh + 0.022); g.add(neck);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(H*0.068, 20, 16), matSkin);
+  head.position.y = H*yHead; g.add(head);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(H*0.076, 20, 16), matHair);
+  hair.position.set(0, H*(yHead + 0.008), -H*0.010);
+  hair.scale.set(1.0, 1.12, 1.0); g.add(hair);
+  // cabelo aberto na frente: o rosto aparece por cima dele
+  const face = new THREE.Mesh(new THREE.SphereGeometry(H*0.066, 18, 14), matSkin);
+  face.position.set(0, H*yHead, H*0.014);
+  face.scale.set(0.92, 0.98, 0.92); g.add(face);
+  const beard = new THREE.Mesh(new THREE.SphereGeometry(H*0.045, 16, 12), matHair);
+  beard.position.set(0, H*(yHead - 0.036), H*0.020);
+  beard.scale.set(0.86, 1.30, 0.78); g.add(beard);
+
+  /* ---- braços abertos, em acolhimento ----
+     Uma cápsula nasce alinhada ao eixo +Y; girando θ em Z, o +Y vai para
+     (−sinθ, cosθ). Resolvemos θ para o vetor ombro→mão de cada lado. */
+  for (const side of [-1, 1]){
+    const sx = side*H*0.115, sy = H*(ySh - 0.012);   // ombro
+    const hx = side*H*0.340, hy = H*(ySh - 0.090);   // mão
+    const dx = hx - sx, dy = hy - sy;
+    const len = Math.hypot(dx, dy);
+    const ang = Math.atan2(-dx, dy);
+    const arm = new THREE.Mesh(
+      new THREE.CapsuleGeometry(H*0.032, Math.max(0.01, len - H*0.064), 6, 12), matRobe);
+    arm.position.set((sx+hx)/2, (sy+hy)/2, 0);
+    arm.rotation.z = ang;
+    g.add(arm);
+    // manga: cápsula mais grossa cobrindo o terço do ombro
+    const sleeve = new THREE.Mesh(
+      new THREE.CapsuleGeometry(H*0.052, len*0.34, 6, 12), matRobe);
+    sleeve.position.set(sx + dx*0.22, sy + dy*0.22, 0);
+    sleeve.rotation.z = ang;
+    g.add(sleeve);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(H*0.030, 12, 10), matSkin);
+    hand.position.set(hx, hy, 0);
+    g.add(hand);
+  }
+
+  // ---- auréola ----
+  const halo = new THREE.Mesh(new THREE.TorusGeometry(H*0.108, H*0.016, 10, 36), matGold);
+  halo.rotation.x = Math.PI*0.5 - 0.30;
+  halo.position.y = H*(yHead + 0.082);
+  g.add(halo);
+
+  // ---- brilho e raios ----
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: makeSoftDot(128), color: 0xffe9b8, transparent: true, opacity: 0.32,
+    depthWrite: false, blending: THREE.AdditiveBlending }));
+  glow.scale.setScalar(H*0.85); glow.position.y = H*0.45;
+  g.add(glow);
+
+  // aura externa, bem difusa
+  const rays = new THREE.Group();                    // (mantido: o loop gira a auréola)
+  const aura = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: makeSoftDot(128), color: 0xffdca0, transparent: true, opacity: 0.13,
+    depthWrite: false, blending: THREE.AdditiveBlending }));
+  aura.scale.setScalar(H*2.1); aura.position.y = H*0.52;
+  g.add(aura);
+  g.add(rays);
+
+  const light = new THREE.PointLight(0xffe0a0, 0, 45, 2);
+  light.position.y = -H*0.18;
+  g.add(light);
+
+  g.traverse(o=>{ if (o.isMesh) o.castShadow = false; });
+  g.visible = false;
+  g.userData = { rays, glow, aura, light, halo, H };
+  return g;
+}
+
+/**
+ * Máquina de estados da cutscene. Fases:
+ *   1 aparição  → 2 o feixe recolhe o drone → 3 recado na tela → respawn
+ */
+const Heaven = {
+  active: false, phase: 0, t: 0, mesh: null, beam: null,
+  dronePos: new THREE.Vector3(), focus: new THREE.Vector3(), flash: 0,
+
+  init(scene){
+    this.mesh = buildJesus();
+    scene.add(this.mesh);
+    // feixe de luz que desce até o drone
+    const bg = new THREE.CylinderGeometry(0.6, 0.18, 1, 16, 1, true);
+    bg.translate(0, -0.5, 0);                        // pivô no topo, cresce para baixo
+    this.beam = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({
+      color: 0xfff2cf, transparent: true, opacity: 0, depthWrite: false,
+      blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false }));
+    this.beam.visible = false;
+    scene.add(this.beam);
+  },
+
+  trigger(physics){
+    if (this.active) return;
+    this.active = true; this.phase = 1; this.t = 0; this.flash = 0;
+    this.dronePos.copy(physics.pos);
+    physics.frozen = true;                           // o drone para no ar, aguardando
+    physics.vel.multiplyScalar(0.05);
+
+    this.mesh.visible = true;
+    this.mesh.position.copy(this.dronePos).add(new THREE.Vector3(0, 34, 0));
+    this.mesh.userData.light.intensity = 0;
+    this.mesh.scale.setScalar(1);
+
+    // a câmera abre e passa a orbitar a cena inteira
+    chaseCam.cineFocus = this.focus;
+    chaseCam.cineDist = 11.5;
+    chaseCam.orbitPitch = 0.16;
+    toast('VOCÊ PASSOU DO TETO…', 2.2);
+  },
+
+  end(){
+    this.active = false; this.phase = 0;
+    this.mesh.visible = false;
+    if (drone) drone.root.visible = true;
+    this.beam.visible = false;
+    this.flash = 0;
+    chaseCam.cineFocus = null;
+    chaseCam.cineDist = 0;
+    phys.frozen = false;
+    if (hud) hud.bigMsg = null;
+    respawn();
+  },
+
+  update(dt){
+    if (!this.active) return;
+    this.t += dt;
+    const u = this.mesh.userData;
+    // auréola e raios giram sempre
+    u.rays.rotation.y += dt*0.35;
+    u.halo.rotation.z += dt*0.6;
+
+    /* ---- fase 1: a descida ---- */
+    if (this.phase === 1){
+      const k = clamp(this.t/2.6, 0, 1);
+      const ease = 1 - Math.pow(1-k, 3);
+      const y = lerp(30, 7.2, ease);
+      this.mesh.position.copy(this.dronePos).add(new THREE.Vector3(0, y, 0));
+      u.light.intensity = ease * 22;
+      u.glow.material.opacity = 0.05 + ease*0.10;
+      u.aura.material.opacity = 0.04 + ease*0.09;
+      this.focus.copy(this.dronePos).add(new THREE.Vector3(0, y*0.45 + 1.2, 0));
+      // sempre de frente para a câmera
+      this.mesh.lookAt(camera.position.x, this.mesh.position.y, camera.position.z);
+      if (this.t > 2.9){ this.phase = 2; this.t = 0; }
+      return;
+    }
+
+    /* ---- fase 2: o feixe recolhe o drone ---- */
+    if (this.phase === 2){
+      this.mesh.lookAt(camera.position.x, this.mesh.position.y, camera.position.z);
+      const top = this.mesh.position.y - 1.0;
+      const len = Math.max(0.1, top - this.dronePos.y);
+      this.beam.visible = true;
+      this.beam.position.set(this.dronePos.x, top, this.dronePos.z);
+      this.beam.scale.set(1, len, 1);
+      this.beam.material.opacity = clamp(this.t*3.2, 0, 0.85) * (0.75 + 0.25*Math.sin(this.t*30));
+
+      if (this.t > 0.45 && !this._boom){
+        this._boom = true;
+        this.flash = 0.62;
+        // o drone se desfaz em faíscas e fumaça, subindo pelo feixe
+        const q = CONFIG.quality[state.quality].particles;
+        const n = Math.floor(90*Math.max(q, 0.5));
+        for (let i=0;i<n;i++){
+          const a = Math.random()*TAU, r = Math.random()*0.5;
+          const up = 3 + Math.random()*9;
+          if (i%3===0) particles.spawn(
+            this.dronePos.x+Math.cos(a)*r, this.dronePos.y, this.dronePos.z+Math.sin(a)*r,
+            Math.cos(a)*2.2, up, Math.sin(a)*2.2,
+            0.10+Math.random()*0.12, 0.9+Math.random()*0.7, 1.0, 0.86, 0.45);
+          else particles.spawn(
+            this.dronePos.x+Math.cos(a)*r, this.dronePos.y, this.dronePos.z+Math.sin(a)*r,
+            Math.cos(a)*1.1, up*0.5, Math.sin(a)*1.1,
+            0.30+Math.random()*0.5, 1.6+Math.random(), 0.95, 0.93, 0.88);
+        }
+        drone.root.visible = false;
+        chaseCam.addShake(1.1);
+      }
+      this.focus.copy(this.dronePos).add(new THREE.Vector3(0, 5.2, 0));
+      if (this.t > 1.5){ this.phase = 3; this.t = 0; this._boom = false; }
+      return;
+    }
+
+    /* ---- fase 3: o recado ---- */
+    if (this.phase === 3){
+      this.mesh.lookAt(camera.position.x, this.mesh.position.y, camera.position.z);
+      this.beam.material.opacity = Math.max(0, this.beam.material.opacity - dt*1.6);
+      // sobe de volta, desaparecendo
+      this.mesh.position.y += dt*2.4;
+      u.glow.material.opacity = Math.max(0, u.glow.material.opacity - dt*0.16);
+      u.aura.material.opacity = Math.max(0, u.aura.material.opacity - dt*0.14);
+      u.light.intensity = Math.max(0, u.light.intensity - dt*15);
+      this.focus.copy(this.dronePos).add(new THREE.Vector3(0, 6.5, 0));
+      if (hud) hud.bigMsg = { text:'FOI COM DEUS', sub:'O TETO É DELE', alpha: clamp(this.t*2.2, 0, 1) };
+      if (this.t > 2.8){ drone.root.visible = true; this.end(); }
+      return;
+    }
+  }
+};
+
+/* ==================================================================================
   13) HUD — OSD estilo FPV desenhado em Canvas 2D
    ================================================================================== */
 class HUD {
@@ -3775,6 +4062,20 @@ class HUD {
       ctx.fillText(w[0], cx, H*0.30 + i*22);
     });
 
+    /* ---------- Mensagem grande (eventos) ---------- */
+    if (this.bigMsg){
+      const a = this.bigMsg.alpha;
+      ctx.textAlign = 'center';
+      ctx.font = `700 ${this.compact ? 30 : 44}px Consolas, ui-monospace, monospace`;
+      ctx.fillStyle = `rgba(255,235,180,${a})`;
+      ctx.shadowColor = 'rgba(255,200,90,0.85)'; ctx.shadowBlur = 26;
+      ctx.fillText(this.bigMsg.text, cx, H*0.40);
+      ctx.shadowBlur = 0;
+      ctx.font = `600 ${this.compact ? 12 : 15}px Consolas, monospace`;
+      ctx.fillStyle = `rgba(216,245,255,${a*0.8})`;
+      ctx.fillText(this.bigMsg.sub, cx, H*0.40 + (this.compact ? 26 : 34));
+    }
+
     /* ---------- Minimapa ---------- */
     this._minimap(ctx, W - this.mapR - 28, this.mapR + 14, this.mapR, s);
 
@@ -3919,6 +4220,7 @@ function onCrash(speed, pos, normal){
 }
 
 function respawn(){
+  if (Heaven.active) return;        // durante a cutscene o respawn é dela
   const p = phys.spawn.clone();
   p.y = Math.max(sampleHeight(p.x,p.z), CONFIG.world.waterLevel) + CONFIG.game.respawnHeight;
   phys.reset(p);
@@ -4102,6 +4404,7 @@ function readMenu(){
   CONFIG.input.deadzone      = parseFloat($('opt-dead').value);
   CONFIG.input.invertPitch   = $('opt-invp').checked;
   CONFIG.game.infiniteBattery= $('opt-batt').checked;
+  CONFIG.game.heavenEvent    = $('opt-heaven').checked;
   CONFIG.gfx.ssaoOn          = $('opt-ssao').checked;
   CONFIG.gfx.godraysOn       = $('opt-godrays').checked;
   CONFIG.gfx.motionOn        = $('opt-motion').checked;
@@ -4184,7 +4487,7 @@ function wireMenu(){
   };
   $('opt-veg').addEventListener('change', vegApply);
   $('opt-vegdist').addEventListener('change', vegApply);
-  ['opt-sens','opt-expo','opt-dead','opt-invp','opt-batt','opt-wind'].forEach(id=>{
+  ['opt-sens','opt-expo','opt-dead','opt-invp','opt-batt','opt-heaven','opt-wind'].forEach(id=>{
     $(id).addEventListener('input', readMenu);
     $(id).addEventListener('change', readMenu);
   });
@@ -4482,6 +4785,13 @@ function render(frameDt, alpha){
       dmp(6, frameDt));
   }
 
+  /* ---------- Evento do teto ---------- */
+  if (!state.paused) Heaven.update(frameDt);
+  if (gradePass){
+    Heaven.flash = Math.max(0, Heaven.flash - frameDt*1.7);
+    gradePass.uniforms.uFlash.value = Heaven.flash;
+  }
+
   /* ---------- Uniforms dos passes de profundidade ---------- */
   _sunUv.set(_sunScreen.x*0.5 + 0.5, _sunScreen.y*0.5 + 0.5);
   updatePostUniforms(_sunUv, gradePass ? gradePass.uniforms.uSunVis.value : 0);
@@ -4535,6 +4845,7 @@ async function boot(){
     scene.add(drone.root);
 
     particles = new Particles(scene, texDot, 1200);
+    Heaven.init(scene);
 
     await buildWorld(CONFIG.world.seed);
 
