@@ -9,17 +9,29 @@
     <style>
       :root { color-scheme: dark; }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 100%; height: 100%; overflow: hidden; background: #07060c; }
+      html, body { width: 100%; min-height: 100%; overflow: hidden; background: #07060c; }
       body {
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         color: #e6f2ff;
         -webkit-font-smoothing: antialiased;
         touch-action: none;
       }
-      #app { position: fixed; inset: 0; }
+      /* O palco tem altura PROPRIA, nao `position: fixed`.
+         Dentro de um iframe que se dimensiona pelo conteudo, uma pagina toda
+         fixed mede zero de altura e o host colapsa o quadro — tela preta. Com
+         `100dvh` mais um piso em 16:9 sobre a largura, o jogo ocupa a janela
+         quando ela existe e continua tendo tamanho quando ela nao existe. */
+      #app {
+        position: relative;
+        width: 100%;
+        height: 100dvh;
+        min-height: min(56.25vw, 760px);
+        background: #07060c;
+        overflow: hidden;
+      }
       canvas { display: block; width: 100%; height: 100%; cursor: none; }
       #boot {
-        position: fixed; inset: 0; display: grid; place-content: center;
+        position: absolute; inset: 0; display: grid; place-content: center;
         gap: 14px; justify-items: center; background: #07060c; z-index: 100;
         transition: opacity .45s ease;
       }
@@ -30,11 +42,12 @@
     </style>
   </head>
   <body>
-    <div id="app"></div>
-    <div id="boot">
-      <h1>SINAL PERDIDO</h1>
-      <div class="sub">ENTRANDO NA ATMOSFERA</div>
-      <div class="bar"><i id="boot-bar"></i></div>
+    <div id="app">
+      <div id="boot">
+        <h1>SINAL PERDIDO</h1>
+        <div class="sub">ENTRANDO NA ATMOSFERA</div>
+        <div class="bar"><i id="boot-bar"></i></div>
+      </div>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>

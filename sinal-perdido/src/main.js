@@ -43,15 +43,22 @@ const save = createSave();
 const audio = createAudio();
 const jogo = createJogo({ canvas, ctx, input, audio, save });
 
+let larguraAnterior = 0, alturaAnterior = 0;
 function redimensionar() {
   const dpr = dprAtual();
-  const w = Math.max(320, Math.floor(canvas.clientWidth || window.innerWidth));
-  const h = Math.max(240, Math.floor(canvas.clientHeight || window.innerHeight));
+  const cx = app.getBoundingClientRect();
+  const w = Math.max(320, Math.floor(cx.width || window.innerWidth));
+  const h = Math.max(240, Math.floor(cx.height || window.innerHeight));
+  if (w === larguraAnterior && h === alturaAnterior) return;
+  larguraAnterior = w; alturaAnterior = h;
   canvas.width = Math.floor(w * dpr);
   canvas.height = Math.floor(h * dpr);
   jogo.redimensionar(canvas.width, canvas.height, dpr);
 }
 window.addEventListener('resize', redimensionar);
+// Dentro de iframe o `resize` da janela nao chega quando quem muda de tamanho
+// e o quadro. O observer pega os dois casos.
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(redimensionar).observe(app);
 redimensionar();
 boot.set(0.4);
 
