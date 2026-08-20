@@ -1,10 +1,14 @@
-name: Deploy DRONEFARER to GitHub Pages
+name: Deploy games to GitHub Pages
 
 on:
   push:
-    # O repo ainda nao tem main/master; incluir a branch de trabalho faz o
+    # O repo ainda nao tem main/master; incluir as branches de trabalho faz o
     # deploy acontecer sozinho assim que o Pages for habilitado nas Settings.
-    branches: [main, master, 'claude/dronefarer-roadmap-55s9sp']
+    branches:
+      - main
+      - master
+      - 'claude/dronefarer-roadmap-55s9sp'
+      - 'claude/jogo-tiro-2d-top-down-va0z1w'
   workflow_dispatch:
 
 permissions:
@@ -19,23 +23,41 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: dronefarer
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: dronefarer/package-lock.json
-      - run: npm ci
-      - name: Build
+          cache-dependency-path: |
+            dronefarer/package-lock.json
+            sinal-perdido/package-lock.json
+
+      # DRONEFARER continua na raiz do site: a URL que ja foi compartilhada
+      # nao pode mudar so porque entrou um segundo jogo no repo.
+      - name: Build DRONEFARER
+        working-directory: dronefarer
         # base absoluta com o nome do repo, exigida por project site do Pages
-        run: BASE_PATH="/${GITHUB_REPOSITORY#*/}/" npm run build
+        run: |
+          npm ci
+          BASE_PATH="/${GITHUB_REPOSITORY#*/}/" npm run build
+
+      - name: Build SINAL PERDIDO
+        working-directory: sinal-perdido
+        run: |
+          npm ci
+          BASE_PATH="/${GITHUB_REPOSITORY#*/}/sinal-perdido/" npm run build
+
+      - name: Juntar os dois em um site so
+        run: |
+          mkdir -p site
+          cp -r dronefarer/dist/. site/
+          mkdir -p site/sinal-perdido
+          cp -r sinal-perdido/dist/. site/sinal-perdido/
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dronefarer/dist
+          path: site
 
   deploy:
     needs: build
