@@ -1,0 +1,2834 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>EXOSONDA - Simulador de Exploracao Espacial</title>
+<!-- viewport-fit=cover + user-scalable=no: exigido para safe-area do iPhone e para
+     evitar zoom por duplo toque durante o uso dos joysticks virtuais -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#04060a">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Simulador de exploracao espacial procedural em Three.js, arquivo unico.">
+<!-- PWA: iOS ainda depende das meta apple-*; Chrome usa o manifest embutido em data URI -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EXOSONDA">
+<link rel="manifest" href='data:application/manifest+json,{"name":"EXOSONDA","short_name":"EXOSONDA","start_url":".","display":"fullscreen","orientation":"landscape","background_color":"%2304060a","theme_color":"%2304060a"}'>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><circle cx=%2216%22 cy=%2216%22 r=%2210%22 fill=%22none%22 stroke=%22%2363e8ff%22 stroke-width=%222%22/></svg>">
+<style>
+/* ATENCAO iOS: apenas hifen ASCII e aspas retas neste arquivo inteiro. */
+:root{
+  --cor-fundo:#04060a;        /* preto azulado do espaco */
+  --cor-hud:#7df0ff;          /* acento unico, ciano frio */
+  --cor-hud-fraca:#7df0ff59;
+  --cor-hud-tenue:#7df0ff22;
+  --cor-alerta:#ff9f43;
+  --cor-critico:#ff5468;
+  --cor-vidro:#040a0ecc;      /* fundo translucido dos paineis */
+  --fonte:ui-monospace,SFMono-Regular,Menlo,Consolas,"DejaVu Sans Mono",monospace;
+  --sa-t:env(safe-area-inset-top,0px);
+  --sa-b:env(safe-area-inset-bottom,0px);
+  --sa-l:env(safe-area-inset-left,0px);
+  --sa-r:env(safe-area-inset-right,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{
+  margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:var(--cor-fundo);
+  color:var(--cor-hud);font-family:var(--fonte);font-size:13px;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  overscroll-behavior:none;touch-action:none;
+}
+canvas{display:block;position:fixed;inset:0;width:100%;height:100%}
+
+/* ---------- HUD ---------- */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:10;
+  padding:calc(var(--sa-t) + 10px) calc(var(--sa-r) + 14px) calc(var(--sa-b) + 10px) calc(var(--sa-l) + 14px)}
+#hud.oculto{display:none}
+.painel{position:absolute;background:var(--cor-vidro);border:1px solid var(--cor-hud-tenue);
+  padding:7px 10px;line-height:1.55;letter-spacing:.06em;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.painel b{font-weight:400;color:var(--cor-hud-fraca);display:inline-block;min-width:96px}
+.painel .v{color:var(--cor-hud)}
+.grande{font-size:22px;letter-spacing:.02em}
+#p-voo{left:calc(var(--sa-l) + 14px);top:calc(var(--sa-t) + 12px);min-width:186px}
+#p-alvo{right:calc(var(--sa-r) + 14px);top:calc(var(--sa-t) + 12px);min-width:196px;text-align:right}
+#p-alvo b{min-width:0;margin-right:8px}
+#p-sist{left:calc(var(--sa-l) + 14px);bottom:calc(var(--sa-b) + 12px);min-width:186px}
+.barra{height:4px;background:var(--cor-hud-tenue);margin:3px 0 6px;position:relative;overflow:hidden}
+.barra i{position:absolute;left:0;top:0;bottom:0;background:var(--cor-hud);width:0%;transition:width .08s linear}
+.barra.alerta i{background:var(--cor-alerta)}
+.barra.critico i{background:var(--cor-critico)}
+
+/* mira diegetica no centro */
+#mira{position:absolute;left:50%;top:50%;width:74px;height:74px;margin:-37px 0 0 -37px;opacity:.55}
+#mira svg{width:100%;height:100%}
+#marcadores{position:absolute;inset:0;overflow:hidden}
+.marca{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border:1px solid var(--cor-hud-fraca);
+  transform:rotate(45deg);opacity:.75}
+.marca.travado{border-color:var(--cor-hud);border-width:1px;box-shadow:0 0 8px #7df0ff55}
+.marca span{position:absolute;left:34px;top:4px;transform:rotate(-45deg);white-space:nowrap;font-size:10px;
+  letter-spacing:.12em;color:var(--cor-hud-fraca)}
+#msg{position:absolute;left:50%;top:22%;transform:translateX(-50%);text-align:center;font-size:14px;
+  letter-spacing:.22em;text-transform:uppercase;text-shadow:0 0 12px #7df0ff66;opacity:0;transition:opacity .25s}
+#msg.on{opacity:1}
+#fps{position:absolute;right:calc(var(--sa-r) + 14px);bottom:calc(var(--sa-b) + 12px);
+  color:var(--cor-hud-fraca);font-size:11px;letter-spacing:.1em;text-align:right}
+
+/* Em modo toque os joysticks ocupam os cantos de baixo, entao o painel de
+   sistemas sobe para a coluna da esquerda e o contador sai da frente. */
+body.toque #p-sist{top:calc(var(--sa-t) + 132px);bottom:auto}
+body.toque #fps{bottom:auto;top:calc(var(--sa-t) + 12px);right:auto;left:50%;transform:translateX(-50%);text-align:center}
+
+/* ---------- controles de toque ---------- */
+#toque{position:fixed;inset:0;z-index:20;display:none}
+#toque.on{display:block}
+.stick{position:absolute;bottom:calc(var(--sa-b) + 18px);width:132px;height:132px;border-radius:50%;
+  border:1px solid var(--cor-hud-tenue);background:#03080c55;touch-action:none}
+.stick .knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;
+  border:1px solid var(--cor-hud-fraca);background:#7df0ff1a}
+.stick .rot{position:absolute;inset:14px;border-radius:50%;border:1px dashed var(--cor-hud-tenue)}
+#stick-l{left:calc(var(--sa-l) + 18px)}
+#stick-r{right:calc(var(--sa-r) + 18px)}
+.stick .tag{position:absolute;left:-20px;right:-20px;top:-17px;text-align:center;font-size:9px;
+  letter-spacing:.18em;color:var(--cor-hud-fraca);white-space:nowrap}
+#botoes{position:absolute;right:calc(var(--sa-r) + 18px);bottom:calc(var(--sa-b) + 162px);display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+#botoes-esq{position:absolute;left:calc(var(--sa-l) + 18px);bottom:calc(var(--sa-b) + 162px);display:flex;flex-direction:column;gap:8px}
+.bt{min-width:60px;padding:9px 12px;text-align:center;border:1px solid var(--cor-hud-tenue);background:var(--cor-vidro);
+  color:var(--cor-hud-fraca);font-family:var(--fonte);font-size:11px;letter-spacing:.14em;touch-action:none}
+.bt.on{color:#04060a;background:var(--cor-hud);border-color:var(--cor-hud)}
+.linha{display:flex;gap:8px}
+
+/* ---------- menus / overlays ---------- */
+.tela{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
+  background:#02040799;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  padding:calc(var(--sa-t) + 16px) calc(var(--sa-r) + 16px) calc(var(--sa-b) + 16px) calc(var(--sa-l) + 16px)}
+.tela[hidden]{display:none}
+.caixa{background:var(--cor-vidro);border:1px solid var(--cor-hud-tenue);padding:22px 24px;max-width:640px;
+  width:100%;max-height:100%;overflow:auto;line-height:1.7}
+.caixa h1{margin:0 0 2px;font-size:21px;letter-spacing:.4em;font-weight:400}
+.caixa h2{margin:18px 0 6px;font-size:12px;letter-spacing:.24em;color:var(--cor-hud-fraca);font-weight:400;
+  border-bottom:1px solid var(--cor-hud-tenue);padding-bottom:4px}
+.caixa p{margin:6px 0;color:var(--cor-hud-fraca)}
+.caixa .sub{letter-spacing:.2em;font-size:11px;color:var(--cor-hud-fraca);margin-bottom:14px}
+kbd{border:1px solid var(--cor-hud-tenue);padding:0 5px;border-radius:2px;color:var(--cor-hud);font-size:11px}
+input[type=text]{background:#00000055;border:1px solid var(--cor-hud-tenue);color:var(--cor-hud);
+  font-family:var(--fonte);font-size:14px;padding:8px 10px;width:100%;letter-spacing:.16em}
+input:focus{outline:1px solid var(--cor-hud-fraca)}
+button{font-family:var(--fonte);font-size:12px;letter-spacing:.16em;padding:11px 16px;color:var(--cor-hud);
+  background:#7df0ff12;border:1px solid var(--cor-hud-fraca);cursor:pointer}
+button:hover{background:#7df0ff26}
+button.sec{color:var(--cor-hud-fraca);border-color:var(--cor-hud-tenue)}
+.botoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:2px 18px}
+@media (max-width:560px){.cols{grid-template-columns:1fr}.caixa{padding:16px}}
+/* telas baixas (iPhone em paisagem): tudo encolhe para caber sem sobrepor */
+@media (max-height:470px){
+  .stick{width:104px;height:104px;bottom:calc(var(--sa-b) + 10px)}
+  .stick .knob{width:42px;height:42px;margin:-21px 0 0 -21px}
+  #botoes,#botoes-esq{bottom:calc(var(--sa-b) + 122px);gap:6px}
+  .bt{min-width:52px;padding:7px 9px;font-size:10px}
+  .painel{padding:5px 8px;line-height:1.4;font-size:12px}
+  .grande{font-size:18px}
+  body.toque #p-sist{top:calc(var(--sa-t) + 112px)}
+  .stick .tag{display:none}
+}
+#erro .caixa{border-color:var(--cor-critico)}
+#erro h1{color:var(--cor-critico);letter-spacing:.2em}
+#erro pre{white-space:pre-wrap;word-break:break-word;color:var(--cor-alerta);font-size:11px;
+  background:#00000055;padding:10px;border:1px solid #ff546833;max-height:34vh;overflow:auto}
+#carga{position:fixed;inset:0;z-index:35;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:14px;background:var(--cor-fundo);letter-spacing:.3em;font-size:12px}
+#carga[hidden]{display:none}
+#carga .anel{width:44px;height:44px;border:1px solid var(--cor-hud-tenue);border-top-color:var(--cor-hud);
+  border-radius:50%;animation:gira 1s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<canvas id="cena"></canvas>
+
+<div id="hud" class="oculto">
+  <div class="painel" id="p-voo">
+    <div class="grande"><span class="v" id="h-vel">0</span> <span style="font-size:11px;color:var(--cor-hud-fraca)" id="h-vel-un">m/s</span></div>
+    <div class="barra" id="b-emp"><i></i></div>
+    <div><b>ALTITUDE</b><span class="v" id="h-alt">--</span></div>
+    <div><b>G LOCAL</b><span class="v" id="h-g">0.00</span></div>
+    <div><b>ATMOSFERA</b><span class="v" id="h-atm">0%</span></div>
+  </div>
+
+  <div class="painel" id="p-alvo">
+    <div><b>ALVO</b><span class="v" id="h-alvo">NENHUM</span></div>
+    <div><b>DIST</b><span class="v" id="h-dist">--</span></div>
+    <div><b>BIOMA</b><span class="v" id="h-bioma">--</span></div>
+    <div><b>GRAV</b><span class="v" id="h-grav">--</span></div>
+    <div><b>TEMP</b><span class="v" id="h-temp">--</span></div>
+  </div>
+
+  <div class="painel" id="p-sist">
+    <div><b>COMBUSTIVEL</b><span class="v" id="h-fuel">100%</span></div>
+    <div class="barra" id="b-fuel"><i style="width:100%"></i></div>
+    <div><b>CASCO</b><span class="v" id="h-casco">100%</span></div>
+    <div class="barra" id="b-casco"><i style="width:100%"></i></div>
+    <div><b>MODO</b><span class="v" id="h-modo">ORBITAL</span></div>
+  </div>
+
+  <div id="mira">
+    <svg viewBox="0 0 100 100" fill="none" stroke="#7df0ff" stroke-width="1">
+      <circle cx="50" cy="50" r="30" stroke-opacity=".35"/>
+      <path d="M50 6v14M50 80v14M6 50h14M80 50h14" stroke-opacity=".55"/>
+      <path d="M38 50h8M54 50h8M50 38v8M50 54v8" stroke-opacity=".9"/>
+    </svg>
+  </div>
+  <div id="marcadores"></div>
+  <div id="msg"></div>
+  <div id="fps"></div>
+</div>
+
+<div id="toque">
+  <div class="stick" id="stick-l"><div class="tag">EMPUXO / STRAFE</div><div class="rot"></div><div class="knob"></div></div>
+  <div class="stick" id="stick-r"><div class="tag">PITCH / YAW</div><div class="rot"></div><div class="knob"></div></div>
+  <div id="botoes-esq">
+    <div class="linha"><div class="bt" data-bt="rollL">ROLL &lt;</div><div class="bt" data-bt="rollR">ROLL &gt;</div></div>
+    <div class="bt" data-bt="freio">FREIO</div>
+  </div>
+  <div id="botoes">
+    <div class="bt" data-bt="turbo">TURBO</div>
+    <div class="linha"><div class="bt" data-bt="alvo">ALVO</div><div class="bt" data-bt="cam">CAM</div></div>
+    <div class="linha"><div class="bt" data-bt="menu">MENU</div><div class="bt" data-bt="pouso">POUSO</div></div>
+  </div>
+</div>
+
+<div id="carga"><div class="anel"></div><div id="carga-txt">INICIANDO SONDA</div></div>
+
+<div id="menu" class="tela" hidden>
+  <div class="caixa">
+    <h1>EXOSONDA</h1>
+    <div class="sub">SIMULADOR DE EXPLORACAO ESPACIAL PROCEDURAL</div>
+    <div>SEMENTE DO SISTEMA</div>
+    <input type="text" id="in-seed" value="ORION-7" autocomplete="off" autocapitalize="characters" spellcheck="false">
+    <div class="botoes">
+      <button id="bt-jogar">INICIAR VOO</button>
+      <button id="bt-continuar" class="sec">CONTINUAR</button>
+      <button id="bt-aleatorio" class="sec">SEMENTE ALEATORIA</button>
+      <button id="bt-bloom" class="sec">BLOOM: ON</button>
+      <button id="bt-ajuda" class="sec">CONTROLES</button>
+    </div>
+    <div id="ajuda" hidden>
+      <h2>TECLADO / MOUSE</h2>
+      <div class="cols">
+        <p><kbd>W</kbd><kbd>S</kbd> empuxo frente / re</p>
+        <p><kbd>A</kbd><kbd>D</kbd> strafe lateral</p>
+        <p><kbd>R</kbd><kbd>F</kbd> strafe vertical</p>
+        <p><kbd>Q</kbd><kbd>E</kbd> roll</p>
+        <p>mouse / setas: pitch e yaw</p>
+        <p><kbd>Shift</kbd> turbo</p>
+        <p><kbd>X</kbd> freio inercial</p>
+        <p><kbd>G</kbd> assistencia de pouso</p>
+        <p><kbd>T</kbd> trocar alvo</p>
+        <p><kbd>C</kbd> camera</p>
+        <p><kbd>M</kbd> menu / pausa</p>
+        <p><kbd>P</kbd> travar ponteiro do mouse</p>
+        <p><kbd>H</kbd> ocultar HUD</p>
+        <p><kbd>F</kbd> tela cheia</p>
+      </div>
+      <h2>TOQUE (IPAD / IPHONE)</h2>
+      <div class="cols">
+        <p>stick esquerdo: empuxo e strafe</p>
+        <p>stick direito: pitch e yaw</p>
+        <p>ROLL &lt; &gt;: giro no eixo</p>
+        <p>FREIO: cancela inercia</p>
+        <p>TURBO: cruzeiro rapido</p>
+        <p>POUSO: assistencia de pouso</p>
+      </div>
+      <h2>COMO POUSAR</h2>
+      <p>Trave um planeta com ALVO, aponte a nave e segure TURBO: a velocidade
+      de cruzeiro cresce com a altitude e o cruzeiro desarma sozinho ao entrar
+      na atmosfera ou perto do solo. Na aproximacao o planeta troca de LOD
+      sozinho, sem tela de carregamento. Ative a assistencia de pouso
+      (<kbd>G</kbd> ou POUSO): ela cancela a gravidade, mata a deriva lateral e
+      desce a 4 m/s. Tocar o solo acima de 18 m/s vertical custa casco.</p>
+    </div>
+    <div class="botoes"><button id="bt-fechar" class="sec">FECHAR</button></div>
+  </div>
+</div>
+
+<div id="erro" class="tela" hidden>
+  <div class="caixa">
+    <h1>FALHA DE SISTEMA</h1>
+    <p id="erro-txt">Nao foi possivel iniciar o simulador.</p>
+    <pre id="erro-det"></pre>
+    <div class="botoes"><button onclick="location.reload()">TENTAR DE NOVO</button></div>
+  </div>
+</div>
+
+<!-- Import map: mantido para permitir "import ... from three" e addons oficiais.
+     O carregamento real usa import() dinamico com CDNs de reserva (ver carregarThree). -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+/* =============================================================================
+   EXOSONDA - simulador de exploracao espacial procedural
+   Arquivo unico, sem build step. Three.js r185 via CDN com import map.
+
+   ARQUITETURA (modulos logicos)
+     Nucleo       -> RNG com semente, ruido simplex, FBM (compartilhados com o Worker)
+     Universe     -> estrela + planetas com elementos orbitais keplerianos
+     Planet       -> propriedades derivadas da semente, globo LOD, atmosfera
+     TerrainSystem-> quadtree em cubo-esfera, chunks gerados em Web Worker
+     Ship         -> corpo rigido 6DOF, gravidade, arrasto, pouso
+     InputManager -> teclado + mouse + dois joysticks virtuais
+     HUD          -> overlay em DOM (nao custa draw call)
+     SaveSystem   -> persistencia local
+     AudioSystem  -> Web Audio puro (motor, vento, avisos)
+     Render       -> tres camaras em camadas + bloom proprio
+
+   PROBLEMA DE ESCALA (float32) - estrategia adotada
+     1) ORIGEM FLUTUANTE: todas as posicoes do universo vivem em Vector3 de
+        JavaScript, que sao float64. A cada quadro o mundo e transladado para
+        que a nave fique em (0,0,0) antes de virar matriz float32 na GPU.
+        Assim o erro relativo de um objeto a distancia D e ~1e-7 * D, ou seja,
+        sempre sub-pixel: o jitter classico de "andar longe da origem" some.
+     2) CAMARAS EM CAMADAS: mesmo com a origem flutuante, o Z-buffer nao cobre
+        de 0,3 m a 2e11 m. Renderizamos a mesma cena em tres passes com tres
+        camaras que compartilham orientacao mas tem near/far diferentes
+        (razao far/near = 1e4 em cada, o que o buffer de 24 bits aguenta),
+        limpando o depth entre eles e desenhando do mais longe para o mais perto.
+        Cada objeto e atribuido a uma camada por distancia, com sobreposicao
+        entre faixas para nao piscar na troca.
+     Nao usamos logarithmicDepthBuffer: ele escreve gl_FragDepth, o que desliga
+     o early-Z e custa caro justamente na GPU do iPad, que e o alvo mais fraco.
+============================================================================= */
+
+'use strict';
+
+/* ========================= CONFIG =========================================
+   Todo numero magico do simulador mora aqui. Unidades: metros, segundos,
+   radianos. 1 unidade de mundo = 1 metro.                                   */
+const CONFIG = {
+  SEMENTE_PADRAO: 'ORION-7',
+  VERSAO_SAVE: 3,
+
+  // --- CDNs em ordem de tentativa (nunca @latest: versao fixada) ---
+  CDN_THREE: [
+    'three',                                                          // via import map
+    'https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js',
+    'https://unpkg.com/three@0.185.1/build/three.module.js',
+    'https://esm.sh/three@0.185.1'
+  ],
+
+  // --- camadas de renderizacao (near, far) em metros ---
+  CAM: {
+    PERTO: [0.35, 3.5e3],     // nave, chunks proximos, particulas
+    MEIO:  [3.0e3, 3.0e7],    // planetas, chunks distantes, atmosferas
+    LONGE: [2.5e7, 4.0e11],   // estrela, planetas distantes, campo de estrelas
+    FOV: 62, FOV_TURBO: 78, FOV_SUAVE: 3.5
+  },
+
+  // --- sistema estelar ---
+  SISTEMA: {
+    PLANETAS_MIN: 5, PLANETAS_MAX: 8,
+    ESTRELA_RAIO: [9.0e5, 1.9e6],
+    ORBITA_MIN: 7.0e6, ORBITA_MAX: 1.15e8,
+    EXCENTRICIDADE_MAX: 0.16,
+    INCLINACAO_MAX: 0.16,            // rad
+    // Periodo orbital "de jogo": nao e Kepler real (seria lento demais),
+    // mas segue a proporcao T ~ a^1.5 para que o sistema pareca coerente.
+    PERIODO_BASE: 3000,              // s para a orbita mais interna
+    TEMPO_ESCALA: 1.0,
+    RAIO_PLANETA: [3.2e4, 1.15e5],
+    DENSIDADE: [2600, 5600],         // kg/m3, apenas informativo no HUD
+    GRAV_SUP: [1.4, 9.2],            // m/s2 na superficie (parametro de jogo)
+    GRAV_ESTRELA: 40,                // m/s2 na "superficie" da estrela
+    SOI_RAIOS: 26,                   // esfera de influencia, em raios do planeta
+    G: 6.674e-11
+  },
+
+  // --- planeta / terreno ---
+  TERRENO: {
+    RES: 16,                 // quads por lado de um chunk (17x17 vertices)
+    PROF_MAX: 11,            // profundidade maxima da quadtree
+    SPLIT_K: 1.25,           // divide se tamanho_do_no * K > distancia
+    CHUNKS_MAX: 380,         // teto GLOBAL de chunks vivos (pool + dispose)
+    FILA_POR_QUADRO: 4,      // chunks aplicados por quadro (evita hitch)
+    SAIA: 0.16,              // profundidade da saia anti-fresta (fracao do no)
+    RELEVO_FRAC: [0.008, 0.035] // relevo maximo como fracao do raio
+  },
+
+  // --- nave ---
+  NAVE: {
+    COMPRIMENTO: 12,
+    MASSA: 9000,
+    EMPUXO: 55,              // m/s2 no eixo principal
+    EMPUXO_RE: 26,
+    STRAFE: 24,
+    TORQUE: 1.55,            // rad/s2
+    TORQUE_ROLL: 2.2,
+    AMORT_ANG: 2.6,          // amortecimento angular (fly-by-wire)
+    VEL_MAX: 900,            // m/s no modo normal
+    TURBO_MULT: 9,           // aceleracao no turbo
+    TURBO_VEL_POR_ALT: 1.4,  // v_max do cruzeiro = altitude * este fator
+    TURBO_VEL_MIN: 1500,
+    TURBO_VEL_MAX: 1.2e6,
+    TURBO_ALT_MIN: 2500,     // altitude minima para armar o cruzeiro
+    FREIO: 1.6,              // fator de amortecimento linear do freio inercial
+    COMBUSTIVEL_MAX: 100,
+    CONSUMO: 0.30,           // %/s em empuxo pleno
+    CONSUMO_TURBO: 1.15,
+    RECARGA_POUSADO: 3.2,    // %/s ao pousar
+    ALTURA_TREM: 3.4,        // altura do trem de pouso
+    POUSO_VEL_MAX: 18,       // m/s vertical para pouso seguro
+    DANO_POR_MS: 1.6,        // % de casco por m/s acima do limite
+    ARRASTO: 0.00042,        // coeficiente de arrasto atmosferico
+    ASSIST_POUSO_G: 1.35     // multiplicador de anti-gravidade da assistencia
+  },
+
+  // --- render / performance ---
+  RENDER: {
+    PIXEL_RATIO_MAX: 2,
+    ESCALA_MOVEL: 0.85,      // resolucao interna em telas de toque
+    BLOOM: true,
+    BLOOM_LIMIAR: 0.72,
+    BLOOM_FORCA: 0.95,
+    BLOOM_DIV: 4,            // divisor de resolucao do bloom
+    ESTRELAS: 2600,
+    POEIRA: 420,             // particulas de poeira estelar (geometria instanciada)
+    POEIRA_RAIO: 120,
+    ASTEROIDES: 260
+  },
+
+  // --- audio ---
+  AUDIO: { VOLUME: 0.55, MOTOR_HZ: 42, VENTO_MAX: 0.5 },
+
+  CHAVE_SAVE: 'exosonda.save.v3'
+};
+
+/* ========================= tela de erro visivel ========================== */
+const elErro = document.getElementById('erro');
+const elErroTxt = document.getElementById('erro-txt');
+const elErroDet = document.getElementById('erro-det');
+let erroMostrado = false;
+function mostrarErro(titulo, detalhe) {
+  if (erroMostrado) return;
+  erroMostrado = true;
+  document.getElementById('carga').hidden = true;
+  elErroTxt.textContent = titulo;
+  elErroDet.textContent = String(detalhe || '').slice(0, 2000);
+  elErro.hidden = false;
+}
+window.addEventListener('error', (e) => {
+  if (!erroMostrado) mostrarErro('Erro de execucao no simulador.', (e.error && e.error.stack) || e.message);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  if (!erroMostrado) mostrarErro('Falha ao carregar um recurso remoto.', (e.reason && (e.reason.stack || e.reason.message)) || e.reason);
+});
+
+/* ========================= NUCLEO: RNG + ruido ===========================
+   Estas funcoes sao serializadas com Function.prototype.toString() e injetadas
+   no Web Worker. Por isso NAO podem referenciar nada de fora do proprio corpo:
+   toda constante entra por parametro.                                       */
+
+// xmur3: string -> semente inteira de 32 bits
+function hashSemente(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return function () {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    h ^= h >>> 16;
+    return h >>> 0;
+  };
+}
+
+// mulberry32: PRNG determinista de 32 bits, 1 linha de estado, ~ns por chamada.
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Simplex 3D (derivado do algoritmo de dominio publico de Stefan Gustavson).
+// Inline de proposito: roda no Worker sem import e sem custo de rede.
+function criarRuido(semente) {
+  const rnd = mulberry32(semente >>> 0);
+  const base = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) base[i] = i;
+  for (let i = 255; i > 0; i--) {
+    const j = (rnd() * (i + 1)) | 0;
+    const t = base[i]; base[i] = base[j]; base[j] = t;
+  }
+  const perm = new Uint8Array(512), pm12 = new Uint8Array(512);
+  for (let i = 0; i < 512; i++) { perm[i] = base[i & 255]; pm12[i] = perm[i] % 12; }
+  const g = new Float32Array([1,1,0, -1,1,0, 1,-1,0, -1,-1,0, 1,0,1, -1,0,1,
+                              1,0,-1, -1,0,-1, 0,1,1, 0,-1,1, 0,1,-1, 0,-1,-1]);
+  const F3 = 1 / 3, G3 = 1 / 6;
+  return function n3(xin, yin, zin) {
+    const s = (xin + yin + zin) * F3;
+    const i = Math.floor(xin + s), j = Math.floor(yin + s), k = Math.floor(zin + s);
+    const t = (i + j + k) * G3;
+    const x0 = xin - (i - t), y0 = yin - (j - t), z0 = zin - (k - t);
+    let i1, j1, k1, i2, j2, k2;
+    if (x0 >= y0) {
+      if (y0 >= z0)      { i1=1;j1=0;k1=0; i2=1;j2=1;k2=0; }
+      else if (x0 >= z0) { i1=1;j1=0;k1=0; i2=1;j2=0;k2=1; }
+      else               { i1=0;j1=0;k1=1; i2=1;j2=0;k2=1; }
+    } else {
+      if (y0 < z0)       { i1=0;j1=0;k1=1; i2=0;j2=1;k2=1; }
+      else if (x0 < z0)  { i1=0;j1=1;k1=0; i2=0;j2=1;k2=1; }
+      else               { i1=0;j1=1;k1=0; i2=1;j2=1;k2=0; }
+    }
+    const x1 = x0 - i1 + G3,     y1 = y0 - j1 + G3,     z1 = z0 - k1 + G3;
+    const x2 = x0 - i2 + 2 * G3, y2 = y0 - j2 + 2 * G3, z2 = z0 - k2 + 2 * G3;
+    const x3 = x0 - 1 + 3 * G3,  y3 = y0 - 1 + 3 * G3,  z3 = z0 - 1 + 3 * G3;
+    const ii = i & 255, jj = j & 255, kk = k & 255;
+    let n0 = 0, n1 = 0, n2 = 0, n3v = 0, tt, gi;
+    tt = 0.6 - x0*x0 - y0*y0 - z0*z0;
+    if (tt > 0) { gi = pm12[ii + perm[jj + perm[kk]]] * 3; tt *= tt; n0 = tt*tt*(g[gi]*x0 + g[gi+1]*y0 + g[gi+2]*z0); }
+    tt = 0.6 - x1*x1 - y1*y1 - z1*z1;
+    if (tt > 0) { gi = pm12[ii+i1 + perm[jj+j1 + perm[kk+k1]]] * 3; tt *= tt; n1 = tt*tt*(g[gi]*x1 + g[gi+1]*y1 + g[gi+2]*z1); }
+    tt = 0.6 - x2*x2 - y2*y2 - z2*z2;
+    if (tt > 0) { gi = pm12[ii+i2 + perm[jj+j2 + perm[kk+k2]]] * 3; tt *= tt; n2 = tt*tt*(g[gi]*x2 + g[gi+1]*y2 + g[gi+2]*z2); }
+    tt = 0.6 - x3*x3 - y3*y3 - z3*z3;
+    if (tt > 0) { gi = pm12[ii+1 + perm[jj+1 + perm[kk+1]]] * 3; tt *= tt; n3v = tt*tt*(g[gi]*x3 + g[gi+1]*y3 + g[gi+2]*z3); }
+    return 32 * (n0 + n1 + n2 + n3v);
+  };
+}
+
+// FBM classico multi-oitava.
+function fbm(n3, x, y, z, oit, lac, ganho, freq) {
+  let a = 1, f = freq, soma = 0, norm = 0;
+  for (let o = 0; o < oit; o++) {
+    soma += a * n3(x * f, y * f, z * f);
+    norm += a; a *= ganho; f *= lac;
+  }
+  return soma / norm;
+}
+
+// FBM "ridged": cristas afiadas, bom para cordilheiras.
+function fbmCrista(n3, x, y, z, oit, lac, ganho, freq) {
+  let a = 1, f = freq, soma = 0, norm = 0;
+  for (let o = 0; o < oit; o++) {
+    const v = 1 - Math.abs(n3(x * f, y * f, z * f));
+    soma += a * v * v;
+    norm += a; a *= ganho; f *= lac;
+  }
+  return (soma / norm) * 2 - 1;
+}
+
+/* Altura do terreno em metros, relativa ao raio base do planeta.
+   dir precisa ser unitario. P = pacote de parametros do planeta.            */
+function alturaTerreno(n3, dx, dy, dz, P) {
+  // distorcao de dominio: quebra a regularidade do simplex sem custo alto
+  const w = P.warp;
+  const wx = dx + w * n3(dx * 1.7 + 11.3, dy * 1.7, dz * 1.7);
+  const wy = dy + w * n3(dx * 1.7, dy * 1.7 + 7.1, dz * 1.7);
+  const wz = dz + w * n3(dx * 1.7, dy * 1.7, dz * 1.7 + 3.9);
+
+  const cont = fbm(n3, wx, wy, wz, 4, 2.05, 0.5, P.fCont);          // continentes
+  let mont = fbmCrista(n3, wx, wy, wz, P.oitavas, 2.1, 0.52, P.fMont); // cordilheiras
+  const mask = Math.max(0, Math.min(1, (cont + 0.15) * 1.9));
+  mont *= mask * P.aspereza;
+  const det = fbm(n3, wx, wy, wz, 3, 2.4, 0.45, P.fDet) * 0.075;
+  let h = cont * 0.62 + mont * 0.5 + det;
+  // terras baixas mais planas (perfil de bacia), picos mais afiados
+  h = h < 0 ? h * 0.75 : h * (1 + h * 0.35);
+  return h * P.relevo;
+}
+
+/* Cor do terreno: bioma por latitude + altitude + temperatura.               */
+function corTerreno(h, lat, P, out) {
+  const hn = h / P.relevo;                       // -1..1 aproximado
+  const frio = Math.min(1, Math.max(0, (Math.abs(lat) - P.latNeve) * 3.2 + (hn - P.altNeve) * 2.4 + P.friagem));
+  let r, g, b;
+  if (P.agua && h <= 0) {                        // fundo submerso -> agua
+    const prof = Math.min(1, -hn * 2.6);
+    r = P.cAgua[0] * (1 - prof * 0.55); g = P.cAgua[1] * (1 - prof * 0.5); b = P.cAgua[2] * (1 - prof * 0.28);
+    out[0] = r; out[1] = g; out[2] = b; return 1;  // 1 = agua
+  }
+  const t = Math.min(1, Math.max(0, hn / Math.max(0.08, P.altAlta)));
+  if (t < 0.5) {
+    const k = t / 0.5;
+    r = P.cBaixa[0] + (P.cMedia[0] - P.cBaixa[0]) * k;
+    g = P.cBaixa[1] + (P.cMedia[1] - P.cBaixa[1]) * k;
+    b = P.cBaixa[2] + (P.cMedia[2] - P.cBaixa[2]) * k;
+  } else {
+    const k = (t - 0.5) / 0.5;
+    r = P.cMedia[0] + (P.cAlta[0] - P.cMedia[0]) * k;
+    g = P.cMedia[1] + (P.cAlta[1] - P.cMedia[1]) * k;
+    b = P.cMedia[2] + (P.cAlta[2] - P.cMedia[2]) * k;
+  }
+  if (frio > 0) {
+    r += (P.cNeve[0] - r) * frio; g += (P.cNeve[1] - g) * frio; b += (P.cNeve[2] - b) * frio;
+  }
+  out[0] = r; out[1] = g; out[2] = b;
+  return 0;
+}
+
+/* Cubo -> esfera. face 0..5. u,v em [-1,1]. Retorna direcao unitaria em out. */
+function dirDoCubo(face, u, v, out) {
+  let x, y, z;
+  switch (face) {
+    case 0: x =  1; y =  v; z = -u; break;
+    case 1: x = -1; y =  v; z =  u; break;
+    case 2: x =  u; y =  1; z = -v; break;
+    case 3: x =  u; y = -1; z =  v; break;
+    case 4: x =  u; y =  v; z =  1; break;
+    default: x = -u; y = v; z = -1; break;
+  }
+  const inv = 1 / Math.sqrt(x * x + y * y + z * z);
+  out[0] = x * inv; out[1] = y * inv; out[2] = z * inv;
+}
+
+/* Gera a malha de um no da quadtree. Roda no Worker (ou na main thread como
+   plano B). Devolve arrays tipados prontos para virar BufferGeometry.        */
+function gerarNo(req, n3) {
+  const P = req.P, res = req.res, R = P.raio;
+  const n = res + 1;
+  const ext = res + 3;                    // grade estendida (1 anel extra) p/ normais exatas
+  const passo = req.tam / res;
+  const alt = new Float64Array(ext * ext);
+  const px = new Float64Array(ext * ext), py = new Float64Array(ext * ext), pz = new Float64Array(ext * ext);
+  const d = [0, 0, 0];
+  for (let j = 0; j < ext; j++) {
+    for (let i = 0; i < ext; i++) {
+      const u = req.u0 + (i - 1) * passo;
+      const v = req.v0 + (j - 1) * passo;
+      dirDoCubo(req.face, u, v, d);
+      let h = alturaTerreno(n3, d[0], d[1], d[2], P);
+      if (P.agua && h < 0) h = 0;         // superficie do oceano fica plana
+      const rr = R + h;
+      const id = j * ext + i;
+      alt[id] = h; px[id] = d[0] * rr; py[id] = d[1] * rr; pz[id] = d[2] * rr;
+    }
+  }
+  // centro do no em coordenadas locais do planeta (a malha e relativa a ele,
+  // o que mantem os float32 dos vertices pequenos e precisos)
+  const cId = ((res >> 1) + 1) * ext + ((res >> 1) + 1);
+  const cx = px[cId], cy = py[cId], cz = pz[cId];
+
+  const nv = n * n + 4 * n;               // vertices da grade + 4 saias
+  const pos = new Float32Array(nv * 3);
+  const nor = new Float32Array(nv * 3);
+  const col = new Float32Array(nv * 3);
+  const tip = new Float32Array(nv);
+  const rgb = [0, 0, 0];
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      const id = (j + 1) * ext + (i + 1), o = (j * n + i);
+      pos[o * 3] = px[id] - cx; pos[o * 3 + 1] = py[id] - cy; pos[o * 3 + 2] = pz[id] - cz;
+      // normal por diferencas centrais na grade estendida
+      const ax = px[id + 1] - px[id - 1], ay = py[id + 1] - py[id - 1], az = pz[id + 1] - pz[id - 1];
+      const bx = px[id + ext] - px[id - ext], by = py[id + ext] - py[id - ext], bz = pz[id + ext] - pz[id - ext];
+      let nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+      const il = 1 / (Math.sqrt(nx * nx + ny * ny + nz * nz) || 1);
+      nx *= il; ny *= il; nz *= il;
+      // garante normal para fora
+      if (nx * px[id] + ny * py[id] + nz * pz[id] < 0) { nx = -nx; ny = -ny; nz = -nz; }
+      nor[o * 3] = nx; nor[o * 3 + 1] = ny; nor[o * 3 + 2] = nz;
+      const rr = Math.sqrt(px[id] * px[id] + py[id] * py[id] + pz[id] * pz[id]) || 1;
+      tip[o] = corTerreno(alt[id], py[id] / rr, P, rgb);
+      col[o * 3] = rgb[0]; col[o * 3 + 1] = rgb[1]; col[o * 3 + 2] = rgb[2];
+    }
+  }
+  // saias: copia da borda empurrada para dentro do planeta, some as frestas de LOD
+  const fundo = req.tam * R * CONF_SAIA_FRAC(req);
+  let s = n * n;
+  const bordas = [];
+  for (let i = 0; i < n; i++) bordas.push(i);                    // j = 0
+  for (let i = 0; i < n; i++) bordas.push((n - 1) * n + i);      // j = n-1
+  for (let j = 0; j < n; j++) bordas.push(j * n);                // i = 0
+  for (let j = 0; j < n; j++) bordas.push(j * n + n - 1);        // i = n-1
+  for (let k = 0; k < bordas.length; k++) {
+    const src = bordas[k], o = s + k;
+    const wx = pos[src * 3] + cx, wy = pos[src * 3 + 1] + cy, wz = pos[src * 3 + 2] + cz;
+    const il = 1 / (Math.sqrt(wx * wx + wy * wy + wz * wz) || 1);
+    pos[o * 3] = pos[src * 3] - wx * il * fundo;
+    pos[o * 3 + 1] = pos[src * 3 + 1] - wy * il * fundo;
+    pos[o * 3 + 2] = pos[src * 3 + 2] - wz * il * fundo;
+    nor[o * 3] = nor[src * 3]; nor[o * 3 + 1] = nor[src * 3 + 1]; nor[o * 3 + 2] = nor[src * 3 + 2];
+    col[o * 3] = col[src * 3] * 0.7; col[o * 3 + 1] = col[src * 3 + 1] * 0.7; col[o * 3 + 2] = col[src * 3 + 2] * 0.7;
+    tip[o] = tip[src];
+  }
+  return { pos, nor, col, tip, centro: [cx, cy, cz] };
+}
+
+// Fracao da saia (isolada em funcao para o Worker nao depender de CONFIG).
+function CONF_SAIA_FRAC(req) { return req.saia; }
+
+/* ========================= Worker de terreno =============================
+   O codigo do Worker e montado a partir do toString() das funcoes do nucleo:
+   zero duplicacao de codigo e zero import dentro do Worker (o que quebraria
+   em file:// e em CDNs bloqueadas).                                         */
+const FONTE_KERNEL = [mulberry32, criarRuido, fbm, fbmCrista, alturaTerreno,
+                      corTerreno, dirDoCubo, CONF_SAIA_FRAC, gerarNo]
+  .map((f) => f.toString()).join('\n\n');
+
+const FONTE_WORKER = FONTE_KERNEL + `
+var ruidos = {};
+self.onmessage = function (e) {
+  var req = e.data;
+  var n3 = ruidos[req.P.semente];
+  if (!n3) { n3 = criarRuido(req.P.semente); ruidos[req.P.semente] = n3; }
+  var r = gerarNo(req, n3);
+  self.postMessage({ id: req.id, pos: r.pos, nor: r.nor, col: r.col, tip: r.tip, centro: r.centro },
+                   [r.pos.buffer, r.nor.buffer, r.col.buffer, r.tip.buffer]);
+};`;
+
+class FabricaTerreno {
+  constructor() {
+    this.pendentes = new Map();
+    this.proximoId = 1;
+    this.workers = [];
+    this.rr = 0;
+    this.ruidoLocal = new Map();   // plano B na main thread
+    try {
+      const url = URL.createObjectURL(new Blob([FONTE_WORKER], { type: 'text/javascript' }));
+      const n = Math.max(1, Math.min(2, (navigator.hardwareConcurrency || 2) - 1));
+      for (let i = 0; i < n; i++) {
+        const w = new Worker(url);
+        w.onmessage = (e) => this.receber(e.data);
+        w.onerror = () => this.cairParaMainThread();
+        this.workers.push(w);
+      }
+      // revogar na hora e arriscado: o Worker ainda pode estar lendo o blob
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (e) {
+      this.workers.length = 0;     // file:// no Chrome bloqueia Worker por blob
+    }
+  }
+  get temWorker() { return this.workers.length > 0; }
+  pedir(req, cb) {
+    req.id = this.proximoId++;
+    this.pendentes.set(req.id, { cb: cb, req: req });
+    if (this.temWorker) {
+      this.workers[this.rr++ % this.workers.length].postMessage(req);
+    } else {
+      // sem Worker: gera na main thread, mas fora do caminho critico do quadro
+      const r = this.gerarLocal(req);
+      Promise.resolve().then(() => this.receber(r));
+    }
+    return req.id;
+  }
+  receber(d) {
+    const it = this.pendentes.get(d.id);
+    if (it) { this.pendentes.delete(d.id); it.cb(d); }
+  }
+  // Worker morto (file:// no Chrome bloqueia Worker por blob, por exemplo):
+  // desliga o pool e refaz na main thread o que estava em voo, senao os chunks
+  // pendentes nunca chegariam e o planeta ficaria com buracos.
+  cairParaMainThread() {
+    this.workers.forEach((w) => { try { w.terminate(); } catch (e) {} });
+    this.workers.length = 0;
+    const pend = Array.from(this.pendentes.values());
+    this.pendentes.clear();
+    for (const it of pend) this.pedir(it.req, it.cb);
+  }
+  gerarLocal(req) {
+    let n3 = this.ruidoLocal.get(req.P.semente);
+    if (!n3) { n3 = criarRuido(req.P.semente); this.ruidoLocal.set(req.P.semente, n3); }
+    const r = gerarNo(req, n3);
+    r.id = req.id;
+    return r;
+  }
+  cancelar(id) { this.pendentes.delete(id); }
+}
+
+/* ========================= Universe ======================================
+   Estrela + planetas com elementos orbitais. Tudo derivado da semente:
+   a mesma string gera exatamente o mesmo sistema em qualquer aparelho.      */
+const SILABAS_A = ['ka','ve','tor','my','sel','dra','ne','oph','xan','bel','cy','ro','tha','lu','zen','qua'];
+const SILABAS_B = ['ron','mir','tis','dea','vok','lyn','sar','tep','dul','nix','oria','mus','tal','vex'];
+
+const BIOMAS = {
+  oceanico:  { nome: 'OCEANICO',  cBaixa:[0.31,0.42,0.26], cMedia:[0.36,0.46,0.28], cAlta:[0.42,0.40,0.33], cNeve:[0.90,0.93,0.97], cAgua:[0.10,0.30,0.46] },
+  temperado: { nome: 'TEMPERADO', cBaixa:[0.28,0.36,0.20], cMedia:[0.34,0.40,0.22], cAlta:[0.44,0.41,0.35], cNeve:[0.92,0.94,0.98], cAgua:[0.11,0.28,0.42] },
+  arido:     { nome: 'ARIDO',     cBaixa:[0.55,0.42,0.26], cMedia:[0.48,0.35,0.22], cAlta:[0.40,0.31,0.24], cNeve:[0.78,0.76,0.72], cAgua:[0.15,0.22,0.24] },
+  gelado:    { nome: 'GELADO',    cBaixa:[0.62,0.70,0.78], cMedia:[0.70,0.78,0.85], cAlta:[0.80,0.86,0.92], cNeve:[0.95,0.97,1.00], cAgua:[0.12,0.26,0.36] },
+  vulcanico: { nome: 'VULCANICO', cBaixa:[0.16,0.13,0.13], cMedia:[0.26,0.16,0.13], cAlta:[0.38,0.20,0.14], cNeve:[0.55,0.30,0.18], cAgua:[0.35,0.10,0.05] },
+  lunar:     { nome: 'LUNAR',     cBaixa:[0.32,0.31,0.30], cMedia:[0.40,0.39,0.38], cAlta:[0.50,0.49,0.47], cNeve:[0.62,0.62,0.63], cAgua:[0.10,0.10,0.12] },
+  toxico:    { nome: 'TOXICO',    cBaixa:[0.34,0.36,0.16], cMedia:[0.42,0.40,0.18], cAlta:[0.38,0.30,0.20], cNeve:[0.60,0.62,0.40], cAgua:[0.22,0.30,0.10] }
+};
+
+class Planeta {
+  constructor(indice, rnd, estrela) {
+    const S = CONFIG.SISTEMA;
+    this.indice = indice;
+    this.nome = (SILABAS_A[(rnd() * SILABAS_A.length) | 0] + SILABAS_B[(rnd() * SILABAS_B.length) | 0]).toUpperCase()
+              + '-' + (indice + 1);
+    // semente propria: o terreno de um planeta nao muda se outro mudar
+    this.semente = (hashSemente(this.nome + '|' + estrela.semente)() >>> 0);
+
+    this.raio = S.RAIO_PLANETA[0] + rnd() * (S.RAIO_PLANETA[1] - S.RAIO_PLANETA[0]);
+    this.densidade = S.DENSIDADE[0] + rnd() * (S.DENSIDADE[1] - S.DENSIDADE[0]);
+    // Gravidade de JOGO, nao de fisica literal: um corpo real de 60 km de raio
+    // e densidade 4000 daria 0.07 m/s2, o que e injogavel (a nave nunca cairia).
+    // Definimos g na superficie e derivamos o parametro gravitacional mu = g*R2,
+    // que e o unico numero usado pelo campo de gravidade (a = mu / d2).
+    this.gravidade = S.GRAV_SUP[0] + rnd() * (S.GRAV_SUP[1] - S.GRAV_SUP[0]);
+    this.gravidade *= 0.7 + 0.6 * (this.raio - S.RAIO_PLANETA[0]) / (S.RAIO_PLANETA[1] - S.RAIO_PLANETA[0]);
+    this.mu = this.gravidade * this.raio * this.raio;
+    this.soi = this.raio * S.SOI_RAIOS;
+    this.massa = this.mu / S.G;   // massa equivalente, so para exibicao
+
+    // --- orbita ---
+    const t = indice / Math.max(1, estrela.qtdPlanetas - 1);
+    this.a = S.ORBITA_MIN * Math.pow(S.ORBITA_MAX / S.ORBITA_MIN, t) * (0.9 + rnd() * 0.2);
+    this.e = rnd() * S.EXCENTRICIDADE_MAX;
+    this.incl = (rnd() - 0.5) * 2 * S.INCLINACAO_MAX;
+    this.nodo = rnd() * Math.PI * 2;
+    this.peri = rnd() * Math.PI * 2;
+    this.M0 = rnd() * Math.PI * 2;
+    this.periodo = S.PERIODO_BASE * Math.pow(this.a / S.ORBITA_MIN, 1.5);
+
+    // --- clima e composicao ---
+    this.temperatura = Math.max(28, 640 * Math.sqrt(S.ORBITA_MIN / this.a) - 62);  // kelvin
+    this.atmosfera = Math.max(0, Math.min(1.35,
+      (rnd() * 1.1 + 0.15) * (this.raio / S.RAIO_PLANETA[1]) * (this.temperatura < 620 ? 1 : 0.35)));
+    if (rnd() < 0.18) this.atmosfera = 0;                     // corpo sem ar
+    this.agua = this.atmosfera > 0.28 && this.temperatura > 235 && this.temperatura < 355;
+    this.alturaEscala = this.raio * (0.028 + rnd() * 0.03);   // escala barometrica
+    this.altAtmosfera = this.alturaEscala * 5.2;              // topo visivel da atmosfera
+
+    if (this.atmosfera < 0.05) this.bioma = 'lunar';
+    else if (this.temperatura > 460) this.bioma = 'vulcanico';
+    else if (this.temperatura < 205) this.bioma = 'gelado';
+    else if (this.agua) this.bioma = rnd() < 0.5 ? 'oceanico' : 'temperado';
+    else this.bioma = rnd() < 0.6 ? 'arido' : 'toxico';
+    const B = BIOMAS[this.bioma];
+    this.biomaNome = B.nome;
+
+    // cor do ceu: mistura entre o espalhamento (azul) e a composicao do planeta
+    const matiz = rnd();
+    this.corAtm = this.bioma === 'toxico'    ? [0.42, 0.55, 0.18]
+                : this.bioma === 'vulcanico' ? [0.62, 0.26, 0.16]
+                : this.bioma === 'arido'     ? [0.66, 0.48, 0.32]
+                : this.bioma === 'gelado'    ? [0.42, 0.60, 0.78]
+                : [0.24 + matiz * 0.12, 0.44 + matiz * 0.08, 0.86 - matiz * 0.12];
+
+    // pacote enviado ao Worker: precisa ser puro JSON
+    const rel = CONFIG.TERRENO.RELEVO_FRAC;
+    this.P = {
+      semente: this.semente,
+      raio: this.raio,
+      relevo: this.raio * (rel[0] + rnd() * (rel[1] - rel[0])),
+      fCont: 0.85 + rnd() * 0.7,
+      fMont: 2.4 + rnd() * 2.6,
+      fDet: 11 + rnd() * 14,
+      oitavas: this.atmosfera > 0.2 ? 6 : 5,
+      aspereza: 0.55 + rnd() * 0.85,
+      warp: 0.06 + rnd() * 0.16,
+      agua: this.agua,
+      altAlta: 0.45 + rnd() * 0.3,
+      altNeve: 0.42 + rnd() * 0.3,
+      latNeve: this.temperatura < 240 ? -0.2 : 0.62 + rnd() * 0.25,
+      friagem: this.temperatura < 210 ? 0.55 : (this.temperatura > 400 ? -0.6 : 0),
+      cBaixa: B.cBaixa, cMedia: B.cMedia, cAlta: B.cAlta, cNeve: B.cNeve, cAgua: B.cAgua
+    };
+
+    this.pos = { x: 0, y: 0, z: 0 };      // posicao absoluta (float64), preenchida por atualizar()
+    this.vel = { x: 0, y: 0, z: 0 };
+    this.n3 = null;                        // ruido local, criado sob demanda
+    this.globo = null;                     // malha de baixa resolucao (LOD longe)
+    this.atmMesh = null;
+    this.terreno = null;                   // TerrainSystem quando ativo
+  }
+
+  ruido() {
+    if (!this.n3) this.n3 = criarRuido(this.semente);
+    return this.n3;
+  }
+  // altura do terreno (metros acima do raio base) numa direcao unitaria
+  alturaEm(dx, dy, dz) {
+    let h = alturaTerreno(this.ruido(), dx, dy, dz, this.P);
+    if (this.P.agua && h < 0) h = 0;
+    return h;
+  }
+  // densidade atmosferica normalizada a uma altitude
+  densidadeAr(altitude) {
+    if (this.atmosfera <= 0) return 0;
+    return this.atmosfera * Math.exp(-Math.max(0, altitude) / this.alturaEscala);
+  }
+  atualizar(t) {
+    // Kepler: M -> E por Newton-Raphson, depois posicao no plano orbital
+    const M = this.M0 + (Math.PI * 2 * t) / this.periodo;
+    let E = M;
+    for (let i = 0; i < 5; i++) {
+      const f = E - this.e * Math.sin(E) - M;
+      E -= f / (1 - this.e * Math.cos(E));
+    }
+    const cosE = Math.cos(E), sinE = Math.sin(E);
+    const b = this.a * Math.sqrt(1 - this.e * this.e);
+    const xo = this.a * (cosE - this.e), zo = b * sinE;
+    // velocidade orbital (derivada da anomalia excentrica)
+    const Edot = (Math.PI * 2 / this.periodo) / (1 - this.e * cosE);
+    const vxo = -this.a * sinE * Edot, vzo = b * cosE * Edot;
+    const cw = Math.cos(this.peri), sw = Math.sin(this.peri);
+    const ci = Math.cos(this.incl), si = Math.sin(this.incl);
+    const cn = Math.cos(this.nodo), sn = Math.sin(this.nodo);
+    const tr = (x, z, out) => {
+      // rotacao: argumento do periastro (Y) -> inclinacao (X) -> nodo (Y)
+      let x1 = x * cw - z * sw, z1 = x * sw + z * cw, y1 = 0;
+      const y2 = y1 * ci - z1 * si, z2 = y1 * si + z1 * ci;
+      out.x = x1 * cn - z2 * sn; out.y = y2; out.z = x1 * sn + z2 * cn;
+    };
+    tr(xo, zo, this.pos);
+    tr(vxo, vzo, this.vel);
+  }
+}
+
+class Universo {
+  constructor(semente) {
+    this.semente = String(semente || CONFIG.SEMENTE_PADRAO).toUpperCase().trim() || CONFIG.SEMENTE_PADRAO;
+    const rnd = mulberry32(hashSemente(this.semente)());
+    const S = CONFIG.SISTEMA;
+    this.tempo = 0;
+    this.qtdPlanetas = S.PLANETAS_MIN + ((rnd() * (S.PLANETAS_MAX - S.PLANETAS_MIN + 1)) | 0);
+    this.estrelaRaio = S.ESTRELA_RAIO[0] + rnd() * (S.ESTRELA_RAIO[1] - S.ESTRELA_RAIO[0]);
+    // mesma convencao dos planetas: mu = g_superficie * R2
+    this.estrelaMu = S.GRAV_ESTRELA * this.estrelaRaio * this.estrelaRaio;
+    this.estrelaMassa = this.estrelaMu / S.G;
+    const tCor = rnd();
+    this.estrelaCor = tCor < 0.3 ? [1.0, 0.72, 0.42]        // ana laranja
+                    : tCor < 0.7 ? [1.0, 0.94, 0.80]        // tipo solar
+                                 : [0.78, 0.86, 1.00];      // azulada
+    this.estrelaNome = this.semente;
+    this.planetas = [];
+    for (let i = 0; i < this.qtdPlanetas; i++) this.planetas.push(new Planeta(i, rnd, this));
+    this.planetas.sort((A, B) => A.a - B.a);
+    this.planetas.forEach((p, i) => { p.indice = i; });
+    this.atualizar(0);
+  }
+  atualizar(dt) {
+    this.tempo += dt * CONFIG.SISTEMA.TEMPO_ESCALA;
+    for (const p of this.planetas) p.atualizar(this.tempo);
+  }
+  // Corpo dominante por esfera de influencia (conicas remendadas): dentro da
+  // SOI vale so a gravidade do planeta; fora dela, so a da estrela. E o mesmo
+  // truque de KSP, e evita o custo (e a instabilidade) de somar N corpos.
+  corpoDominante(x, y, z) {
+    let melhor = null, melhorD = Infinity;
+    for (const p of this.planetas) {
+      const dx = x - p.pos.x, dy = y - p.pos.y, dz = z - p.pos.z;
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 < p.soi * p.soi && d2 < melhorD) { melhorD = d2; melhor = p; }
+    }
+    return melhor;   // null = estrela
+  }
+}
+
+/* ========================= carregamento do Three.js ======================
+   import() dinamico em cascata: import map -> jsdelivr -> unpkg -> esm.sh.
+   Import map sozinho nao tem plano B; a cascata garante que uma CDN fora do ar
+   nao vire tela preta. ?three=URL permite apontar para uma copia local.       */
+let THREE = null;
+async function carregarThree() {
+  const local = new URLSearchParams(location.search).get('three');
+  const lista = local ? [local].concat(CONFIG.CDN_THREE) : CONFIG.CDN_THREE;
+  const falhas = [];
+  for (const url of lista) {
+    try {
+      // corrida com tempo limite: uma CDN que aceita a conexao e nunca responde
+      // deixaria o import() pendente para sempre e a tela travada no "carregando"
+      const m = await Promise.race([
+        import(url),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('tempo esgotado (7 s)')), 7000))
+      ]);
+      if (m && m.Scene && m.WebGLRenderer) return m;
+      falhas.push(url + ' -> modulo inesperado');
+    } catch (e) {
+      falhas.push(url + ' -> ' + (e && e.message ? e.message : e));
+    }
+  }
+  throw new Error('Nenhuma CDN de Three.js respondeu.\n' + falhas.join('\n'));
+}
+
+/* ========================= shaders / materiais ===========================
+   Nada de MeshStandardMaterial: com uma unica fonte de luz (a estrela) um
+   shader proprio custa menos na GPU do iPad e ainda permite a neblina
+   atmosferica dependente da densidade do ar em qualquer superficie.          */
+const GLSL_COMUM = `
+  uniform vec3 uSol;      // direcao para a estrela, em espaco de camera
+  uniform vec3 uCorSol;
+  uniform vec3 uAmb;
+  uniform vec3 uCorNev;   // cor da neblina/atmosfera
+  uniform float uNevDens; // densidade da neblina (1/metros)
+  varying vec3 vCor; varying vec3 vNor; varying float vTipo;
+  varying float vDist; varying vec3 vVis;
+`;
+
+const VS_SUPERFICIE = `
+  attribute vec3 cor;
+  attribute float tipo;
+  ` + GLSL_COMUM + `
+  void main() {
+    vCor = pow(max(cor, 0.0), vec3(2.2));   // paleta autorada em sRGB -> linear
+    vec3 pLocal = position;
+    vec3 nLocal = normal;
+    // ShaderMaterial nao aplica instanceMatrix sozinho: fazemos a mao
+    #ifdef USE_INSTANCING
+      pLocal = (instanceMatrix * vec4(position, 1.0)).xyz;
+      nLocal = mat3(instanceMatrix) * normal;
+    #endif
+    vNor = normalMatrix * nLocal;
+    vTipo = tipo;
+    vec4 mv = modelViewMatrix * vec4(pLocal, 1.0);
+    vVis = -mv.xyz;
+    vDist = length(mv.xyz);
+    gl_Position = projectionMatrix * mv;
+  }`;
+
+const FS_SUPERFICIE = `
+  precision highp float;
+  ` + GLSL_COMUM + `
+  void main() {
+    vec3 N = normalize(vNor);
+    float nd = dot(N, uSol);
+    // termo "wrap": suaviza o terminador sem custo de sombra
+    float luz = clamp((nd + 0.20) / 1.20, 0.0, 1.0);
+    vec3 col = vCor * (uCorSol * luz + uAmb);
+    if (vTipo > 0.5) {                       // agua: brilho especular
+      vec3 V = normalize(vVis);
+      vec3 H = normalize(uSol + V);
+      col += uCorSol * pow(max(dot(N, H), 0.0), 220.0) * 1.1 * step(0.0, nd);
+      col *= 0.92;
+    }
+    float f = 1.0 - exp(-vDist * uNevDens);
+    col = mix(col, uCorNev, clamp(f, 0.0, 0.93));
+    gl_FragColor = vec4(col, 1.0);
+  }`;
+
+function uniformesSuperficie() {
+  return {
+    uSol:     { value: new THREE.Vector3(0, 0, 1) },
+    uCorSol:  { value: new THREE.Vector3(1, 1, 1) },
+    uAmb:     { value: new THREE.Vector3(0.045, 0.05, 0.07) },
+    uCorNev:  { value: new THREE.Vector3(0, 0, 0) },
+    uNevDens: { value: 0 }
+  };
+}
+
+// Sincroniza os uniformes compartilhados de iluminacao entre todos os materiais.
+function aplicarLuz(mats, solView, corSol, amb, corNev, nevDens) {
+  for (const m of mats) {
+    if (!m || !m.uniforms) continue;
+    m.uniforms.uSol.value.copy(solView);
+    m.uniforms.uCorSol.value.copy(corSol);
+    m.uniforms.uAmb.value.copy(amb);
+    m.uniforms.uCorNev.value.copy(corNev);
+    m.uniforms.uNevDens.value = nevDens;
+  }
+}
+
+function materialSuperficie(opcoes) {
+  return new THREE.ShaderMaterial(Object.assign({
+    uniforms: uniformesSuperficie(),
+    vertexShader: VS_SUPERFICIE,
+    fragmentShader: FS_SUPERFICIE
+  }, opcoes || {}));
+}
+
+/* ========================= sistema de terreno ============================
+   Quadtree sobre cubo-esfera. Cada no vira um chunk gerado no Worker.
+
+   LOD: nao existe "malha de planeta" separada da malha de superficie. O nivel
+   0 da arvore sao 6 patches (um por face do cubo) - e exatamente esse o
+   impostor visto de longe, um globo de baixa resolucao com o MESMO relevo e a
+   MESMA paleta do chao. Ao aproximar, os nos se dividem por distancia ate a
+   profundidade 11 (triangulos de ~3 m). Como e a mesma malha o tempo todo,
+   a transicao espaco -> atmosfera -> superficie nao tem troca de modelo,
+   nao tem tela de carregamento e nao tem "pop" de silhueta.
+
+   Saias nas bordas resolvem as frestas entre niveis de LOD sem precisar de
+   costura entre vizinhos (que custaria muito mais CPU e memoria).            */
+const INDICE_CHUNK = new Map();   // indice compartilhado por todos os chunks de mesma res
+function indiceChunk(res) {
+  if (INDICE_CHUNK.has(res)) return INDICE_CHUNK.get(res);
+  const n = res + 1;
+  const tris = [];
+  for (let j = 0; j < res; j++) {
+    for (let i = 0; i < res; i++) {
+      const a = j * n + i, b = a + 1, c = a + n + 1, d = a + n;
+      tris.push(a, b, c, a, c, d);       // CCW visto de fora em todas as 6 faces
+    }
+  }
+  // saias: 4 tiras ligando a borda a copia empurrada para dentro
+  const base = n * n;
+  const tiras = [
+    { off: base + 0 * n, idx: (i) => i },
+    { off: base + 1 * n, idx: (i) => (n - 1) * n + i },
+    { off: base + 2 * n, idx: (i) => i * n },
+    { off: base + 3 * n, idx: (i) => i * n + (n - 1) }
+  ];
+  for (const t of tiras) {
+    for (let i = 0; i < n - 1; i++) {
+      const a = t.idx(i), b = t.idx(i + 1), c = t.off + i + 1, d = t.off + i;
+      tris.push(a, b, c, a, c, d);
+    }
+  }
+  const arr = (n * n + 4 * n) > 65535 ? new Uint32Array(tris) : new Uint16Array(tris);
+  const attr = new THREE.BufferAttribute(arr, 1);
+  INDICE_CHUNK.set(res, attr);
+  return attr;
+}
+
+class NoTerreno {
+  constructor(sis, face, u0, v0, tam, prof) {
+    this.sis = sis; this.face = face; this.u0 = u0; this.v0 = v0; this.tam = tam; this.prof = prof;
+    const d = [0, 0, 0];
+    dirDoCubo(face, u0 + tam / 2, v0 + tam / 2, d);
+    this.dir = d;
+    const h = sis.planeta.alturaEm(d[0], d[1], d[2]);
+    const r = sis.planeta.raio + h;
+    this.centro = new THREE.Vector3(d[0] * r, d[1] * r, d[2] * r);
+    this.tamM = tam * sis.planeta.raio * 0.92;   // tamanho aproximado em metros
+    this.filhos = null;
+    this.malha = null;
+    this.pedido = 0;
+    this.visivel = false;
+  }
+  dispose() {
+    this.morto = true;
+    this.pendente = false;
+    if (this.pedido) { this.sis.fabrica.cancelar(this.pedido); this.pedido = 0; this.sis.emVoo--; }
+    if (this.malha) {
+      this.sis.grupo.remove(this.malha);
+      this.malha.geometry.dispose();     // libera os buffers na GPU
+      this.malha = null;
+      this.sis.vivos--;
+    }
+    if (this.filhos) { for (const f of this.filhos) f.dispose(); this.filhos = null; }
+  }
+}
+
+/* Orcamento global de chunks. Um teto por planeta nao serve: perto de um
+   planeta a arvore dele sozinha estoura a memoria de video do iPad. Este
+   governador ajusta o criterio de subdivisao de TODOS os planetas por quadro,
+   degradando a qualidade em vez de travar.                                  */
+const CargaTerreno = { k: CONFIG.TERRENO.SPLIT_K, total: 0 };
+function governarTerreno(total) {
+  CargaTerreno.total = total;
+  const K = CONFIG.TERRENO.SPLIT_K;
+  CargaTerreno.k = total > CONFIG.TERRENO.CHUNKS_MAX
+    ? Math.max(0.55, CargaTerreno.k * 0.94)
+    : Math.min(K, CargaTerreno.k * 1.02);
+}
+
+class SistemaTerreno {
+  constructor(planeta, fabrica, THREEref) {
+    this.planeta = planeta;
+    this.fabrica = fabrica;
+    this.grupo = new THREE.Group();
+    this.grupo.matrixAutoUpdate = false;
+    this.material = materialSuperficie({ side: THREE.DoubleSide });  // DoubleSide: saias sem risco de winding
+    this.raizes = [];
+    for (let f = 0; f < 6; f++) this.raizes.push(new NoTerreno(this, f, -1, -1, 2, 0));
+    this.vivos = 0;
+    this.emVoo = 0;
+    this.fila = [];
+  }
+
+  pedirMalha(no) {
+    // no.pendente = malha ja gerada, esperando virar geometria na fila.
+    // Sem esta guarda o mesmo no era pedido a cada quadro enquanto esperava,
+    // e cada resposta criava uma malha nova (vazamento de geometria na GPU).
+    if (no.malha || no.pedido || no.pendente) return;
+    if (this.emVoo >= 6) return;             // limita trabalho paralelo
+    this.emVoo++;
+    const T = CONFIG.TERRENO;
+    no.pedido = this.fabrica.pedir({
+      P: this.planeta.P, face: no.face, u0: no.u0, v0: no.v0, tam: no.tam,
+      res: T.RES, saia: T.SAIA
+    }, (d) => {
+      no.pedido = 0; this.emVoo--; no.pendente = true;
+      this.fila.push({ no, d });
+    });
+  }
+
+  aplicar(no, d) {
+    no.pendente = false;
+    if (no.morto) return;
+    if (no.malha) {                       // substituicao: descarta a anterior
+      this.grupo.remove(no.malha);
+      no.malha.geometry.dispose();
+      this.vivos--;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(d.pos, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(d.nor, 3));
+    g.setAttribute('cor', new THREE.BufferAttribute(d.col, 3));
+    g.setAttribute('tipo', new THREE.BufferAttribute(d.tip, 1));
+    g.setIndex(indiceChunk(CONFIG.TERRENO.RES));
+    g.computeBoundingSphere();
+    const m = new THREE.Mesh(g, this.material);
+    m.position.set(d.centro[0], d.centro[1], d.centro[2]);
+    m.matrixAutoUpdate = false;
+    m.updateMatrix();
+    m.frustumCulled = true;
+    m.visible = false;
+    no.malha = m;
+    this.grupo.add(m);
+    this.vivos++;
+  }
+
+  // aplica no maximo N chunks por quadro: evita hitch de upload para a GPU
+  drenarFila() {
+    let n = CONFIG.TERRENO.FILA_POR_QUADRO;
+    while (n-- > 0 && this.fila.length) {
+      const it = this.fila.shift();
+      this.aplicar(it.no, it.d);
+    }
+  }
+
+  esconder(no) {
+    if (no.malha) { no.malha.visible = false; no.visivel = false; }
+    if (no.filhos) for (const f of no.filhos) this.esconder(f);
+  }
+
+  visitar(no, cam, dCam, cosHor) {
+    // ---- corte pelo horizonte ----
+    // Um ponto p da esfera so e visivel de C se dot(p, C) > R2, ou seja
+    // dot(dirDoNo, dirDaCamera) > R / |C|. Com margem para o tamanho do no e
+    // para o relevo. Isso corta metade do planeta antes de qualquer draw call.
+    const cosNo = (cam.x * no.dir[0] + cam.y * no.dir[1] + cam.z * no.dir[2]) / dCam;
+    if (cosNo < cosHor - no.tam * 0.75 - this.margemRelevo) {
+      if (no.filhos) { for (const f of no.filhos) f.dispose(); no.filhos = null; }
+      if (no.malha) { no.malha.visible = false; no.visivel = false; }
+      return;
+    }
+    const dx = cam.x - no.centro.x, dy = cam.y - no.centro.y, dz = cam.z - no.centro.z;
+    const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy + dz * dz) - no.tamM * 0.5);
+    const dividir = no.prof < CONFIG.TERRENO.PROF_MAX && no.tamM * CargaTerreno.k > dist;
+
+    if (dividir) {
+      if (!no.filhos) {
+        const t = no.tam / 2;
+        no.filhos = [
+          new NoTerreno(this, no.face, no.u0,     no.v0,     t, no.prof + 1),
+          new NoTerreno(this, no.face, no.u0 + t, no.v0,     t, no.prof + 1),
+          new NoTerreno(this, no.face, no.u0,     no.v0 + t, t, no.prof + 1),
+          new NoTerreno(this, no.face, no.u0 + t, no.v0 + t, t, no.prof + 1)
+        ];
+      }
+      let prontos = true;
+      for (const f of no.filhos) { if (!f.malha) { this.pedirMalha(f); prontos = false; } }
+      if (prontos) {
+        if (no.malha) { no.malha.visible = false; no.visivel = false; }
+        for (const f of no.filhos) this.visitar(f, cam, dCam, cosHor);
+        return;
+      }
+    } else if (no.filhos && no.tamM * CargaTerreno.k * 1.45 < dist) {
+      for (const f of no.filhos) f.dispose();
+      no.filhos = null;
+    }
+
+    this.pedirMalha(no);
+    if (no.malha) {
+      no.malha.visible = true; no.visivel = true;
+      // camadas de render: chunk perto vai para a camara de precisao alta
+      no.malha.layers.set(dist < CONFIG.CAM.PERTO[1] * 0.8 ? 3 : (dist < CONFIG.CAM.MEIO[1] * 0.8 ? 2 : 1));
+      if (no.filhos) for (const f of no.filhos) this.esconder(f);
+    }
+  }
+
+  atualizar(camLocal) {
+    this.drenarFila();
+    const dCam = Math.max(this.planeta.raio * 1.0001, camLocal.length());
+    const cosHor = this.planeta.raio / dCam;
+    this.margemRelevo = this.planeta.P.relevo / this.planeta.raio;
+    for (const r of this.raizes) this.visitar(r, camLocal, dCam, cosHor);
+  }
+
+  dispose() {
+    for (const r of this.raizes) { r.morto = true; r.dispose(); }
+    this.raizes.length = 0;
+    this.material.dispose();
+    this.fila.length = 0;
+  }
+}
+
+/* ========================= Ship / Nave ==================================
+   Corpo rigido 6DOF. A posicao e guardada RELATIVA ao corpo dominante
+   (estrela ou planeta): isso mantem os numeros pequenos, deixa a nave pousada
+   acompanhar o planeta em orbita de graca e evita erro de cancelamento ao
+   subtrair duas coordenadas absolutas gigantes.                              */
+class Nave {
+  constructor() {
+    this.ref = null;                       // null = estrela; senao, Planeta
+    this.pos = new THREE.Vector3();
+    this.vel = new THREE.Vector3();
+    this.quat = new THREE.Quaternion();
+    this.angVel = new THREE.Vector3();
+    this.combustivel = CONFIG.NAVE.COMBUSTIVEL_MAX;
+    this.casco = 100;
+    this.pousado = false;
+    this.assist = false;
+    this.turboAtivo = false;
+    this.empuxoAtual = 0;
+    this.altitude = Infinity;
+    this.densAr = 0;
+    this.gLocal = 0;
+    this.velVertical = 0;
+    this._v = new THREE.Vector3();
+    this._q = new THREE.Quaternion();
+    this._e = new THREE.Euler();
+  }
+  posAbs(out) {
+    out.set(this.pos.x, this.pos.y, this.pos.z);
+    if (this.ref) out.set(this.pos.x + this.ref.pos.x, this.pos.y + this.ref.pos.y, this.pos.z + this.ref.pos.z);
+    return out;
+  }
+  eixo(x, y, z, out) { return out.set(x, y, z).applyQuaternion(this.quat); }
+
+  /* Troca de referencial. A POSICAO e convertida; a VELOCIDADE nao.
+     Decisao deliberada de jogo: os planetas orbitam a 10 a 20 km/s, e herdar
+     essa velocidade ao sair da esfera de influencia deixaria o jogador em
+     transferencia orbital involuntaria a cada saida de planeta - correto na
+     fisica, insuportavel no controle. Assim a velocidade mostrada no HUD e
+     sempre relativa ao corpo de referencia, que e a unica que importa para
+     pousar. (Um modo "newtoniano puro" e candidato natural a Fase 3.)       */
+    trocarRef(novo) {
+    if (novo === this.ref) return;
+    const abs = this.posAbs(new THREE.Vector3());
+    this.ref = novo;
+    if (novo) this.pos.set(abs.x - novo.pos.x, abs.y - novo.pos.y, abs.z - novo.pos.z);
+    else this.pos.copy(abs);
+  }
+
+  atualizar(dt, ent, universo, avisos) {
+    const N = CONFIG.NAVE;
+    const abs = this.posAbs(this._v.clone());
+    const dominante = universo.corpoDominante(abs.x, abs.y, abs.z);
+    if (dominante !== this.ref) { this.trocarRef(dominante); this.pousado = false; }
+
+    const P = this.ref;
+    const d = this.pos.length() || 1;
+    const up = this._v.copy(this.pos).multiplyScalar(1 / d);   // radial para fora
+    const mu = P ? P.mu : universo.estrelaMu;
+    const raioBase = P ? P.raio : universo.estrelaRaio;
+
+    // altura do terreno sob a nave e altitude real
+    let alturaSolo = 0;
+    if (P) alturaSolo = P.alturaEm(up.x, up.y, up.z);
+    this.altitude = d - (raioBase + alturaSolo);
+    this.gLocal = mu / (d * d);
+    this.densAr = P ? P.densidadeAr(this.altitude) : 0;
+    this.velVertical = this.vel.dot(up);
+
+    // ---- rotacao (fly-by-wire: torque + amortecimento) ----
+    const t = new THREE.Vector3(ent.pitch * N.TORQUE, ent.yaw * N.TORQUE, ent.roll * N.TORQUE_ROLL);
+    this.angVel.addScaledVector(t, dt);
+    const amort = Math.exp(-N.AMORT_ANG * dt * (ent.freio ? 3 : 1));
+    this.angVel.multiplyScalar(amort);
+    if (this.angVel.lengthSq() > 1e-10) {
+      const w = this.angVel;
+      this._e.set(w.x * dt, w.y * dt, w.z * dt, 'XYZ');
+      this._q.setFromEuler(this._e);
+      this.quat.multiply(this._q).normalize();
+    }
+
+    // ---- empuxo ----
+    const frente = this.eixo(0, 0, -1, new THREE.Vector3());
+    const direita = this.eixo(1, 0, 0, new THREE.Vector3());
+    const cima = this.eixo(0, 1, 0, new THREE.Vector3());
+    const temComb = this.combustivel > 0.01;
+    let acel = new THREE.Vector3();
+
+    // turbo: cruzeiro cuja velocidade limite cresce com a altitude, ao estilo
+    // supercruise. Sem isso, atravessar 1e8 m levaria mais de uma hora.
+    const altSegura = Math.max(0, this.altitude);
+    let vMax = N.VEL_MAX;
+    this.turboAtivo = false;
+    if (ent.turbo && temComb && !this.pousado && ent.empuxo > 0.05
+        && this.densAr < 0.12 && altSegura > N.TURBO_ALT_MIN) {
+      this.turboAtivo = true;
+      vMax = Math.min(N.TURBO_VEL_MAX, Math.max(N.TURBO_VEL_MIN, altSegura * N.TURBO_VEL_POR_ALT));
+    }
+    const mult = this.turboAtivo ? N.TURBO_MULT : 1;
+    if (temComb) {
+      const ez = ent.empuxo >= 0 ? ent.empuxo * N.EMPUXO * mult : ent.empuxo * N.EMPUXO_RE;
+      acel.addScaledVector(frente, ez);
+      acel.addScaledVector(direita, ent.strafeX * N.STRAFE);
+      acel.addScaledVector(cima, ent.strafeY * N.STRAFE);
+      const uso = (Math.abs(ent.empuxo) + Math.abs(ent.strafeX) * 0.5 + Math.abs(ent.strafeY) * 0.5)
+                * (this.turboAtivo ? N.CONSUMO_TURBO : N.CONSUMO);
+      this.combustivel = Math.max(0, this.combustivel - uso * dt);
+    }
+    this.empuxoAtual = temComb ? Math.abs(ent.empuxo) : 0;
+
+    // Limitador de velocidade: corta a componente de EMPUXO que ainda acelera
+    // quando ja se esta no teto. Cortar a velocidade direto (clamp no vetor)
+    // reescreveria a fisica e daria solavanco ao trocar de referencial.
+    const vAtual = this.vel.length();
+    if (vAtual > vMax) {
+      const ao = acel.dot(this.vel) / vAtual;
+      if (ao > 0) acel.addScaledVector(this.vel, -ao / vAtual);
+    }
+
+    // ---- gravidade ----
+    acel.addScaledVector(up, -this.gLocal);
+
+    /* Assistencia de pouso: cancela a gravidade, mata a deriva lateral e
+       persegue uma taxa de descida segura. Sem isso, pousar num corpo de baixa
+       gravidade exige microajustes de empuxo que ninguem faz com o polegar. */
+    if (this.assist && P && temComb && this.altitude < P.raio * 0.25) {
+      acel.addScaledVector(up, this.gLocal);
+      const tang = new THREE.Vector3().copy(this.vel).addScaledVector(up, -this.velVertical);
+      acel.addScaledVector(tang, -1.1);
+      const alvoV = this.altitude > 140 ? -14 : -4.5;
+      const dv = alvoV - this.velVertical;
+      const teto = N.ASSIST_POUSO_G * Math.max(2, this.gLocal) * 2;
+      acel.addScaledVector(up, Math.max(-teto, Math.min(teto, dv * 0.9)));
+      this.combustivel = Math.max(0, this.combustivel - 0.12 * dt);
+    }
+
+    // ---- arrasto atmosferico ----
+    if (this.densAr > 0.0001) {
+      const v = this.vel.length();
+      let a = N.ARRASTO * this.densAr * v * v;
+      a = Math.min(a, 260);                                  // teto: reentrada nao mata de imediato
+      if (v > 0.01) acel.addScaledVector(this.vel, -a / v);
+      if (v > 420 && this.densAr > 0.25) {
+        this.casco = Math.max(0, this.casco - (v - 420) * 0.0016 * this.densAr * dt);
+        avisos.reentrada = true;
+      }
+    }
+
+    // ---- freio inercial ----
+    if (ent.freio) {
+      const f = Math.exp(-CONFIG.NAVE.FREIO * dt);
+      this.vel.multiplyScalar(f);
+    }
+
+    this.vel.addScaledVector(acel, dt);
+    this.pos.addScaledVector(this.vel, dt);
+
+    // ---- contato com o solo ----
+    this.pousado = false;
+    if (P) {
+      const d2 = this.pos.length() || 1;
+      const u2 = new THREE.Vector3().copy(this.pos).multiplyScalar(1 / d2);
+      const hs = P.alturaEm(u2.x, u2.y, u2.z);
+      const rSolo = P.raio + hs + N.ALTURA_TREM;
+      if (d2 < rSolo) {
+        const vRad = this.vel.dot(u2);
+        if (vRad < -N.POUSO_VEL_MAX) {
+          const excesso = -vRad - N.POUSO_VEL_MAX;
+          this.casco = Math.max(0, this.casco - excesso * N.DANO_POR_MS);
+          avisos.impacto = excesso;
+        }
+        this.pos.copy(u2).multiplyScalar(rSolo);
+        if (vRad < 0) this.vel.addScaledVector(u2, -vRad);   // remove componente para dentro
+        // atrito com o solo
+        const tang = new THREE.Vector3().copy(this.vel);
+        this.vel.multiplyScalar(Math.exp(-3.2 * dt));
+        this.pousado = tang.length() < 8;
+        if (this.pousado) {
+          this.combustivel = Math.min(N.COMBUSTIVEL_MAX, this.combustivel + N.RECARGA_POUSADO * dt);
+          this.angVel.multiplyScalar(Math.exp(-6 * dt));
+        }
+      }
+    }
+    this.altitude = this.pos.length() - (raioBase + alturaSolo);
+  }
+}
+
+/* ========================= InputManager ================================= */
+class Entradas {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.teclas = Object.create(null);
+    this.mouse = { x: 0, y: 0, ativo: false, travado: false };
+    this.toque = { ativo: false, l: { x: 0, y: 0 }, r: { x: 0, y: 0 }, bt: Object.create(null) };
+    this.saida = { empuxo: 0, strafeX: 0, strafeY: 0, pitch: 0, yaw: 0, roll: 0, freio: false, turbo: false };
+    this.pulsos = Object.create(null);
+    this.invY = false;
+    this._ligar();
+  }
+  _ligar() {
+    addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+      this.teclas[e.code] = true;
+      this.pulsos[e.code] = true;
+      if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Tab'].indexOf(e.code) >= 0) e.preventDefault();
+    });
+    addEventListener('keyup', (e) => { this.teclas[e.code] = false; });
+    addEventListener('blur', () => { this.teclas = Object.create(null); });
+
+    // mouse: arrasto ou ponteiro travado
+    this.canvas.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      this.mouse.ativo = true; this.mouse.px = e.clientX; this.mouse.py = e.clientY;
+    });
+    addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse') this.mouse.ativo = false; });
+    addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      if (document.pointerLockElement === this.canvas) {
+        this.mouse.x += e.movementX * 0.0022; this.mouse.y += e.movementY * 0.0022;
+      } else if (this.mouse.ativo) {
+        this.mouse.x += (e.clientX - this.mouse.px) * 0.0035;
+        this.mouse.y += (e.clientY - this.mouse.py) * 0.0035;
+        this.mouse.px = e.clientX; this.mouse.py = e.clientY;
+      }
+      this.mouse.x = Math.max(-1, Math.min(1, this.mouse.x));
+      this.mouse.y = Math.max(-1, Math.min(1, this.mouse.y));
+    });
+    document.addEventListener('pointerlockchange', () => {
+      this.mouse.travado = document.pointerLockElement === this.canvas;
+      if (!this.mouse.travado) { this.mouse.x = 0; this.mouse.y = 0; }
+    });
+
+    this._ligarToque();
+  }
+  _ligarToque() {
+    const sticks = [['stick-l', 'l'], ['stick-r', 'r']];
+    for (const [id, chave] of sticks) {
+      const el = document.getElementById(id);
+      const knob = el.querySelector('.knob');
+      let idPonteiro = null;
+      const mover = (e) => {
+        const r = el.getBoundingClientRect();
+        let dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
+        let dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
+        const m = Math.hypot(dx, dy);
+        if (m > 1) { dx /= m; dy /= m; }
+        this.toque[chave].x = dx; this.toque[chave].y = dy;
+        knob.style.transform = 'translate(' + (dx * 40) + 'px,' + (dy * 40) + 'px)';
+      };
+      el.addEventListener('pointerdown', (e) => {
+        e.preventDefault(); idPonteiro = e.pointerId; el.setPointerCapture(e.pointerId);
+        this.toque.ativo = true; mover(e);
+      });
+      el.addEventListener('pointermove', (e) => { if (e.pointerId === idPonteiro) { e.preventDefault(); mover(e); } });
+      const soltar = (e) => {
+        if (e.pointerId !== idPonteiro) return;
+        idPonteiro = null;
+        this.toque[chave].x = 0; this.toque[chave].y = 0;
+        knob.style.transform = '';
+      };
+      el.addEventListener('pointerup', soltar);
+      el.addEventListener('pointercancel', soltar);
+    }
+    for (const bt of document.querySelectorAll('.bt')) {
+      const nome = bt.dataset.bt;
+      const liga = (e) => { e.preventDefault(); this.toque.bt[nome] = true; this.pulsos['bt.' + nome] = true; bt.classList.add('on'); this.toque.ativo = true; };
+      const desliga = (e) => { e.preventDefault(); this.toque.bt[nome] = false; bt.classList.remove('on'); };
+      bt.addEventListener('pointerdown', liga);
+      bt.addEventListener('pointerup', desliga);
+      bt.addEventListener('pointercancel', desliga);
+      bt.addEventListener('pointerleave', desliga);
+    }
+  }
+  pulso(codigo) { const v = !!this.pulsos[codigo]; this.pulsos[codigo] = false; return v; }
+  ler(dt) {
+    const s = this.saida, k = this.teclas, t = this.toque;
+    const ax = (a, b) => (k[a] ? 1 : 0) - (k[b] ? 1 : 0);
+    s.empuxo  = Math.max(-1, Math.min(1, ax('KeyW', 'KeyS') - t.l.y));
+    s.strafeX = Math.max(-1, Math.min(1, ax('KeyD', 'KeyA') + t.l.x));
+    s.strafeY = Math.max(-1, Math.min(1, ax('KeyR', 'KeyF')));
+    s.roll    = Math.max(-1, Math.min(1, ax('KeyQ', 'KeyE')
+                + (t.bt.rollL ? 1 : 0) - (t.bt.rollR ? 1 : 0)));
+    let pitch = ax('ArrowUp', 'ArrowDown') * 0.9 + this.mouse.y * -2.2 + t.r.y * -1.0;
+    let yaw   = ax('ArrowLeft', 'ArrowRight') * 0.9 + this.mouse.x * -2.2 + t.r.x * -1.0;
+    if (this.invY) pitch = -pitch;
+    s.pitch = Math.max(-1.4, Math.min(1.4, pitch));
+    s.yaw   = Math.max(-1.4, Math.min(1.4, yaw));
+    s.freio = !!k.KeyX || !!t.bt.freio;
+    s.turbo = !!k.ShiftLeft || !!k.ShiftRight || !!t.bt.turbo;
+    // o mouse por arrasto volta ao centro sozinho; travado nao
+    if (!this.mouse.travado) {
+      const dec = Math.exp(-6 * dt);
+      this.mouse.x *= dec; this.mouse.y *= dec;
+    } else {
+      const dec = Math.exp(-9 * dt);
+      this.mouse.x *= dec; this.mouse.y *= dec;
+    }
+    return s;
+  }
+}
+
+/* ========================= HUD ==========================================
+   Overlay em DOM: nao gasta draw call e ganha de graca as fontes do sistema,
+   o safe-area do iPhone e a nitidez em telas retina.                        */
+const $ = (id) => document.getElementById(id);
+function fmtDist(m) {
+  if (!isFinite(m)) return '--';
+  const a = Math.abs(m);
+  if (a < 1000) return m.toFixed(0) + ' m';
+  if (a < 1e6) return (m / 1000).toFixed(a < 1e5 ? 2 : 0) + ' km';
+  return (m / 1e6).toFixed(2) + ' Mm';
+}
+function fmtVel(v) {
+  if (v < 1000) return { n: v.toFixed(0), u: 'm/s' };
+  if (v < 1e6) return { n: (v / 1000).toFixed(1), u: 'km/s' };
+  return { n: (v / 1000).toFixed(0), u: 'km/s' };
+}
+
+class HUD {
+  constructor() {
+    this.raiz = $('hud');
+    this.marcadores = $('marcadores');
+    this.mapa = new Map();
+    this.acum = 0;
+    this.msgT = 0;
+  }
+  mostrar(v) { this.raiz.classList.toggle('oculto', !v); }
+  msg(txt, seg) {
+    const el = $('msg');
+    el.textContent = txt;
+    el.classList.add('on');
+    this.msgT = seg || 2.4;
+  }
+  barra(id, frac, alerta, critico) {
+    const el = $(id);
+    el.firstElementChild.style.width = Math.max(0, Math.min(100, frac * 100)).toFixed(1) + '%';
+    el.classList.toggle('alerta', frac < alerta && frac >= critico);
+    el.classList.toggle('critico', frac < critico);
+  }
+  atualizar(dt, jogo) {
+    if (this.msgT > 0) { this.msgT -= dt; if (this.msgT <= 0) $('msg').classList.remove('on'); }
+    this.acum += dt;
+    const n = jogo.nave;
+    // textos a 8 Hz: evita reflow do DOM em todo quadro
+    if (this.acum > 0.125) {
+      this.acum = 0;
+      const fv = fmtVel(n.vel.length());
+      $('h-vel').textContent = fv.n; $('h-vel-un').textContent = fv.u;
+      $('h-alt').textContent = n.ref ? fmtDist(n.altitude) : 'ESPACO PROFUNDO';
+      $('h-g').textContent = n.gLocal.toFixed(2) + ' m/s2';
+      $('h-atm').textContent = (n.densAr * 100).toFixed(0) + '%';
+      $('h-fuel').textContent = n.combustivel.toFixed(0) + '%';
+      $('h-casco').textContent = n.casco.toFixed(0) + '%';
+      $('h-modo').textContent = n.pousado ? 'POUSADO'
+        : n.turboAtivo ? 'CRUZEIRO'
+        : n.densAr > 0.02 ? 'ATMOSFERA'
+        : n.assist ? 'ASSIST POUSO' : 'ORBITAL';
+      const alvo = jogo.alvo;
+      if (alvo) {
+        $('h-alvo').textContent = alvo.nome;
+        $('h-dist').textContent = fmtDist(jogo.distAlvo);
+        $('h-bioma').textContent = alvo.biomaNome;
+        $('h-grav').textContent = alvo.gravidade.toFixed(2) + ' m/s2';
+        $('h-temp').textContent = (alvo.temperatura - 273).toFixed(0) + ' C';
+      } else {
+        $('h-alvo').textContent = 'NENHUM'; $('h-dist').textContent = '--';
+        $('h-bioma').textContent = '--'; $('h-grav').textContent = '--'; $('h-temp').textContent = '--';
+      }
+      this.barra('b-fuel', n.combustivel / CONFIG.NAVE.COMBUSTIVEL_MAX, 0.25, 0.1);
+      this.barra('b-casco', n.casco / 100, 0.5, 0.25);
+      $('fps').textContent = jogo.fps.toFixed(0) + ' FPS  |  ' + jogo.chunks + ' CHUNKS  |  '
+        + (jogo.fabrica.temWorker ? 'WORKER' : 'MAIN');
+    }
+    this.barra('b-emp', Math.abs(n.empuxoAtual), -1, -1);
+    this.atualizarMarcadores(jogo);
+  }
+  atualizarMarcadores(jogo) {
+    const L = jogo.marcadores;   // [{nome, x, y, visivel, travado}]
+    for (let i = 0; i < L.length; i++) {
+      let el = this.mapa.get(i);
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'marca';
+        el.appendChild(document.createElement('span'));
+        this.marcadores.appendChild(el);
+        this.mapa.set(i, el);
+      }
+      const m = L[i];
+      if (!m.visivel) { el.style.display = 'none'; continue; }
+      el.style.display = '';
+      el.style.transform = 'translate(' + m.x.toFixed(1) + 'px,' + m.y.toFixed(1) + 'px) rotate(45deg)';
+      el.classList.toggle('travado', m.travado);
+      if (el.firstChild.textContent !== m.nome) el.firstChild.textContent = m.nome;
+    }
+    for (let i = L.length; this.mapa.has(i); i++) this.mapa.get(i).style.display = 'none';
+  }
+}
+
+/* ========================= SaveSystem ===================================
+   O save tem poucos KB, entao localStorage sincrono basta e funciona ate em
+   file:// no Safari; IndexedDB (ou idb-keyval) so passa a valer a pena na
+   Fase 2, quando houver inventario e cache de terreno para guardar.          */
+class Persistencia {
+  static salvar(jogo) {
+    try {
+      const n = jogo.nave;
+      const dados = {
+        v: CONFIG.VERSAO_SAVE,
+        semente: jogo.universo.semente,
+        tempo: jogo.universo.tempo,
+        ref: n.ref ? n.ref.indice : -1,
+        pos: [n.pos.x, n.pos.y, n.pos.z],
+        vel: [n.vel.x, n.vel.y, n.vel.z],
+        quat: [n.quat.x, n.quat.y, n.quat.z, n.quat.w],
+        comb: n.combustivel, casco: n.casco,
+        alvo: jogo.alvo ? jogo.alvo.indice : -1,
+        recursos: jogo.recursos,      // reservado para a Fase 2
+        upgrades: jogo.upgrades
+      };
+      localStorage.setItem(CONFIG.CHAVE_SAVE, JSON.stringify(dados));
+      return true;
+    } catch (e) { return false; }
+  }
+  static ler() {
+    try {
+      const s = localStorage.getItem(CONFIG.CHAVE_SAVE);
+      if (!s) return null;
+      const d = JSON.parse(s);
+      return d && d.v === CONFIG.VERSAO_SAVE ? d : null;
+    } catch (e) { return null; }
+  }
+  static apagar() { try { localStorage.removeItem(CONFIG.CHAVE_SAVE); } catch (e) {} }
+}
+
+/* ========================= AudioSystem ==================================
+   Web Audio puro: nenhuma amostra para baixar, tudo sintetizado. Tone.js e
+   Howler resolveriam mais coisas, mas pesam 100 a 400 KB e nao adicionam nada
+   para um motor de ruido grave + vento.                                      */
+class Audio2 {
+  constructor() { this.ctx = null; this.pronto = false; this.vol = CONFIG.AUDIO.VOLUME; }
+  iniciar() {
+    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try {
+      const ctx = this.ctx = new AC();
+      const mestre = this.mestre = ctx.createGain();
+      mestre.gain.value = this.vol;
+      mestre.connect(ctx.destination);
+
+      // ---- motor: duas ondas graves batendo entre si + filtro passa-baixa ----
+      const g = this.gMotor = ctx.createGain(); g.gain.value = 0;
+      const f = this.fMotor = ctx.createBiquadFilter();
+      f.type = 'lowpass'; f.frequency.value = 260; f.Q.value = 1.1;
+      const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = CONFIG.AUDIO.MOTOR_HZ;
+      const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = CONFIG.AUDIO.MOTOR_HZ * 1.51;
+      const gm2 = ctx.createGain(); gm2.gain.value = 0.35;
+      o1.connect(f); o2.connect(gm2); gm2.connect(f); f.connect(g); g.connect(mestre);
+      o1.start(); o2.start();
+      this.o1 = o1; this.o2 = o2;
+
+      // ---- vento: ruido rosa aproximado por buffer + passa-banda ----
+      const len = ctx.sampleRate * 2;
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const dt = buf.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0;
+      for (let i = 0; i < len; i++) {
+        const w = Math.random() * 2 - 1;
+        b0 = 0.99765 * b0 + w * 0.0990460;
+        b1 = 0.96300 * b1 + w * 0.2965164;
+        b2 = 0.57000 * b2 + w * 1.0526913;
+        dt[i] = (b0 + b1 + b2 + w * 0.1848) * 0.16;
+      }
+      const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+      const fv = this.fVento = ctx.createBiquadFilter();
+      fv.type = 'bandpass'; fv.frequency.value = 420; fv.Q.value = 0.6;
+      const gv = this.gVento = ctx.createGain(); gv.gain.value = 0;
+      src.connect(fv); fv.connect(gv); gv.connect(mestre); src.start();
+
+      this.pronto = true;
+    } catch (e) { this.pronto = false; }
+  }
+  bip(freq, dur) {
+    if (!this.pronto) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.16, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.12));
+    o.connect(g); g.connect(this.mestre); o.start(t); o.stop(t + (dur || 0.12) + 0.02);
+  }
+  atualizar(nave) {
+    if (!this.pronto) return;
+    const t = this.ctx.currentTime, s = 0.09;
+    const emp = Math.min(1, Math.abs(nave.empuxoAtual) * (nave.turboAtivo ? 1.6 : 1));
+    // no espaco quase nao ha som: o motor e a unica coisa que se sente
+    this.gMotor.gain.setTargetAtTime(0.06 + emp * 0.34, t, s);
+    this.fMotor.frequency.setTargetAtTime(150 + emp * 620, t, s);
+    this.o1.frequency.setTargetAtTime(CONFIG.AUDIO.MOTOR_HZ * (0.85 + emp * 0.55), t, s);
+    const vento = Math.min(CONFIG.AUDIO.VENTO_MAX, nave.densAr * Math.min(1, nave.vel.length() / 260));
+    this.gVento.gain.setTargetAtTime(vento, t, 0.16);
+    this.fVento.frequency.setTargetAtTime(280 + Math.min(1400, nave.vel.length() * 2.2), t, 0.2);
+  }
+}
+
+/* ========================= objetos de cena ============================== */
+
+// Campo de estrelas: Points e mais barato que InstancedMesh para pontos de 1 a
+// 2 pixels (1 vertice contra 4 + matriz por instancia). InstancedMesh fica com
+// a poeira estelar e os asteroides, onde ha volume de verdade.
+function criarEstrelas(rnd) {
+  const n = CONFIG.RENDER.ESTRELAS, R = 1.2e11;
+  const pos = new Float32Array(n * 3), cor = new Float32Array(n * 3), tam = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    // distribuicao uniforme na esfera
+    const u = rnd() * 2 - 1, th = rnd() * Math.PI * 2, r = Math.sqrt(1 - u * u);
+    pos[i * 3] = Math.cos(th) * r * R; pos[i * 3 + 1] = u * R; pos[i * 3 + 2] = Math.sin(th) * r * R;
+    const t = rnd();
+    const b = 0.35 + Math.pow(rnd(), 2.4) * 0.95;
+    cor[i * 3] = b * (t < 0.25 ? 1.0 : t < 0.7 ? 0.95 : 0.72);
+    cor[i * 3 + 1] = b * (t < 0.25 ? 0.78 : 0.95);
+    cor[i * 3 + 2] = b * (t < 0.25 ? 0.55 : t < 0.7 ? 0.92 : 1.0);
+    tam[i] = 1 + Math.pow(rnd(), 3) * 2.4;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('cor', new THREE.BufferAttribute(cor, 3));
+  g.setAttribute('tam', new THREE.BufferAttribute(tam, 1));
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uOpac: { value: 1 }, uPx: { value: 1 } },
+    vertexShader: `
+      attribute vec3 cor; attribute float tam;
+      varying vec3 vC; uniform float uPx;
+      void main(){ vC = cor; vec4 mv = modelViewMatrix * vec4(position,1.0);
+        gl_PointSize = tam * uPx; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `
+      precision mediump float; varying vec3 vC; uniform float uOpac;
+      void main(){
+        vec2 d = gl_PointCoord - 0.5;
+        float a = smoothstep(0.5, 0.06, length(d));
+        gl_FragColor = vec4(vC * a * uOpac, 1.0);
+      }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  const p = new THREE.Points(g, m);
+  p.frustumCulled = false;
+  p.layers.set(1);
+  p.material.userData.opac = m.uniforms.uOpac;
+  return p;
+}
+
+// Poeira estelar: geometria instanciada de quads alongados pela velocidade. E o
+// unico indicador honesto de velocidade no vazio.
+function criarPoeira() {
+  const n = CONFIG.RENDER.POEIRA;
+  const g = new THREE.InstancedBufferGeometry();
+  const base = new THREE.PlaneGeometry(1, 1);
+  g.setIndex(base.index);
+  g.setAttribute('position', base.attributes.position);
+  g.setAttribute('uv', base.attributes.uv);
+  const off = new Float32Array(n * 3);
+  for (let i = 0; i < n * 3; i++) off[i] = 0;
+  g.setAttribute('deslocamento', new THREE.InstancedBufferAttribute(off, 3));
+  g.instanceCount = n;
+  const m = new THREE.ShaderMaterial({
+    uniforms: {
+      uVel: { value: new THREE.Vector3() },   // velocidade em espaco de camera
+      uTam: { value: 0.5 }, uOpac: { value: 0.0 }, uRaio: { value: CONFIG.RENDER.POEIRA_RAIO }
+    },
+    vertexShader: `
+      attribute vec3 deslocamento;
+      uniform vec3 uVel; uniform float uTam; uniform float uRaio;
+      varying float vA;
+      void main(){
+        vec4 centro = modelViewMatrix * vec4(deslocamento, 1.0);
+        float d = length(centro.xyz);
+        vA = smoothstep(uRaio, uRaio * 0.35, d) * smoothstep(1.5, 8.0, d);
+        // alonga o quad na direcao da velocidade (rastro)
+        vec3 dir = length(uVel) > 0.001 ? normalize(uVel) : vec3(0.0, 1.0, 0.0);
+        float comp = uTam + min(length(uVel) * 0.022, 11.0);
+        vec3 lado = normalize(cross(dir, vec3(0.0, 0.0, 1.0)) + vec3(0.0001));
+        centro.xyz += dir * (position.y * comp) + lado * (position.x * uTam);
+        gl_Position = projectionMatrix * centro;
+      }`,
+    fragmentShader: `
+      precision mediump float; varying float vA; uniform float uOpac;
+      void main(){ gl_FragColor = vec4(vec3(0.62, 0.74, 0.95) * vA * uOpac, 1.0); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  const im = new THREE.Mesh(g, m);
+  im.frustumCulled = false;
+  im.layers.set(3);
+  im.userData.off = g.getAttribute('deslocamento');
+  return im;
+}
+
+// Cinturao de asteroides: InstancedMesh preenchido a partir de um hash espacial
+// deterministico, so nas celulas proximas da nave.
+function criarAsteroides(rnd) {
+  const n = CONFIG.RENDER.ASTEROIDES;
+  const base = new THREE.IcosahedronGeometry(1, 0);
+  const pos = base.attributes.position;
+  const cor = new Float32Array(pos.count * 3);
+  const tip = new Float32Array(pos.count);
+  for (let i = 0; i < pos.count; i++) {
+    const c = 0.20 + rnd() * 0.16;
+    cor[i * 3] = c * 1.05; cor[i * 3 + 1] = c; cor[i * 3 + 2] = c * 0.92;
+  }
+  base.setAttribute('cor', new THREE.BufferAttribute(cor, 3));
+  base.setAttribute('tipo', new THREE.BufferAttribute(tip, 1));
+  const m = materialSuperficie({});
+  const im = new THREE.InstancedMesh(base, m, n);
+  im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  im.count = 0;
+  im.frustumCulled = false;
+  im.layers.set(3);
+  return im;
+}
+
+// Rochas e vegetacao da superficie: InstancedMesh reposicionado quando a nave
+// se afasta o suficiente da ultima ancora.
+function criarDetalhesSuperficie() {
+  const g = new THREE.ConeGeometry(1, 2.2, 5);
+  g.translate(0, 1.1, 0);
+  const cor = new Float32Array(g.attributes.position.count * 3);
+  const tip = new Float32Array(g.attributes.position.count);
+  g.setAttribute('cor', new THREE.BufferAttribute(cor, 3));
+  g.setAttribute('tipo', new THREE.BufferAttribute(tip, 1));
+  const m = materialSuperficie({});
+  const im = new THREE.InstancedMesh(g, m, 300);
+  im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  im.instanceColor = null;
+  im.count = 0;
+  im.frustumCulled = false;
+  im.layers.set(3);
+  return im;
+}
+
+// Estrela: esfera emissiva + halo em billboard (o bloom faz o resto).
+function criarEstrela(raio, cor) {
+  const grupo = new THREE.Group();
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uCor: { value: new THREE.Vector3(cor[0], cor[1], cor[2]) } },
+    vertexShader: `varying vec3 vN; varying vec3 vV;
+      void main(){ vN = normalMatrix * normal; vec4 mv = modelViewMatrix * vec4(position,1.0);
+        vV = -mv.xyz; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `precision mediump float; uniform vec3 uCor; varying vec3 vN; varying vec3 vV;
+      void main(){
+        float b = pow(max(dot(normalize(vN), normalize(vV)), 0.0), 0.42);
+        gl_FragColor = vec4(uCor * (2.6 + b * 5.5), 1.0);   // acima de 1: entra no bloom
+      }`
+  });
+  const nucleo = new THREE.Mesh(new THREE.SphereGeometry(raio, 32, 20), m);
+  grupo.add(nucleo);
+  const halo = new THREE.Mesh(new THREE.PlaneGeometry(raio * 9, raio * 9), new THREE.ShaderMaterial({
+    uniforms: { uCor: { value: new THREE.Vector3(cor[0], cor[1], cor[2]) } },
+    vertexShader: `varying vec2 vU;
+      void main(){ vU = uv; vec4 mv = modelViewMatrix * vec4(0.0,0.0,0.0,1.0);
+        mv.xy += position.xy; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `precision mediump float; uniform vec3 uCor; varying vec2 vU;
+      void main(){ float d = length(vU - 0.5) * 2.0;
+        float a = pow(max(0.0, 1.0 - d), 3.4);
+        gl_FragColor = vec4(uCor * a * 1.7, 1.0); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  }));
+  grupo.add(halo);
+  grupo.userData.nucleo = nucleo;
+  return grupo;
+}
+
+// Casca atmosferica vista de fora: rim glow barato, sem raymarching.
+function criarAtmosfera(planeta) {
+  const m = new THREE.ShaderMaterial({
+    uniforms: {
+      uCor: { value: new THREE.Vector3(planeta.corAtm[0], planeta.corAtm[1], planeta.corAtm[2]) },
+      uSol: { value: new THREE.Vector3(0, 0, 1) },
+      uForca: { value: Math.min(1.1, planeta.atmosfera) }
+    },
+    vertexShader: `varying vec3 vN; varying vec3 vV;
+      void main(){ vN = normalMatrix * normal; vec4 mv = modelViewMatrix * vec4(position,1.0);
+        vV = -mv.xyz; gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `precision mediump float;
+      uniform vec3 uCor; uniform vec3 uSol; uniform float uForca;
+      varying vec3 vN; varying vec3 vV;
+      void main(){
+        vec3 N = normalize(vN), V = normalize(vV);
+        float rim = pow(1.0 - max(dot(N, V), 0.0), 2.6);
+        float luz = clamp(dot(N, uSol) + 0.28, 0.0, 1.0);
+        gl_FragColor = vec4(uCor * rim * luz * uForca * 1.9, rim * luz * uForca);
+      }`,
+    transparent: true, depthWrite: false, side: THREE.FrontSide, blending: THREE.AdditiveBlending
+  });
+  const g = new THREE.SphereGeometry(planeta.raio + planeta.altAtmosfera, 40, 24);
+  const mesh = new THREE.Mesh(g, m);
+  mesh.userData.mat = m;
+  return mesh;
+}
+
+// Ceu visto de dentro da atmosfera. Cena propria, desenhada entre os passes.
+function criarCeu() {
+  const m = new THREE.ShaderMaterial({
+    uniforms: {
+      uCor: { value: new THREE.Vector3(0.3, 0.5, 0.9) },
+      uSol: { value: new THREE.Vector3(0, 0, 1) },
+      uCima: { value: new THREE.Vector3(0, 1, 0) },
+      uCorSol: { value: new THREE.Vector3(1, 1, 1) },
+      uDens: { value: 0 }
+    },
+    vertexShader: `varying vec3 vD;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vD = mv.xyz;
+        gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `precision mediump float;
+      uniform vec3 uCor; uniform vec3 uSol; uniform vec3 uCima; uniform vec3 uCorSol; uniform float uDens;
+      varying vec3 vD;
+      void main(){
+        vec3 d = normalize(vD);
+        float h = dot(d, uCima);
+        float dia = clamp(dot(uCima, uSol) + 0.22, 0.0, 1.0);
+        float horiz = pow(1.0 - clamp(h, 0.0, 1.0), 2.6);
+        vec3 c = mix(uCor * 0.55, uCor * 1.5, horiz);
+        float sd = max(dot(d, uSol), 0.0);
+        c += uCorSol * (pow(sd, 900.0) * 6.0 + pow(sd, 14.0) * 0.30 * dia);
+        c *= dia * dia * 0.9 + 0.06;
+        float a = clamp(uDens * (0.55 + horiz * 0.85), 0.0, 1.0);
+        gl_FragColor = vec4(c, a);
+      }`,
+    side: THREE.BackSide, transparent: true, depthWrite: false, depthTest: false
+  });
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(1e5, 24, 16), m);
+  mesh.frustumCulled = false;
+  mesh.userData.mat = m;
+  return mesh;
+}
+
+// Nave: geometria simples montada na mao, sem loader nem asset externo.
+function criarNave() {
+  const g = new THREE.Group();
+  const L = CONFIG.NAVE.COMPRIMENTO;
+  const pinta = (geo, c) => {
+    const n = geo.attributes.position.count;
+    const cor = new Float32Array(n * 3), tip = new Float32Array(n);
+    for (let i = 0; i < n; i++) { cor[i * 3] = c[0]; cor[i * 3 + 1] = c[1]; cor[i * 3 + 2] = c[2]; }
+    geo.setAttribute('cor', new THREE.BufferAttribute(cor, 3));
+    geo.setAttribute('tipo', new THREE.BufferAttribute(tip, 1));
+    return geo;
+  };
+  const mat = materialSuperficie({});
+  const casco = new THREE.Mesh(pinta(new THREE.CylinderGeometry(L * 0.11, L * 0.19, L * 0.72, 7), [0.56, 0.58, 0.62]), mat);
+  casco.rotation.x = Math.PI / 2; casco.position.z = -L * 0.04;
+  const nariz = new THREE.Mesh(pinta(new THREE.ConeGeometry(L * 0.11, L * 0.34, 7), [0.62, 0.64, 0.68]), mat);
+  nariz.rotation.x = -Math.PI / 2; nariz.position.z = -L * 0.57;
+  const asaG = pinta(new THREE.BoxGeometry(L * 0.62, L * 0.035, L * 0.24), [0.40, 0.43, 0.48]);
+  const asaE = new THREE.Mesh(asaG, mat); asaE.position.set(-L * 0.30, -L * 0.02, L * 0.06); asaE.rotation.z = 0.16;
+  const asaD = new THREE.Mesh(asaG, mat); asaD.position.set(L * 0.30, -L * 0.02, L * 0.06); asaD.rotation.z = -0.16;
+  const leme = new THREE.Mesh(pinta(new THREE.BoxGeometry(L * 0.03, L * 0.20, L * 0.20), [0.44, 0.47, 0.52]), mat);
+  leme.position.set(0, L * 0.12, L * 0.22);
+  const cabine = new THREE.Mesh(pinta(new THREE.SphereGeometry(L * 0.085, 12, 8), [0.10, 0.16, 0.20]), mat);
+  cabine.position.set(0, L * 0.055, -L * 0.24);
+  g.add(casco, nariz, asaE, asaD, leme, cabine);
+
+  // propulsor: cone aditivo cuja escala segue o empuxo
+  const matJato = new THREE.ShaderMaterial({
+    uniforms: { uForca: { value: 0 }, uCor: { value: new THREE.Vector3(0.45, 0.82, 1.0) } },
+    vertexShader: `varying float vY;
+      void main(){ vY = uv.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+    fragmentShader: `precision mediump float; uniform float uForca; uniform vec3 uCor; varying float vY;
+      void main(){ gl_FragColor = vec4(uCor * (2.4 + uForca * 5.0) * (1.0 - vY) * uForca, 1.0); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  const jato = new THREE.Mesh(new THREE.ConeGeometry(L * 0.13, L * 0.9, 10, 1, true), matJato);
+  jato.rotation.x = Math.PI / 2;   // ponta do cone para tras (+Z local)
+  jato.position.z = L * 0.72;
+  g.add(jato);
+  g.userData.jato = jato;
+  g.userData.matJato = matJato;
+  g.userData.mat = mat;
+  g.layers.set(3);
+  for (const c of g.children) c.layers.set(3);
+  return g;
+}
+
+/* ========================= pos-processamento ============================
+   Bloom proprio em vez de EffectComposer/UnrealBloomPass: sao 3 passes a 1/4
+   da resolucao em vez dos 5 niveis de mip do UnrealBloom, o que e a diferenca
+   entre 30 e 45 fps num iPad. Tambem evita depender de addons por CDN.       */
+const VS_QUAD = `varying vec2 vU; void main(){ vU = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
+
+class PosFX {
+  constructor(renderer) {
+    this.r = renderer;
+    this.cena = new THREE.Scene();
+    this.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), null);
+    this.quad.frustumCulled = false;
+    this.cena.add(this.quad);
+
+    const tipo = this.detectarTipo();
+    const opt = { type: tipo, depthBuffer: true, stencilBuffer: false };
+    this.rtCena = new THREE.WebGLRenderTarget(2, 2, opt);
+    this.rtA = new THREE.WebGLRenderTarget(2, 2, { type: tipo, depthBuffer: false, stencilBuffer: false });
+    this.rtB = new THREE.WebGLRenderTarget(2, 2, { type: tipo, depthBuffer: false, stencilBuffer: false });
+    for (const rt of [this.rtCena, this.rtA, this.rtB]) {
+      rt.texture.minFilter = THREE.LinearFilter;
+      rt.texture.magFilter = THREE.LinearFilter;
+      rt.texture.generateMipmaps = false;
+    }
+
+    this.mBrilho = new THREE.ShaderMaterial({
+      uniforms: { tDif: { value: null }, uLimiar: { value: CONFIG.RENDER.BLOOM_LIMIAR } },
+      vertexShader: VS_QUAD,
+      fragmentShader: `precision mediump float; varying vec2 vU; uniform sampler2D tDif; uniform float uLimiar;
+        void main(){ vec3 c = texture2D(tDif, vU).rgb;
+          float b = max(max(c.r, c.g), c.b);
+          gl_FragColor = vec4(c * max(0.0, b - uLimiar) / max(b, 0.0001), 1.0); }`
+    });
+    this.mBorrar = new THREE.ShaderMaterial({
+      uniforms: { tDif: { value: null }, uDir: { value: new THREE.Vector2(1, 0) } },
+      vertexShader: VS_QUAD,
+      fragmentShader: `precision mediump float; varying vec2 vU; uniform sampler2D tDif; uniform vec2 uDir;
+        void main(){
+          vec3 c = texture2D(tDif, vU).rgb * 0.227;
+          c += (texture2D(tDif, vU + uDir * 1.3846).rgb + texture2D(tDif, vU - uDir * 1.3846).rgb) * 0.316;
+          c += (texture2D(tDif, vU + uDir * 3.2308).rgb + texture2D(tDif, vU - uDir * 3.2308).rgb) * 0.070;
+          gl_FragColor = vec4(c, 1.0); }`
+    });
+    this.mCompor = new THREE.ShaderMaterial({
+      uniforms: {
+        tCena: { value: null }, tBloom: { value: null },
+        uForca: { value: CONFIG.RENDER.BLOOM_FORCA }, uExpo: { value: 1.0 }, uVinh: { value: 0.34 }
+      },
+      vertexShader: VS_QUAD,
+      fragmentShader: `precision highp float; varying vec2 vU;
+        uniform sampler2D tCena; uniform sampler2D tBloom;
+        uniform float uForca; uniform float uExpo; uniform float uVinh;
+        vec3 aces(vec3 x){ return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14), 0.0, 1.0); }
+        void main(){
+          vec3 c = texture2D(tCena, vU).rgb + texture2D(tBloom, vU).rgb * uForca;
+          c = aces(c * uExpo);
+          float v = 1.0 - uVinh * dot(vU - 0.5, vU - 0.5) * 2.2;
+          c *= clamp(v, 0.0, 1.0);
+          gl_FragColor = vec4(pow(c, vec3(0.4545)), 1.0);   // linear -> sRGB na mao
+        }`
+    });
+  }
+  detectarTipo() {
+    // meia precisao mantem valores acima de 1.0 (necessario para o limiar do
+    // bloom). Se o aparelho nao aceitar, cai para 8 bits sem quebrar nada.
+    try {
+      const gl = this.r.getContext();
+      const ok = this.r.capabilities.isWebGL2
+        ? !!gl.getExtension('EXT_color_buffer_half_float') || !!gl.getExtension('EXT_color_buffer_float')
+        : !!gl.getExtension('OES_texture_half_float');
+      return ok ? THREE.HalfFloatType : THREE.UnsignedByteType;
+    } catch (e) { return THREE.UnsignedByteType; }
+  }
+  redimensionar(w, h) {
+    const d = CONFIG.RENDER.BLOOM_DIV;
+    this.rtCena.setSize(w, h);
+    this.rtA.setSize(Math.max(2, Math.floor(w / d)), Math.max(2, Math.floor(h / d)));
+    this.rtB.setSize(Math.max(2, Math.floor(w / d)), Math.max(2, Math.floor(h / d)));
+    this.w = w; this.h = h;
+  }
+  passe(mat, alvo) {
+    this.quad.material = mat;
+    this.r.setRenderTarget(alvo);
+    this.r.render(this.cena, this.cam);
+  }
+  compor(comBloom, expo) {
+    if (comBloom) {
+      this.mBrilho.uniforms.tDif.value = this.rtCena.texture;
+      this.passe(this.mBrilho, this.rtA);
+      this.mBorrar.uniforms.tDif.value = this.rtA.texture;
+      this.mBorrar.uniforms.uDir.value.set(1 / this.rtA.width, 0);
+      this.passe(this.mBorrar, this.rtB);
+      this.mBorrar.uniforms.tDif.value = this.rtB.texture;
+      this.mBorrar.uniforms.uDir.value.set(0, 1 / this.rtA.height);
+      this.passe(this.mBorrar, this.rtA);
+    }
+    this.mCompor.uniforms.tCena.value = this.rtCena.texture;
+    this.mCompor.uniforms.tBloom.value = this.rtA.texture;   // sempre ligado: uForca zera o efeito
+    this.mCompor.uniforms.uForca.value = comBloom ? CONFIG.RENDER.BLOOM_FORCA : 0;
+    this.mCompor.uniforms.uExpo.value = expo;
+    this.passe(this.mCompor, null);
+  }
+  dispose() {
+    this.rtCena.dispose(); this.rtA.dispose(); this.rtB.dispose();
+    this.mBrilho.dispose(); this.mBorrar.dispose(); this.mCompor.dispose();
+    this.quad.geometry.dispose();
+  }
+}
+
+/* ========================= Jogo ========================================= */
+class Jogo {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.renderer = new THREE.WebGLRenderer({
+      canvas, antialias: false, alpha: false, powerPreference: 'high-performance',
+      stencil: false, depth: true
+    });
+    // Sem conversao automatica: o passe de composicao faz tonemap e gama a mao.
+    this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+    this.renderer.autoClear = false;
+    this.toque = matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
+    const pr = Math.min(devicePixelRatio || 1, CONFIG.RENDER.PIXEL_RATIO_MAX)
+             * (this.toque ? CONFIG.RENDER.ESCALA_MOVEL : 1);
+    this.renderer.setPixelRatio(pr);
+
+    this.cena = new THREE.Scene();
+    this.cenaCeu = new THREE.Scene();
+    const C = CONFIG.CAM;
+    this.camPerto = new THREE.PerspectiveCamera(C.FOV, 1, C.PERTO[0], C.PERTO[1]);
+    this.camMeio  = new THREE.PerspectiveCamera(C.FOV, 1, C.MEIO[0], C.MEIO[1]);
+    this.camLonge = new THREE.PerspectiveCamera(C.FOV, 1, C.LONGE[0], C.LONGE[1]);
+    this.camPerto.layers.set(3); this.camMeio.layers.set(2); this.camLonge.layers.set(1);
+
+    this.posfx = new PosFX(this.renderer);
+    this.entradas = new Entradas(canvas);
+    this.hud = new HUD();
+    this.audio = new Audio2();
+    this.fabrica = new FabricaTerreno();
+
+    this.ceu = criarCeu(); this.ceu.layers.set(2); this.cenaCeu.add(this.ceu);
+    this.nave = new Nave();
+    this.naveMesh = criarNave();
+    this.cena.add(this.naveMesh);
+
+    this.marcadores = [];
+    this.recursos = {}; this.upgrades = {};
+    this.alvo = null; this.distAlvo = 0;
+    this.camModo = 0;                 // 0 = terceira pessoa, 1 = cabine
+    this.fps = 60; this._fpsAcum = 0; this._fpsN = 0;
+    this.chunks = 0;
+    this.pausado = true;
+    this.fovAtual = C.FOV;
+    this.autoSave = 0;
+    this.avisos = {};
+    this._tmp1 = new THREE.Vector3(); this._tmp2 = new THREE.Vector3(); this._tmp3 = new THREE.Vector3();
+    this.origem = new THREE.Vector3();
+    this.camQuat = new THREE.Quaternion();
+    this.camPos = new THREE.Vector3();
+    this.matsLuz = [];
+    this.matsAtm = [];
+    addEventListener('resize', () => this.redimensionar());
+    this.redimensionar();
+  }
+
+  redimensionar() {
+    const w = innerWidth, h = innerHeight;
+    this.renderer.setSize(w, h, false);
+    const dbs = this.renderer.getDrawingBufferSize(new THREE.Vector2());
+    this.posfx.redimensionar(dbs.x, dbs.y);
+    for (const c of [this.camPerto, this.camMeio, this.camLonge]) { c.aspect = w / h; c.updateProjectionMatrix(); }
+    if (this.estrelas) this.estrelas.material.uniforms.uPx.value = this.renderer.getPixelRatio();
+  }
+
+  /* ---------- construcao do sistema ---------- */
+  carregarSistema(semente, save) {
+    this.limparSistema();
+    this.universo = new Universo(semente);
+    const rnd = mulberry32(hashSemente('cena|' + this.universo.semente)());
+
+    this.estrelas = criarEstrelas(rnd);
+    this.cena.add(this.estrelas);
+    this.estrelaMesh = criarEstrela(this.universo.estrelaRaio, this.universo.estrelaCor);
+    this.cena.add(this.estrelaMesh);
+
+    this.poeira = criarPoeira(); this.cena.add(this.poeira);
+    this.poeiraPos = new Float32Array(CONFIG.RENDER.POEIRA * 3);
+    this.semearPoeira(rnd);
+    this.asteroides = criarAsteroides(rnd); this.cena.add(this.asteroides);
+    this.detalhes = criarDetalhesSuperficie(); this.cena.add(this.detalhes);
+    this.detalheAncora = null;
+    this.celulaAst = null;
+
+    // cinturao de asteroides entre dois planetas do meio
+    const i = Math.max(1, Math.min(this.universo.planetas.length - 2, 2));
+    this.cintR = (this.universo.planetas[i].a + this.universo.planetas[i + 1].a) * 0.5;
+    this.cintL = this.cintR * 0.05;
+
+    this.matsLuz = [this.naveMesh.userData.mat, this.asteroides.material, this.detalhes.material];
+    this.matsAtm = [];
+    for (const p of this.universo.planetas) {
+      p.grupo = new THREE.Group();
+      p.grupo.matrixAutoUpdate = false;
+      this.cena.add(p.grupo);
+      p.terreno = new SistemaTerreno(p, this.fabrica, THREE);
+      p.grupo.add(p.terreno.grupo);
+      this.matsLuz.push(p.terreno.material);
+      if (p.atmosfera > 0.02) {
+        p.atmMesh = criarAtmosfera(p);
+        p.grupo.add(p.atmMesh);
+        this.matsAtm.push(p.atmMesh.userData.mat);
+      }
+      p.renderPos = new THREE.Vector3();
+    }
+
+    if (save) this.aplicarSave(save); else this.posicaoInicial();
+    this.alvo = this.universo.planetas[Math.min(1, this.universo.planetas.length - 1)];
+    this.pausado = false;
+  }
+
+  limparSistema() {
+    if (!this.universo) return;
+    for (const p of this.universo.planetas) {
+      if (p.terreno) { p.terreno.dispose(); p.terreno = null; }
+      if (p.atmMesh) { p.atmMesh.geometry.dispose(); p.atmMesh.userData.mat.dispose(); }
+      if (p.grupo) this.cena.remove(p.grupo);
+    }
+    for (const o of [this.estrelas, this.estrelaMesh, this.poeira, this.asteroides, this.detalhes]) {
+      if (!o) continue;
+      this.cena.remove(o);
+      o.traverse((c) => {
+        if (c.geometry) c.geometry.dispose();
+        if (c.material) { const ms = Array.isArray(c.material) ? c.material : [c.material]; ms.forEach((m) => m.dispose()); }
+      });
+    }
+    this.estrelas = this.estrelaMesh = this.poeira = this.asteroides = this.detalhes = null;
+    this.universo = null;
+  }
+
+  posicaoInicial() {
+    const p = this.universo.planetas[Math.min(1, this.universo.planetas.length - 1)];
+    this.nave.ref = p;
+    this.nave.pos.set(0, p.raio * 0.35, p.raio * 2.6);
+    this.nave.vel.set(0, 0, 0);
+    this.nave.quat.identity();
+    // aponta para o planeta
+    const alvo = new THREE.Vector3(0, 0, 0);
+    const m = new THREE.Matrix4().lookAt(this.nave.pos, alvo, new THREE.Vector3(0, 1, 0));
+    this.nave.quat.setFromRotationMatrix(m);
+    this.nave.combustivel = CONFIG.NAVE.COMBUSTIVEL_MAX;
+    this.nave.casco = 100;
+  }
+
+  aplicarSave(d) {
+    this.universo.tempo = d.tempo || 0;
+    this.universo.atualizar(0);
+    const n = this.nave;
+    n.ref = d.ref >= 0 ? this.universo.planetas[d.ref] || null : null;
+    n.pos.fromArray(d.pos); n.vel.fromArray(d.vel);
+    n.quat.fromArray(d.quat).normalize();
+    n.combustivel = d.comb; n.casco = d.casco;
+    this.recursos = d.recursos || {}; this.upgrades = d.upgrades || {};
+    if (d.alvo >= 0) this.alvo = this.universo.planetas[d.alvo] || null;
+  }
+
+  semearPoeira(rnd) {
+    const R = CONFIG.RENDER.POEIRA_RAIO;
+    for (let i = 0; i < CONFIG.RENDER.POEIRA; i++) {
+      this.poeiraPos[i * 3] = (rnd() * 2 - 1) * R;
+      this.poeiraPos[i * 3 + 1] = (rnd() * 2 - 1) * R;
+      this.poeiraPos[i * 3 + 2] = (rnd() * 2 - 1) * R;
+    }
+    this.poeira.userData.off.array.set(this.poeiraPos);
+    this.poeira.userData.off.needsUpdate = true;
+  }
+
+  /* ---------- comandos discretos ---------- */
+  comandos() {
+    const e = this.entradas, n = this.nave;
+    if (e.pulso('KeyT') || e.pulso('bt.alvo')) this.proximoAlvo();
+    if (e.pulso('KeyC') || e.pulso('bt.cam')) { this.camModo ^= 1; }
+    if (e.pulso('KeyG') || e.pulso('bt.pouso')) {
+      n.assist = !n.assist;
+      this.hud.msg(n.assist ? 'assistencia de pouso armada' : 'assistencia de pouso desarmada');
+      this.audio.bip(n.assist ? 880 : 440, 0.09);
+    }
+    if (e.pulso('KeyM') || e.pulso('bt.menu')) this.abrirMenu();
+    if (e.pulso('KeyH')) { this.hudOculto = !this.hudOculto; this.hud.mostrar(!this.hudOculto); }
+    if (e.pulso('KeyF')) telaCheia(this.canvas);
+    if (e.pulso('KeyP') && this.canvas.requestPointerLock) {
+      if (document.pointerLockElement === this.canvas) document.exitPointerLock();
+      else this.canvas.requestPointerLock();
+    }
+  }
+
+  proximoAlvo() {
+    const ps = this.universo.planetas;
+    const i = this.alvo ? (ps.indexOf(this.alvo) + 1) % ps.length : 0;
+    this.alvo = ps[i];
+    this.audio.bip(1320, 0.07);
+    this.hud.msg('alvo: ' + this.alvo.nome + ' / ' + this.alvo.biomaNome);
+  }
+
+  abrirMenu() {
+    this.pausado = true;
+    Persistencia.salvar(this);
+    $('menu').hidden = false;
+    $('toque').classList.remove('on');
+    if (document.pointerLockElement) document.exitPointerLock();
+  }
+  fecharMenu() {
+    $('menu').hidden = true;
+    if (this.toque) { $('toque').classList.add('on'); document.body.classList.add('toque'); }
+    this.hud.mostrar(!this.hudOculto);
+    this.pausado = false;
+    this.tPrev = performance.now();
+    this.audio.iniciar();
+  }
+
+  /* ---------- simulacao ---------- */
+  atualizar(dt) {
+    const ent = this.entradas.ler(dt);
+    this.comandos();
+    this.universo.atualizar(dt);
+
+    this.avisos.impacto = 0; this.avisos.reentrada = false;
+    const eraPousado = this.nave.pousado;
+    // passos fixos de no maximo 20 ms: fisica independente do framerate
+    const passos = Math.max(1, Math.min(4, Math.ceil(dt / 0.02)));
+    const h = dt / passos;
+    for (let i = 0; i < passos; i++) this.nave.atualizar(h, ent, this.universo, this.avisos);
+
+    if (this.avisos.impacto > 0) {
+      this.hud.msg('impacto - casco em ' + this.nave.casco.toFixed(0) + '%', 2.2);
+      this.audio.bip(120, 0.3);
+      if (this.nave.casco <= 0) this.recuperarSonda();
+    } else if (!eraPousado && this.nave.pousado && this.nave.ref) {
+      this.hud.msg('pouso confirmado em ' + this.nave.ref.nome, 3);
+      this.audio.bip(660, 0.18);
+    }
+    if (this.avisos.reentrada) this.hud.msg('reentrada - reduza a velocidade', 1);
+
+    this.atualizarCamera(dt);
+    this.atualizarCena(dt);
+
+    this.autoSave += dt;
+    if (this.autoSave > 15) { this.autoSave = 0; Persistencia.salvar(this); }
+    this.audio.atualizar(this.nave);
+    this.hud.atualizar(dt, this);
+  }
+
+  /* Casco a zero nao e game over: a sonda e recuperada em orbita com metade
+     dos sistemas. Perder o progresso de exploracao por um pouso ruim seria
+     punicao sem proposito num jogo sem checkpoint.                          */
+  recuperarSonda() {
+    const n = this.nave, P = n.ref || this.universo.planetas[0];
+    n.trocarRef(P);
+    const dir = n.pos.clone().normalize();
+    if (!isFinite(dir.x)) dir.set(0, 1, 0);
+    n.pos.copy(dir).multiplyScalar(P.raio * 2.8);
+    n.vel.set(0, 0, 0);
+    n.angVel.set(0, 0, 0);
+    n.casco = 55; n.combustivel = Math.max(45, n.combustivel);
+    n.assist = false;
+    this.hud.msg('casco perdido - sonda recuperada em orbita de ' + P.nome, 4);
+    this.audio.bip(180, 0.5);
+  }
+
+  atualizarCamera(dt) {
+    const L = CONFIG.NAVE.COMPRIMENTO, C = CONFIG.CAM;
+    const k = 1 - Math.exp(-11 * dt);
+    if (this.camModo === 1) {
+      this.camQuat.copy(this.nave.quat);
+    } else {
+      this.camQuat.slerp(this.nave.quat, k);
+      this.camQuat.normalize();
+    }
+    const off = this.camModo === 1
+      ? this._tmp2.set(0, L * 0.075, -L * 0.16)
+      : this._tmp2.set(0, L * 0.40, L * 2.35 + Math.min(L * 1.6, this.nave.vel.length() * 0.004));
+    off.applyQuaternion(this.camQuat);
+    this.camPos.lerp(off, this.camModo === 1 ? 1 : k);
+
+    // distorcao de FOV: so no turbo, proporcional a velocidade
+    const vmax = Math.max(1, CONFIG.NAVE.VEL_MAX);
+    const t = this.nave.turboAtivo ? Math.min(1, this.nave.vel.length() / (vmax * 4)) : 0;
+    const alvoFov = C.FOV + (C.FOV_TURBO - C.FOV) * t;
+    this.fovAtual += (alvoFov - this.fovAtual) * (1 - Math.exp(-C.FOV_SUAVE * dt));
+    for (const c of [this.camPerto, this.camMeio, this.camLonge]) {
+      c.position.copy(this.camPos);
+      c.quaternion.copy(this.camQuat);
+      if (Math.abs(c.fov - this.fovAtual) > 0.01) { c.fov = this.fovAtual; c.updateProjectionMatrix(); }
+      c.updateMatrixWorld(true);
+    }
+  }
+
+  atualizarCena(dt) {
+    const U = this.universo, n = this.nave;
+    const origem = n.posAbs(this.origem);          // origem flutuante = nave
+    const dEstrela = origem.length() || 1;
+
+    // ---- direcao e cor da luz da estrela ----
+    const solMundo = this._tmp1.copy(origem).multiplyScalar(-1 / dEstrela);
+    const solView = solMundo.clone().transformDirection(this.camPerto.matrixWorldInverse);
+    const inten = Math.max(0.32, Math.min(1.7, 1.35 * Math.pow(2.2e7 / dEstrela, 0.55)));
+    const corSol = this._tmp3.set(U.estrelaCor[0], U.estrelaCor[1], U.estrelaCor[2]).multiplyScalar(inten);
+
+    // ---- atmosfera local: ceu, neblina e luz ambiente ----
+    const P = n.ref;
+    const dens = n.densAr;
+    let corNev = new THREE.Vector3(0, 0, 0), nevDens = 0, amb = new THREE.Vector3(0.035, 0.04, 0.055);
+    this.ceuVisivel = false;
+    if (P && dens > 0.002) {
+      const up = new THREE.Vector3().copy(n.pos).normalize();
+      const upView = up.clone().transformDirection(this.camPerto.matrixWorldInverse);
+      const dia = Math.max(0, Math.min(1, up.dot(solMundo.clone().multiplyScalar(1)) + 0.22));
+      const ca = P.corAtm;
+      corNev.set(ca[0], ca[1], ca[2]).multiplyScalar(0.55 * dia * inten + 0.02);
+      nevDens = Math.min(1, dens) * 9.0e-5;
+      amb.set(ca[0], ca[1], ca[2]).multiplyScalar(0.30 * dia * Math.min(1, dens)).addScalar(0.03);
+      const u = this.ceu.userData.mat.uniforms;
+      u.uCor.value.set(ca[0], ca[1], ca[2]);
+      u.uSol.value.copy(solView);
+      u.uCima.value.copy(upView);
+      u.uCorSol.value.set(U.estrelaCor[0], U.estrelaCor[1], U.estrelaCor[2]);
+      u.uDens.value = Math.min(1, dens * 1.35);
+      this.ceu.position.copy(this.camPos);
+      this.ceuVisivel = true;
+    }
+    aplicarLuz(this.matsLuz, solView, corSol, amb, corNev, 0);
+    if (nevDens > 0) {
+      const locais = [this.naveMesh.userData.mat, this.detalhes.material];
+      if (P.terreno) locais.push(P.terreno.material);
+      aplicarLuz(locais, solView, corSol, amb, corNev, nevDens);
+    }
+    for (const m of this.matsAtm) m.uniforms.uSol.value.copy(solView);
+    this.estrelas.material.uniforms.uOpac.value = Math.max(0, 1 - Math.min(1, dens * 3.4));
+
+    // ---- estrela ----
+    this.estrelas.position.copy(this.camPos);
+    this.estrelaMesh.position.set(-origem.x, -origem.y, -origem.z);
+    definirCamada(this.estrelaMesh, faixaCamada(dEstrela, U.estrelaRaio));
+
+    // ---- planetas ----
+    this.chunks = 0;
+    for (const p of U.planetas) {
+      const dx = p.pos.x - origem.x, dy = p.pos.y - origem.y, dz = p.pos.z - origem.z;
+      p.renderPos.set(dx, dy, dz);
+      p.dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      p.grupo.position.copy(p.renderPos);
+      p.grupo.updateMatrix();
+      p.grupo.updateMatrixWorld(true);
+      if (p.atmMesh) {
+        // dentro da casca quem manda e o domo de ceu; a casca so existe
+        // para a silhueta vista de fora
+        p.atmMesh.visible = p.dist > p.raio + p.altAtmosfera * 1.02;
+        p.atmMesh.layers.set(faixaCamada(p.dist, p.raio + p.altAtmosfera));
+      }
+      // posicao da nave no referencial local do planeta
+      const local = this._tmp2.set(-dx, -dy, -dz);
+      p.terreno.atualizar(local);
+      this.chunks += p.terreno.vivos;
+    }
+    governarTerreno(this.chunks);
+
+    // ---- nave ----
+    this.naveMesh.position.set(0, 0, 0);
+    this.naveMesh.quaternion.copy(n.quat);
+    this.naveMesh.visible = this.camModo === 0;
+    const jf = Math.max(0, n.empuxoAtual) * (n.turboAtivo ? 1.5 : 1);
+    this.naveMesh.userData.matJato.uniforms.uForca.value = jf;
+    this.naveMesh.userData.jato.scale.set(1, 0.35 + jf * 1.5, 1);
+
+    this.atualizarPoeira(dt, dens);
+    this.atualizarAsteroides(origem);
+    this.atualizarDetalhes(P);
+    this.atualizarMarcadores();
+
+    if (this.alvo) {
+      this.distAlvo = Math.max(0, this.alvo.dist - this.alvo.raio);
+    }
+  }
+
+  atualizarPoeira(dt, dens) {
+    const n = this.nave, R = CONFIG.RENDER.POEIRA_RAIO;
+    const arr = this.poeira.userData.off.array;
+    // a poeira e estatica no mundo: desloca no sentido oposto ao da nave
+    const dx = -n.vel.x * dt, dy = -n.vel.y * dt, dz = -n.vel.z * dt;
+    const mover = Math.abs(dx) + Math.abs(dy) + Math.abs(dz) > 1e-5;
+    if (mover) {
+      for (let i = 0; i < arr.length; i += 3) {
+        let x = arr[i] + dx, y = arr[i + 1] + dy, z = arr[i + 2] + dz;
+        // embrulha no cubo em volta da nave (reciclagem, zero alocacao)
+        if (x > R) x -= 2 * R; else if (x < -R) x += 2 * R;
+        if (y > R) y -= 2 * R; else if (y < -R) y += 2 * R;
+        if (z > R) z -= 2 * R; else if (z < -R) z += 2 * R;
+        arr[i] = x; arr[i + 1] = y; arr[i + 2] = z;
+      }
+      this.poeira.userData.off.needsUpdate = true;
+    }
+    this.poeira.position.set(0, 0, 0);
+    const v = n.vel.length();
+    const u = this.poeira.material.uniforms;
+    u.uVel.value.copy(n.vel).transformDirection(this.camPerto.matrixWorldInverse).multiplyScalar(v);
+    u.uOpac.value = Math.min(0.38, Math.max(0, v - 22) / 260) * (1 - Math.min(1, dens * 2.2));
+    u.uTam.value = 0.30;
+  }
+
+  atualizarAsteroides(origem) {
+    const CEL = 700, RAIO = 3, im = this.asteroides;
+    const cx = Math.round(origem.x / CEL), cy = Math.round(origem.y / CEL), cz = Math.round(origem.z / CEL);
+    const chave = cx + ':' + cy + ':' + cz;
+    // ancora do campo: mantem os float32 das instancias pequenos
+    im.position.set(cx * CEL - origem.x, cy * CEL - origem.y, cz * CEL - origem.z);
+    if (chave === this.celulaAst) return;
+    this.celulaAst = chave;
+    const M = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s = new THREE.Vector3();
+    let k = 0;
+    for (let i = -RAIO; i <= RAIO && k < CONFIG.RENDER.ASTEROIDES; i++) {
+      for (let j = -RAIO; j <= RAIO && k < CONFIG.RENDER.ASTEROIDES; j++) {
+        for (let l = -RAIO; l <= RAIO && k < CONFIG.RENDER.ASTEROIDES; l++) {
+          const gx = cx + i, gy = cy + j, gz = cz + l;
+          const rnd = mulberry32((Math.imul(gx, 73856093) ^ Math.imul(gy, 19349663) ^ Math.imul(gz, 83492791)) >>> 0);
+          // densidade do cinturao: anel fino em torno de cintR
+          const ax = gx * CEL, ay = gy * CEL, az = gz * CEL;
+          const r = Math.sqrt(ax * ax + az * az);
+          const dr = Math.abs(r - this.cintR) / this.cintL;
+          const dy2 = Math.abs(ay) / (this.cintL * 0.35);
+          if (dr > 1 || dy2 > 1) continue;
+          if (rnd() > 0.36 * (1 - dr) * (1 - dy2)) continue;
+          const px = (gx - cx) * CEL + (rnd() - 0.5) * CEL;
+          const py = (gy - cy) * CEL + (rnd() - 0.5) * CEL;
+          const pz = (gz - cz) * CEL + (rnd() - 0.5) * CEL;
+          const tam = 8 + rnd() * 46;
+          e.set(rnd() * 6.28, rnd() * 6.28, rnd() * 6.28);
+          q.setFromEuler(e);
+          s.set(tam * (0.7 + rnd() * 0.6), tam * (0.7 + rnd() * 0.6), tam * (0.7 + rnd() * 0.6));
+          M.compose(new THREE.Vector3(px, py, pz), q, s);
+          im.setMatrixAt(k++, M);
+        }
+      }
+    }
+    im.count = k;
+    im.instanceMatrix.needsUpdate = true;
+  }
+
+  atualizarDetalhes(P) {
+    const im = this.detalhes;
+    const perto = P && this.nave.altitude < 900 && P.terreno;
+    if (!perto) {
+      im.count = 0;
+      if (im.parent && im.parent !== this.cena) { im.parent.remove(im); this.cena.add(im); }
+      this.detalheAncora = null;
+      return;
+    }
+    if (im.parent !== P.grupo) { if (im.parent) im.parent.remove(im); P.grupo.add(im); this.detalheAncora = null; }
+    const pos = this.nave.pos;
+    if (this.detalheAncora && this.detalheAncora.distanceTo(pos) < 90) return;
+    this.detalheAncora = pos.clone();
+
+    // base tangente no ponto sob a nave
+    const up = pos.clone().normalize();
+    const eixo = Math.abs(up.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+    const t1 = new THREE.Vector3().crossVectors(eixo, up).normalize();
+    const t2 = new THREE.Vector3().crossVectors(up, t1).normalize();
+    // semente ligada a celula do terreno: a mesma regiao sempre gera as mesmas rochas
+    const cel = 260;
+    const gx = Math.round(pos.x / cel), gy = Math.round(pos.y / cel), gz = Math.round(pos.z / cel);
+    const rnd = mulberry32((P.semente ^ Math.imul(gx, 73856093) ^ Math.imul(gy, 19349663) ^ Math.imul(gz, 83492791)) >>> 0);
+    const M = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), v = new THREE.Vector3();
+    const gelo = P.bioma === 'gelado', vivo = P.agua && P.atmosfera > 0.3;
+    let k = 0;
+    const N = Math.min(im.instanceMatrix.count, vivo ? 260 : 150);
+    for (let i = 0; i < N; i++) {
+      const ang = rnd() * Math.PI * 2, rad = 18 + Math.sqrt(rnd()) * 240;
+      v.copy(pos).addScaledVector(t1, Math.cos(ang) * rad).addScaledVector(t2, Math.sin(ang) * rad);
+      const dir = v.clone().normalize();
+      const h = P.alturaEm(dir.x, dir.y, dir.z);
+      if (P.agua && h <= 0.5) continue;                 // nada de arvore no oceano
+      const alt = P.raio + h;
+      const tam = (vivo ? 2.6 : 1.6) * (0.6 + rnd() * 1.7);
+      q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      s.set(tam, tam * (vivo ? 2.4 : 1.0) * (gelo ? 1.6 : 1), tam);
+      M.compose(dir.multiplyScalar(alt), q, s);
+      im.setMatrixAt(k++, M);
+    }
+    im.count = k;
+    im.instanceMatrix.needsUpdate = true;
+    // cor das instancias segue a paleta do planeta (vegetacao puxa para o
+    // verde; rocha mantem o cinza do bioma, sem tingir)
+    const c = vivo ? P.P.cMedia : P.P.cAlta;
+    const m = vivo ? [0.55, 0.95, 0.5] : [0.88, 0.88, 0.90];
+    const g = im.geometry.getAttribute('cor');
+    for (let i = 0; i < g.count; i++) g.setXYZ(i, c[0] * m[0], c[1] * m[1], c[2] * m[2]);
+    g.needsUpdate = true;
+  }
+
+  atualizarMarcadores() {
+    const L = this.marcadores, w = innerWidth, h = innerHeight;
+    L.length = 0;
+    const v = new THREE.Vector3();
+    const inv = this.camPerto.matrixWorldInverse;
+    for (const p of this.universo.planetas) {
+      v.copy(p.renderPos).applyMatrix4(inv);
+      if (v.z > -1) continue;                       // atras da camera
+      const proj = v.clone().applyMatrix4(this.camPerto.projectionMatrix);
+      const x = (proj.x * 0.5 + 0.5) * w, y = (-proj.y * 0.5 + 0.5) * h;
+      const dentro = x > 18 && x < w - 18 && y > 18 && y < h - 18;
+      L.push({
+        nome: p.nome + '  ' + fmtDist(Math.max(0, p.dist - p.raio)),
+        x: x, y: y, visivel: dentro, travado: p === this.alvo
+      });
+    }
+  }
+
+  /* ---------- render ---------- */
+  renderizar() {
+    const r = this.renderer;
+    r.setRenderTarget(this.posfx.rtCena);
+    r.setClearColor(0x000000, 1);
+    r.clear(true, true, false);
+    r.render(this.cena, this.camLonge);     // camada 1: estrelas, estrela, planetas longe
+    r.clearDepth();
+    if (this.ceuVisivel) r.render(this.cenaCeu, this.camMeio);
+    r.render(this.cena, this.camMeio);      // camada 2: planetas, atmosferas, terreno distante
+    r.clearDepth();
+    r.render(this.cena, this.camPerto);     // camada 3: nave, terreno proximo, particulas
+    this.posfx.compor(CONFIG.RENDER.BLOOM, 1.0);
+    r.setRenderTarget(null);
+  }
+
+  quadro(t) {
+    requestAnimationFrame(this.quadroLigado);
+    if (this.pausado || !this.universo) { this.tPrev = t; return; }
+    const real = Math.max(0.0005, (t - (this.tPrev || t)) / 1000);
+    // dt limitado: um quadro longo nao pode teleportar a nave para dentro do
+    // planeta. O contador de fps usa o tempo REAL, senao mediria o proprio teto.
+    const dt = Math.min(0.05, real);
+    this.tPrev = t;
+    this._fpsAcum += real; this._fpsN++;
+    if (this._fpsAcum > 0.5) { this.fps = this._fpsN / this._fpsAcum; this._fpsAcum = 0; this._fpsN = 0; }
+    try {
+      this.atualizar(dt);
+      this.renderizar();
+    } catch (e) {
+      this.pausado = true;
+      mostrarErro('Erro durante a simulacao.', e && e.stack ? e.stack : e);
+    }
+  }
+
+  iniciarLoop() {
+    this.quadroLigado = (t) => this.quadro(t);
+    this.tPrev = performance.now();
+    requestAnimationFrame(this.quadroLigado);
+  }
+}
+
+/* ---------- utilitarios de camada ---------- */
+// Escolhe a camada de render de um objeto pelo ponto MAIS PROXIMO dele:
+// a sobreposicao entre as faixas evita piscadas na troca.
+function faixaCamada(dist, raio) {
+  const d = Math.max(0, dist - (raio || 0));
+  if (d < CONFIG.CAM.PERTO[1] * 0.8) return 3;
+  if (d < CONFIG.CAM.MEIO[1] * 0.8) return 2;
+  return 1;
+}
+function definirCamada(obj, n) {
+  obj.layers.set(n);
+  for (const c of obj.children) definirCamada(c, n);
+}
+
+async function telaCheia(el) {
+  try {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      const alvo = document.documentElement;
+      if (alvo.requestFullscreen) await alvo.requestFullscreen({ navigationUI: 'hide' });
+      else if (alvo.webkitRequestFullscreen) alvo.webkitRequestFullscreen();
+      if (screen.orientation && screen.orientation.lock) {
+        try { await screen.orientation.lock('landscape'); } catch (e) { /* iOS ainda nao permite */ }
+      }
+    } else if (document.exitFullscreen) {
+      await document.exitFullscreen();
+    }
+  } catch (e) { /* fullscreen negado: o jogo continua igual */ }
+}
+
+/* ========================= inicializacao ================================ */
+function suportaWebGL() {
+  try {
+    const c = document.createElement('canvas');
+    return !!(c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'));
+  } catch (e) { return false; }
+}
+
+let JOGO = null;
+
+async function iniciar() {
+  const canvas = document.getElementById('cena');
+  const carga = document.getElementById('carga');
+  const cargaTxt = document.getElementById('carga-txt');
+
+  if (!suportaWebGL()) {
+    mostrarErro('Este navegador nao expoe WebGL.',
+      'Ative a aceleracao por hardware ou use Safari 16+, Chrome 110+ ou Edge recente.');
+    return;
+  }
+
+  cargaTxt.textContent = 'CARREGANDO MOTOR 3D';
+  try {
+    THREE = await carregarThree();
+  } catch (e) {
+    mostrarErro('Nao foi possivel baixar o Three.js (CDN fora do ar ou sem rede). '
+      + 'Baixe three.module.js E three.core.js (o build r185 e dividido em dois) '
+      + 'para a mesma pasta e abra a pagina com ?three=./three.module.js', e.message);
+    return;
+  }
+
+  cargaTxt.textContent = 'MONTANDO SIMULADOR';
+  try {
+    JOGO = new Jogo(canvas);
+  } catch (e) {
+    mostrarErro('Falha ao criar o contexto WebGL.', e && e.stack ? e.stack : e);
+    return;
+  }
+
+  // ---- menu ----
+  const salvo = Persistencia.ler();
+  const inSeed = $('in-seed');
+  inSeed.value = salvo ? salvo.semente : CONFIG.SEMENTE_PADRAO;
+  $('bt-continuar').style.display = salvo ? '' : 'none';
+
+  const comecar = (semente, save) => {
+    JOGO.audio.iniciar();
+    $('menu').hidden = true;
+    carga.hidden = false;
+    cargaTxt.textContent = 'GERANDO SISTEMA ' + semente;
+    // um quadro de respiro para a tela de carga aparecer antes do trabalho pesado
+    requestAnimationFrame(() => setTimeout(() => {
+      try {
+        JOGO.carregarSistema(semente, save || null);
+        carga.hidden = true;
+        JOGO.fecharMenu();
+        JOGO.hud.msg('sistema ' + JOGO.universo.semente + ' / ' + JOGO.universo.planetas.length + ' planetas', 3.5);
+      } catch (e) {
+        mostrarErro('Falha ao gerar o sistema.', e && e.stack ? e.stack : e);
+      }
+    }, 30));
+  };
+
+  $('bt-jogar').addEventListener('click', () => comecar(inSeed.value.trim() || CONFIG.SEMENTE_PADRAO, null));
+  $('bt-continuar').addEventListener('click', () => {
+    const s = Persistencia.ler();
+    if (s) comecar(s.semente, s); else comecar(inSeed.value, null);
+  });
+  $('bt-aleatorio').addEventListener('click', () => {
+    const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ', d = '0123456789';
+    let s = '';
+    for (let i = 0; i < 4; i++) s += a[(Math.random() * a.length) | 0];
+    s += '-';
+    for (let i = 0; i < 3; i++) s += d[(Math.random() * d.length) | 0];
+    inSeed.value = s;
+  });
+  $('bt-bloom').addEventListener('click', (e) => {
+    CONFIG.RENDER.BLOOM = !CONFIG.RENDER.BLOOM;
+    e.target.textContent = 'BLOOM: ' + (CONFIG.RENDER.BLOOM ? 'ON' : 'OFF');
+  });
+  $('bt-ajuda').addEventListener('click', () => { $('ajuda').hidden = !$('ajuda').hidden; });
+  $('bt-fechar').addEventListener('click', () => {
+    if (JOGO.universo) JOGO.fecharMenu();
+    else comecar(inSeed.value.trim() || CONFIG.SEMENTE_PADRAO, null);
+  });
+
+  // primeiro gesto: destrava o AudioContext (exigencia do Safari)
+  const destrava = () => { JOGO.audio.iniciar(); removeEventListener('pointerdown', destrava); };
+  addEventListener('pointerdown', destrava);
+
+  // pausa ao sair da aba, para nao gastar bateria do iPad
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && JOGO && JOGO.universo && !JOGO.pausado) JOGO.abrirMenu();
+  });
+
+  window.EXOSONDA = JOGO;          // gancho de depuracao no console do navegador
+  JOGO.carga = CargaTerreno;
+  if (JOGO.toque) { $('toque').classList.add('on'); document.body.classList.add('toque'); }
+  JOGO.iniciarLoop();
+  carga.hidden = true;
+  $('menu').hidden = false;
+}
+
+iniciar();
+</script>
+</body>
+</html>
