@@ -6,10 +6,17 @@ importa o three.js por CDN com import map de versao fixa.
 
 ## Como rodar
 
-Modulos ES (`<script type="module">`) sao bloqueados por politica de origem
-quando a pagina vem de `file://` — isso vale para qualquer navegador, nao so
-para este projeto. Entao **duplo clique nao funciona**; use um servidor
-estatico (o proprio jogo mostra esse aviso na tela se detectar `file://`):
+**Duplo clique no arquivo funciona.** O `index.html` e autossuficiente: basta
+ter internet, porque o three.js vem da CDN. Nao existe etapa de build.
+
+> Detalhe tecnico: `file://` bloqueia o import *relativo* de outro arquivo
+> local (origem nula, sem CORS), mas nao bloqueia um import cross-origin para
+> uma CDN que responde `access-control-allow-origin: *` — que e o caso do
+> jsDelivr. Se ainda assim o fetch de modulo for barrado por politica mais
+> restrita, o arquivo cai sozinho num caminho reserva que baixa o three.js com
+> `fetch()` comum e importa via Blob URL. Os dois caminhos sao testados.
+
+Sem internet, sirva a pasta localmente (o three.js precisa vir de algum lugar):
 
 ```bash
 cd explorador-espacial
@@ -18,7 +25,7 @@ python3 -m http.server 8000   # ou: npx serve .
 ```
 
 Em GitHub Pages, Netlify, Vercel ou qualquer host estatico basta subir o
-arquivo: nao ha etapa de build.
+arquivo.
 
 ## Controles
 

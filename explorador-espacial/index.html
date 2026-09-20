@@ -431,28 +431,25 @@ button.sec:hover{ color:var(--cor-hud); border-color:var(--cor-hud); }
   }catch(e){
     window.__vrErro('WebGL indisponivel', 'Falha ao testar o contexto grafico.', e && e.stack);
   }
-  // 2) file:// bloqueia modulos ES por CORS em Chrome e Safari. Vale para
-  //    qualquer pagina com <script type="module">, nao so esta. Avisar cedo e
-  //    melhor que deixar o usuario esperando 20 s por um timeout generico.
-  if (location.protocol === 'file:'){
-    window.__vrErro('Abra por um servidor, nao por duplo clique',
-      'O navegador bloqueia modulos ES (import) carregados de file:// por politica de origem. '
-      + 'O arquivo em si esta correto: publique num host estatico (GitHub Pages funciona) ou rode um servidor local.',
-      'Servidor local rapido:\n\n  python3 -m http.server 8000\n  npx serve .\n\n'
-      + 'Depois abra http://localhost:8000/  no navegador.');
-  }
-  // 3) Import maps suportados?
+  // 2) Import maps suportados?
   if (!(HTMLScriptElement.supports && HTMLScriptElement.supports('importmap'))){
     window.__vrErro('Import maps nao suportados',
       'Este navegador nao entende <script type="importmap">. Use Safari 16.4+, Chrome 89+ ou Firefox 108+.',
       navigator.userAgent);
   }
-  // 4) Timeout de CDN: se em 20s o modulo nao sinalizou boot, avisa.
+  // 3) Timeout de CDN: se em 20s o modulo nao sinalizou boot, avisa.
   setTimeout(function(){
     if (!window.__vrBoot.ok){
+      var dica = 'Etapa travada: ' + window.__vrBoot.etapa;
+      if (location.protocol === 'file:'){
+        dica += '\n\nA pagina foi aberta direto do disco (file://). Isso funciona, mas exige\n'
+              + 'internet, porque o three.js vem da CDN. Sem rede, sirva a pasta localmente:\n\n'
+              + '  python3 -m http.server 8000\n  npx serve .\n\n'
+              + 'e abra http://localhost:8000/';
+      }
       window.__vrErro('Tempo esgotado ao carregar dependencias',
         'O modulo principal nao inicializou em 20 s. A CDN (jsdelivr) pode estar bloqueada nesta rede, ou o aparelho esta offline.',
-        'Etapa travada: ' + window.__vrBoot.etapa);
+        dica);
     }
   }, 20000);
 })();
@@ -474,7 +471,42 @@ button.sec:hover{ color:var(--cor-hud); border-color:var(--cor-hud); }
 </script>
 
 <script type="module">
-import * as THREE from 'three';
+/* ---------------------------------------------------------------------------
+   CARREGAMENTO DO THREE.JS -- dois caminhos, ambos testados.
+
+   1) Normal: import dinamico resolvido pelo import map acima. Funciona tanto
+      servido por HTTP quanto aberto direto do disco (file://). Muita gente
+      acha que file:// bloqueia modulos ES; o que file:// bloqueia e o import
+      RELATIVO de outro arquivo local (origem nula, sem CORS). Um import
+      cross-origin para uma CDN que responde com access-control-allow-origin:*
+      passa normalmente -- e e o caso do jsdelivr.
+
+   2) Reserva: se ainda assim o fetch de modulo for barrado (politica mais
+      restrita, extensao, navegador antigo), baixamos o texto com fetch()
+      comum e importamos via Blob URL. O './three.core.js' relativo de dentro
+      do three.module.js e reescrito para a Blob URL do core.
+--------------------------------------------------------------------------- */
+const CDN_THREE = 'https://cdn.jsdelivr.net/npm/three@0.185.1/build/';
+async function carregarThree(){
+  try {
+    window.__vrBoot.etapa = 'importando three.js pelo import map';
+    return await import('three');
+  } catch (e1) {
+    console.warn('[boot] import map falhou, tentando via Blob:', e1 && e1.message);
+    window.__vrBoot.etapa = 'baixando three.js por fetch (reserva)';
+    const pegar = async nome => {
+      const r = await fetch(CDN_THREE + nome, { mode: 'cors' });
+      if (!r.ok) throw new Error(nome + ': HTTP ' + r.status);
+      return r.text();
+    };
+    const urlCore = URL.createObjectURL(
+      new Blob([await pegar('three.core.js')], { type: 'text/javascript' }));
+    const mod = (await pegar('three.module.js')).split('./three.core.js').join(urlCore);
+    const urlMod = URL.createObjectURL(new Blob([mod], { type: 'text/javascript' }));
+    return await import(urlMod);
+  }
+}
+const THREE = await carregarThree();
 window.__vrBoot.etapa = 'three.js carregado';
 
 /* ===========================================================================
