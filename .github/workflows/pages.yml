@@ -4,7 +4,7 @@ on:
   push:
     # O repo ainda nao tem main/master; incluir a branch de trabalho faz o
     # deploy acontecer sozinho assim que o Pages for habilitado nas Settings.
-    branches: [main, master, 'claude/dronefarer-roadmap-55s9sp', 'claude/space-exploration-simulator-3d-8cxaea']
+    branches: [main, master, 'claude/dronefarer-roadmap-55s9sp']
   workflow_dispatch:
 
 permissions:
@@ -33,13 +33,6 @@ jobs:
       - name: Build
         # base absoluta com o nome do repo, exigida por project site do Pages
         run: BASE_PATH="/${GITHUB_REPOSITORY#*/}/" npm run build
-      - name: Adicionar jogos de arquivo unico ao artefato
-        # VOIDRUNNER nao tem build: e um index.html so. Basta copiar para
-        # dentro do dist, numa subpasta propria. Nao mexe no dronefarer.
-        working-directory: .
-        run: |
-          mkdir -p dronefarer/dist/explorador-espacial
-          cp explorador-espacial/index.html dronefarer/dist/explorador-espacial/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dronefarer/dist
