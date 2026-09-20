@@ -190,6 +190,7 @@ canvas#tela{ position:fixed; inset:0; width:100%; height:100%; display:block; z-
     <div class="linha"><span class="rot">SEMENTE</span><b id="v-seed">--</b></div>
     <div class="linha"><span class="rot">MODO</span><b id="v-modo">ORBITAL</b></div>
     <div class="linha"><span class="rot">ATM</span><b id="v-atm">0.00</b></div>
+    <div class="linha"><span class="rot">CTRL</span><b id="v-ctrl">TECLADO</b></div>
     <div class="linha"><span class="rot">FPS</span><b id="v-fps">--</b></div>
   </div>
 
@@ -474,6 +475,17 @@ const CONFIG = {
     recargaPousado: 3.2,       // %/s recarregando pousado (paineis solares)
     velPousoSegura: 26,        // m/s de impacto tolerado
     massaSeca: 1               // aceleracoes ja estao em m/s^2; massa e nominal
+  },
+
+  GAMEPAD: {
+    // Mapeamento "standard" do Gamepad API (Xbox, DualSense, MFi no iPadOS).
+    zonaMorta: 0.13,           // zona morta RADIAL, nao por eixo (ver _stick)
+    curva: 1.55,               // expoente da resposta: mais fino perto do centro
+    gatilhoTurbo: 0.5,         // RT acima disso liga o turbo
+    gatilhoFreio: 0.3,         // LT acima disso e freio inercial
+    vibrar: true,
+    vibracaoMotorMs: 220,      // ciclo do rumble continuo de empuxo
+    vibracaoMotorMax: 0.22     // intensidade maxima do rumble de empuxo
   },
 
   CAMERA: {
@@ -1731,6 +1743,11 @@ class InputManager {
     this.pulsos = { alvo:false, cam:false, menu:false, salvar:false };
     this.teclas = new Set();
     this.toqueAtivo = false;
+    this.gamepadAtivo = false;
+    this.gamepadNome = '';
+    this._gpIndice = null;
+    this._gpBotoesAnt = [];
+    this._gpUltimaVibracao = 0;
 
     this.elToque = document.getElementById('toque');
     this.stickE = document.getElementById('stick-e');
@@ -1741,7 +1758,91 @@ class InputManager {
     this._ligarTeclado();
     this._ligarMouse();
     this._ligarToque();
+    this._ligarGamepad();
     this._detectarToque();
+  }
+
+  /* ---------------------------- GAMEPAD ----------------------------
+     O Gamepad API nao entrega eventos: e preciso reler navigator.getGamepads()
+     a cada frame, porque os objetos devolvidos sao instantaneos imutaveis.
+     Em Chrome e Safari o gamepad so aparece na lista depois do primeiro
+     botao apertado, entao o polling por frame tambem serve de deteccao. */
+  _ligarGamepad(){
+    if (!navigator.getGamepads) return;
+    window.addEventListener('gamepadconnected', (e) => {
+      this._gpIndice = e.gamepad.index;
+      this.gamepadNome = (e.gamepad.id || 'GAMEPAD').slice(0, 28).toUpperCase();
+      this.gamepadAtivo = true;
+      if (this.aoConectarGamepad) this.aoConectarGamepad(e.gamepad);
+    });
+    window.addEventListener('gamepaddisconnected', (e) => {
+      if (e.gamepad.index !== this._gpIndice) return;
+      this._gpIndice = null; this.gamepadAtivo = false; this.gamepadNome = '';
+      if (this.aoDesconectarGamepad) this.aoDesconectarGamepad();
+    });
+  }
+
+  /** Primeiro controle realmente conectado, ou null. */
+  _pad(){
+    if (!navigator.getGamepads) return null;
+    let lista;
+    try { lista = navigator.getGamepads(); } catch (e){ return null; }
+    if (!lista) return null;
+    if (this._gpIndice !== null){
+      const gp = lista[this._gpIndice];
+      if (gp && gp.connected) return gp;
+    }
+    for (let i = 0; i < lista.length; i++){
+      const gp = lista[i];
+      if (gp && gp.connected){
+        if (this._gpIndice !== i){
+          this._gpIndice = i;
+          this.gamepadNome = (gp.id || 'GAMEPAD').slice(0, 28).toUpperCase();
+          this.gamepadAtivo = true;
+          if (this.aoConectarGamepad) this.aoConectarGamepad(gp);
+        }
+        return gp;
+      }
+    }
+    if (this.gamepadAtivo){ this.gamepadAtivo = false; this._gpIndice = null; }
+    return null;
+  }
+
+  /** Zona morta RADIAL + curva de resposta. Zona morta por eixo deixaria os
+   *  cantos do stick vivos e a diagonal pulando de 0 para 1. */
+  _stick(x, y){
+    const C = CONFIG.GAMEPAD;
+    const m = Math.hypot(x, y);
+    if (m < C.zonaMorta) return [0, 0];
+    const n = Math.pow((m - C.zonaMorta) / (1 - C.zonaMorta), C.curva) / m;
+    return [clamp(x * n, -1, 1), clamp(y * n, -1, 1)];
+  }
+
+  /** Vibracao dual-rumble. Silenciosa em controles/navegadores sem suporte. */
+  vibrar(forte, fraco, dur){
+    if (!CONFIG.GAMEPAD.vibrar) return;
+    const gp = this._pad();
+    const atuador = gp && (gp.vibrationActuator ||
+                           (gp.hapticActuators && gp.hapticActuators[0]));
+    if (!atuador || !atuador.playEffect) return;
+    try {
+      atuador.playEffect('dual-rumble', {
+        startDelay: 0, duration: dur,
+        strongMagnitude: clamp(forte, 0, 1), weakMagnitude: clamp(fraco, 0, 1)
+      });
+    } catch (e){ /* alguns controles so aceitam outros tipos de efeito */ }
+  }
+
+  /** Rumble continuo proporcional ao empuxo, reemitido em ciclos para nao
+   *  inundar o atuador com um playEffect por frame. */
+  vibrarMotor(empuxo, turbo){
+    if (!CONFIG.GAMEPAD.vibrar || !this.gamepadAtivo) return;
+    const agora = performance.now();
+    if (agora - this._gpUltimaVibracao < CONFIG.GAMEPAD.vibracaoMotorMs) return;
+    this._gpUltimaVibracao = agora;
+    if (empuxo < 0.06) return;
+    const m = CONFIG.GAMEPAD.vibracaoMotorMax * empuxo * (1 + turbo * 1.6);
+    this.vibrar(m, m * 0.45, CONFIG.GAMEPAD.vibracaoMotorMs + 60);
   }
 
   _detectarToque(){
@@ -1875,14 +1976,55 @@ class InputManager {
       if (this._btn.rr) roll -= 1;
     }
 
+    // ------------------------------ gamepad ------------------------------
+    let gpTurbo = false, gpFreio = false;
+    const gp = this._pad();
+    if (gp){
+      const C = CONFIG.GAMEPAD;
+      const ax = gp.axes || [], bt = gp.buttons || [];
+      const apertado = (i) => !!(bt[i] && (bt[i].pressed || bt[i].value > 0.5));
+      const valor = (i) => (bt[i] ? (typeof bt[i].value === 'number' ? bt[i].value
+                                                                    : (bt[i].pressed ? 1 : 0)) : 0);
+
+      const [ex, ey] = this._stick(ax[0] || 0, ax[1] || 0);   // stick esquerdo
+      const [dx, dy] = this._stick(ax[2] || 0, ax[3] || 0);   // stick direito
+      empuxo += -ey; sx += ex;
+      pitch  += -dy; yaw += -dx;
+
+      // gatilhos analogicos: RT e acelerador progressivo e vira turbo no fim
+      // do curso; LT e freio inercial.
+      const rt = valor(7), lt = valor(6);
+      empuxo += rt;
+      gpTurbo = rt > C.gatilhoTurbo || apertado(0);
+      gpFreio = lt > C.gatilhoFreio;
+
+      if (apertado(4)) roll += 1;        // LB
+      if (apertado(5)) roll -= 1;        // RB
+      if (apertado(14)) roll += 1;       // direcional esquerda
+      if (apertado(15)) roll -= 1;       // direcional direita
+      if (apertado(12)) sy += 1;         // direcional cima
+      if (apertado(13)) sy -= 1;         // direcional baixo
+
+      // pulsos: so na transicao de solto para apertado
+      const ant = this._gpBotoesAnt;
+      const borda = (i) => { const a = apertado(i); const r = a && !ant[i]; ant[i] = a; return r; };
+      for (let i = 0; i < bt.length; i++) if (i !== 0) ant[i] = ant[i] || false;
+      if (borda(2)) this.pulsos.alvo = true;      // X / Quadrado
+      if (borda(3)) this.pulsos.cam = true;       // Y / Triangulo
+      if (borda(1)) this.pulsos.salvar = true;    // B / Circulo
+      if (borda(9)) this.pulsos.menu = true;      // Start / Options
+      ant[0] = apertado(0);
+    }
+
     e.empuxo = clamp(empuxo, -1, 1);
     e.strafeX = clamp(sx, -1, 1);
     e.strafeY = clamp(sy, -1, 1);
     e.pitch = clamp(pitch, -1, 1);
     e.yaw = clamp(yaw, -1, 1);
     e.roll = clamp(roll, -1, 1);
-    this.turbo = t.has('ShiftLeft') || t.has('ShiftRight') || (this._btn && this._btn.turbo);
-    this.freio = t.has('Space') || (this._btn && this._btn.freio);
+    this.turbo = t.has('ShiftLeft') || t.has('ShiftRight') ||
+                 (this._btn && this._btn.turbo) || gpTurbo;
+    this.freio = t.has('Space') || (this._btn && this._btn.freio) || gpFreio;
   }
 
   consumir(nome){ const v = this.pulsos[nome]; this.pulsos[nome] = false; return v; }
@@ -2059,7 +2201,7 @@ class HUD {
       raiz:$('hud'), vel:$('v-vel'), alt:$('v-alt'), emp:$('v-emp'), comb:$('v-comb'),
       bEmp:$('b-emp').firstElementChild, bComb:$('b-comb').firstElementChild, cxComb:$('b-comb'),
       alvo:$('v-alvo'), dist:$('v-dist'), eta:$('v-eta'), tipo:$('v-tipo'), grav:$('v-grav'),
-      seed:$('v-seed'), modo:$('v-modo'), atm:$('v-atm'), fps:$('v-fps'),
+      seed:$('v-seed'), modo:$('v-modo'), atm:$('v-atm'), fps:$('v-fps'), ctrl:$('v-ctrl'),
       log:$('log-corpo'), marcador:$('marcador'), marcadorTxt:$('marcador-txt'), aviso:$('aviso')
     };
     this.linhas = [];
@@ -2102,6 +2244,7 @@ class HUD {
     e.seed.textContent = d.semente;
     e.modo.textContent = d.modo;
     e.atm.textContent = d.densidade.toFixed(2);
+    if (e.ctrl.textContent !== d.controle) e.ctrl.textContent = d.controle;
     e.fps.textContent = d.fps.toFixed(0);
   }
   marcador(visivel, x, y, txt){
@@ -2671,10 +2814,12 @@ class Jogo {
       if (impacto > CONFIG.NAVE.velPousoSegura * 3){
         this.hud.aviso('IMPACTO SEVERO', 2.4, this.tempoJogo);
         this.audio.impacto(1.0);
+        this.entrada.vibrar(1.0, 0.85, 420);
         n.combustivel = Math.max(0, n.combustivel - 6);
       } else if (impacto > CONFIG.NAVE.velPousoSegura){
         this.hud.aviso('POUSO BRUSCO', 1.6, this.tempoJogo);
         this.audio.impacto(0.5);
+        this.entrada.vibrar(0.55, 0.4, 220);
       }
       if (impacto < CONFIG.NAVE.velPousoSegura && velTangencial < 14){
         this._assentar(P, up, alvoR);
@@ -2703,6 +2848,7 @@ class Jogo {
     this.hud.registro('POUSADO EM ' + P.nome + ' // ' + P.bioma.nome);
     this.audio.bip(520, 0.12, 0.16);
     this.audio.bip(780, 0.16, 0.12);
+    this.entrada.vibrar(0.35, 0.22, 180);
   }
 
   /* =============== camera (origem flutuante) =============== */
@@ -3075,7 +3221,9 @@ class Jogo {
       vel, alt: this.altitudeAtual, empuxo: n.empuxoAtual,
       combustivel: clamp(n.combustivel / n.combustivelMax, 0, 1),
       alvoNome, alvoDist, alvoEta, alvoTipo, alvoGrav,
-      semente: U.semente, modo, densidade: this.densidadeAtual || 0, fps: this.fps
+      semente: U.semente, modo, densidade: this.densidadeAtual || 0, fps: this.fps,
+      controle: this.entrada.gamepadAtivo ? 'GAMEPAD'
+                : (this.entrada.toqueAtivo ? 'TOQUE' : 'TECLADO')
     }, dt, this.tempoJogo);
 
     // marcador projetado do alvo
@@ -3120,6 +3268,7 @@ class Jogo {
     this.hud.registro('ALVO TRAVADO: ' + this.alvo.nome + ' // ' + this.alvo.bioma.nome +
                       ' // g=' + this.alvo.gravidade.toFixed(1));
     this.audio.bip(740, 0.06, 0.12);
+    this.entrada.vibrar(0.12, 0.28, 70);
   }
 
   async salvar(silencioso){
@@ -3213,6 +3362,7 @@ class Jogo {
     if (this.universo) this._atualizarVisuais(dt);
     this._atualizarHUD(dt);
     this.audio.atualizar(this.nave.empuxoAtual, this.densidadeAtual || 0, this.nave.vel.length(), dt);
+    if (!this.pausado) this.entrada.vibrarMotor(this.nave.empuxoAtual, this.nave.turbo);
     this._render();
   }
 }
@@ -3226,7 +3376,17 @@ const BRANCO = new THREE.Color(1, 1, 1);
 const el = (id) => document.getElementById(id);
 let jogo = null;
 
-function textoAjuda(toque){
+const AJUDA_GAMEPAD =
+  '<b>GAMEPAD</b> detectado. O controle funciona junto com teclado e toque.<br>' +
+  '<b>STICK ESQ</b> empuxo (Y) e strafe lateral (X)<br>' +
+  '<b>STICK DIR</b> pitch (Y) e yaw (X)<br>' +
+  '<b>RT</b> acelerador analogico, vira turbo no fim do curso &nbsp; <b>LT</b> freio<br>' +
+  '<b>LB RB</b> rolagem &nbsp; <b>DIRECIONAL</b> cima/baixo sobe e desce, esq/dir rola<br>' +
+  '<b>X</b> proximo alvo &nbsp; <b>Y</b> camera &nbsp; <b>B</b> salvar &nbsp; <b>START</b> menu<br>' +
+  'Nomes do padrao Xbox; num DualSense sao Quadrado, Triangulo, Circulo e Options.';
+
+function textoAjuda(toque, gamepad){
+  if (gamepad) return AJUDA_GAMEPAD;
   if (toque){
     return '<b>STICK ESQUERDO</b> empuxo e strafe lateral<br>' +
            '<b>STICK DIREITO</b> pitch e yaw<br>' +
@@ -3279,7 +3439,23 @@ function boot(){
   window.__odisseiaPronto = true;
   window.__jogo = jogo;          // gancho de inspecao no console
 
-  el('ajuda-txt').innerHTML = textoAjuda(jogo.entrada.toqueAtivo);
+  const atualizarAjuda = () => {
+    el('ajuda-txt').innerHTML = textoAjuda(jogo.entrada.toqueAtivo, jogo.entrada.gamepadAtivo);
+  };
+  atualizarAjuda();
+
+  // O Gamepad API so revela o controle depois do primeiro botao apertado,
+  // entao o aviso chega quando o jogador de fato mexe nele.
+  jogo.entrada.aoConectarGamepad = (gp) => {
+    jogo.hud.registro('GAMEPAD: ' + (gp.id || 'CONECTADO').slice(0, 30).toUpperCase());
+    jogo.audio.bip(660, 0.06, 0.12);
+    jogo.entrada.vibrar(0.25, 0.25, 140);
+    atualizarAjuda();
+  };
+  jogo.entrada.aoDesconectarGamepad = () => {
+    jogo.hud.registro('GAMEPAD DESCONECTADO');
+    atualizarAjuda();
+  };
   el('in-seed').value = CONFIG.SEMENTE_PADRAO;
 
   // O contexto de audio so pode nascer dentro de um gesto do usuario.
