@@ -55,7 +55,7 @@ export class Sky {
           float brush2 = fbm3(v * 14.0);
 
           float hh = clamp(h, -1.0, 1.0);
-          vec3 dayC = mix(uDayHor, uDayTop, smoothstep(-0.12, 0.42, hh + (brush-0.5)*0.22));
+          vec3 dayC = mix(uDayHor, uDayTop, smoothstep(-0.3, 0.32, hh + (brush-0.5)*0.22));
           vec3 nightC = mix(uNightHor, uNightTop, smoothstep(-0.3, 0.8, hh + (brush-0.5)*0.3));
           // nebulosas de aquarela (sempre um pouco, mais forte no espaco)
           float n1 = smoothstep(0.52, 0.8, fbm3(v * 2.2 + 3.1));
@@ -138,8 +138,9 @@ function makeStars(skyU) {
       void main(){
         vec3 d = normalize(position);
         float e = dot(uSun, uUp);
-        float night = 1.0 - smoothstep(-0.2, 0.12, e) * uAtmo;
-        float horizon = smoothstep(-0.05, 0.12, dot(d, uUp)) * uAtmo + (1.0 - uAtmo);
+        float night = 1.0 - smoothstep(-0.25, 0.1, e) * uAtmo;
+        night *= mix(1.0, smoothstep(-0.6, 0.2, dot(d, uUp)) * 0.4 + 0.6, uAtmo);
+        float horizon = 1.0; // o proprio planeta tampa as estrelas (o horizonte de um asteroide fica bem abaixo do plano)
         float tw = 0.65 + 0.35 * sin(uTime * (1.3 + fract(aData.y)*2.5) + aData.y);
         float laugh = uLaugh * (0.5 + 0.5*sin(uTime*9.0 + aData.y*3.0));
         vA = night * horizon * tw * (0.8 + laugh);

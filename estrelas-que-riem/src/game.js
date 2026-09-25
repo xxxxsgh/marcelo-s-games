@@ -11,6 +11,7 @@ import { LEVELS } from './levels/index.js';
 import { load, save } from './save.js';
 import { clamp, tangent } from './core/math.js';
 import { Planet } from './world/planet.js';
+import { Dust, Motes } from './render/fx.js';
 
 export class Game {
   constructor() {
@@ -43,9 +44,12 @@ export class Game {
     this.sunDir = new THREE.Vector3(0.5, 0.6, 0.4).normalize();
 
     this.player = new Player(this.scene);
-    this.player.onStep = () => this.audio.step(this.level?.stepSoft ?? 1);
-    this.player.onJump = () => this.audio.jump();
-    this.player.onLand = () => this.audio.land();
+    this.dust = new Dust(this.scene);
+    this.motes = new Motes(this.scene, this.gfx.quality === 'baixa' ? 40 : 90);
+    const feet = () => this.player.pos.clone().addScaledVector(this.player.face, -0.1);
+    this.player.onStep = () => { this.audio.step(this.level?.stepSoft ?? 1); this.dust.puff(feet(), this.player.up, 2, 0.55); };
+    this.player.onJump = () => { this.audio.jump(); this.dust.puff(feet(), this.player.up, 3, 0.7); };
+    this.player.onLand = () => { this.audio.land(); this.dust.puff(feet(), this.player.up, 6, 1); };
 
     this.travel = new Travel(this);
     this.mode = 'title';
@@ -80,6 +84,7 @@ export class Game {
     this.sky.setPalette(L.sky || {});
     this.sky.uniforms.uAtmo.value = L.atmo ?? 1;
     this.player.wind.copy(L.wind || new THREE.Vector3());
+    this.dust.color(L.dust || '#e6d8bd');
     this.player.walkSpeed = L.walkSpeed ?? 3;
     this.player.model.pose = 'idle';
     this.player.model.hold = 0;
@@ -224,6 +229,9 @@ export class Game {
 
     this.sky.update(this.camera);
     U.uNight.value = this.sky.night();
+    this.dust.update(dt);
+    this.motes.update(this.camera);
+    this.motes.points.visible = this.mode !== 'travel';
     if (draw) this.gfx.render();
     if (draw || !fixed) inp.endFrame();
   }

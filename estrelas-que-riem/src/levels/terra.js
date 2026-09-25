@@ -58,7 +58,7 @@ export default {
       return h;
     };
     const planet = new Planet({
-      radius: R0, seed: 7, bump: 0.004, gravity: 14, detail: 120, shape,
+      radius: R0, seed: 7, bump: 0.004, gravity: 14, detail: 100, shape,
       color: (d, h, pl, c) => {
         const n = pl.nz.fbm(d.x * 9, d.y * 9, d.z * 9, 3);
         c.copy(C.sand).lerp(C.sand2, THREE.MathUtils.smoothstep(n, -0.05, 0.3)).lerp(C.sand3, THREE.MathUtils.smoothstep(h - R0, 0.7, 1.3) * 0.7);
@@ -568,6 +568,7 @@ export default {
       walkSpeed: 4.2,
       camDist: 6,
       stepSoft: 0.6,
+      dust: '#f0d9a8',
       wind: new THREE.Vector3(1.5, 0, 0.6),
       update(dt, t) {
         for (const u of upd) u(dt, t);

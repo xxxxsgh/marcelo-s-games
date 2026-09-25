@@ -70,19 +70,26 @@ export default {
     });
 
     // decoracao: capim, flores miudas, pedrinhas
-    const grassG = new THREE.ConeGeometry(0.03, 0.18, 4).translate(0, 0.09, 0);
-    const grassM = paint('#7f9d52', { grain: 0.5 });
-    for (const d of scatter(r, 70, avoid, 0.09)) {
-      const tuft = new THREE.Group();
+    // capim: todas as folhinhas numa malha instanciada so
+    const grassDirs = scatter(r, 70, avoid, 0.09);
+    const grass = new THREE.InstancedMesh(new THREE.ConeGeometry(0.03, 0.18, 4).translate(0, 0.09, 0), paint('#7f9d52', { grain: 0.5 }), grassDirs.length * 4);
+    const gm = new THREE.Matrix4(), gq = new THREE.Quaternion(), gs = new THREE.Vector3(), gp = new THREE.Vector3();
+    const tilt = new THREE.Quaternion(), e = new THREE.Euler();
+    let gi = 0;
+    for (const d of grassDirs) {
+      const base = planet.surface(d, -0.02);
+      const q0 = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
       for (let k = 0; k < 4; k++) {
-        const b = new THREE.Mesh(grassG, grassM);
-        b.position.set((r() - 0.5) * 0.1, 0, (r() - 0.5) * 0.1);
-        b.rotation.set((r() - 0.5) * 0.6, 0, (r() - 0.5) * 0.6);
-        b.scale.y = 0.6 + r() * 0.8;
-        tuft.add(b);
+        const off = new THREE.Vector3((r() - 0.5) * 0.1, 0, (r() - 0.5) * 0.1).applyQuaternion(q0);
+        gp.copy(base).add(off);
+        tilt.setFromEuler(e.set((r() - 0.5) * 0.6, r() * 6, (r() - 0.5) * 0.6));
+        gq.copy(q0).multiply(tilt);
+        gs.set(1, 0.6 + r() * 0.8, 1);
+        grass.setMatrixAt(gi++, gm.compose(gp, gq, gs));
       }
-      planet.place(tuft, d);
     }
+    grass.castShadow = false; grass.receiveShadow = true;
+    planet.group.add(grass);
     const flowerCols = ['#f3e6a0', '#e6a8c0', '#b7c8f0', '#ffffff'];
     for (const d of scatter(r, 22, avoid, 0.15)) {
       const f = M(new THREE.SphereGeometry(0.04, 6, 4), flowerCols[Math.floor(r() * 4)], { inkW: 0.4, cast: false });
