@@ -286,6 +286,14 @@ class Scarf {
         if (bill.lengthSq() > 1e-6) side.lerp(bill.normalize().multiplyScalar(Math.sign(bill.dot(side)) || 1), 0.55);
       }
       if (side.lengthSq() < 1e-6) side.copy(right);
+      // sem viradas bruscas: mantem o mesmo lado do quadro anterior e suaviza
+      this.prevSide = this.prevSide || [];
+      const prev = this.prevSide[i];
+      if (prev) {
+        if (side.dot(prev) < 0) side.negate();
+        side.normalize().lerp(prev, 0.6);
+      }
+      this.prevSide[i] = side.clone().normalize();
       const ax = side.normalize().multiplyScalar(wdt * taper);
       const p = this.p[i];
       this.pos.set([p.x - ax.x, p.y - ax.y, p.z - ax.z, p.x + ax.x, p.y + ax.y, p.z + ax.z], i * 6);
@@ -294,5 +302,5 @@ class Scarf {
     this.geo.computeVertexNormals();
   }
 
-  reset() { this.init = false; }
+  reset() { this.init = false; this.prevSide = null; }
 }

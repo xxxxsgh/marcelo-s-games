@@ -118,7 +118,14 @@ export class Player {
       tangent(d, this.up);
       const l = d.length();
       const r = c.r + 0.2;
-      if (l < r && l > 1e-5) this.pos.addScaledVector(d, (r - l) / l);
+      if (l < r && l > 1e-5) {
+        this.pos.addScaledVector(d, (r - l) / l);
+        // tira a parte da velocidade que empurra contra o obstaculo: o principe
+        // desliza pela borda em vez de ficar "correndo parado" e tremendo
+        const n = d.divideScalar(l);
+        const vn = this.vel.dot(n);
+        if (vn < 0) this.vel.addScaledVector(n, -vn);
+      }
     }
 
     this.speed = tangent(this.vel.clone(), this.up).length();
