@@ -147,6 +147,40 @@ export default {
       it.on = false; v.it = it;
     });
 
+    // a cadeirinha: sentar e ver o sol se por (quantas vezes quiser)
+    const chairIt = planet.interact({ obj: ch, r: 1.3, label: 'sentar e ver o pôr do sol', labelH: 1.2, use: () => sunsetChair() });
+    async function sunsetChair() {
+      chairIt.on = false;
+      const P = game.player;
+      chairCol.on = false;
+      const look = dirLL(10, 110).sub(D.chair);
+      P.spawn(planet, D.chair, look);
+      P.model.pose = 'chair';
+      P.frozen = true;
+      const up = P.up.clone();
+      const side = look.clone().addScaledVector(up, -look.dot(up)).normalize();
+      const right = side.clone().cross(up).normalize();
+      const saved = game.sunDir.clone();
+      game.shot(P.pos.clone().addScaledVector(side, -3.2).addScaledVector(right, 1.6).addScaledVector(up, 1.1),
+        P.pos.clone().addScaledVector(side, 2).addScaledVector(up, 0.9));
+      S.sitting = true;
+      for (let i = 0; i <= 200; i++) {
+        const a = 0.42 - (i / 200) * 0.6;
+        game.sunDir.copy(side).multiplyScalar(Math.cos(a)).addScaledVector(up, Math.sin(a)).normalize();
+        await game.wait(1 / 28);
+      }
+      await game.wait(1.5);
+      await game.fadeTo(1, 1);
+      game.sunDir.copy(saved);
+      P.model.pose = 'idle';
+      P.frozen = false;
+      chairCol.on = true;
+      S.sitting = false;
+      game.release();
+      game.fadeTo(0, 1);
+      chairIt.on = true;
+    }
+
     const canIt = planet.interact({
       obj: can, r: 1.2, label: 'pegar o regador', on: false,
       use: () => { canIt.on = false; carry(game, can); game.audio.chime(2); game.ui.quest('agua', { text: 'regar a *rosa*' }); },
@@ -277,6 +311,7 @@ export default {
         return null;
       },
       onSunset(n) {
+        if (S.sitting) { game.ui.toast(n === 1 ? 'eu gosto tanto do pôr do sol…' : `${n} pores do sol`, 3000); return; }
         if (n === 1) game.ui.toast('num planeta tão pequeno, basta puxar a cadeira alguns passos…', 4200);
         if (n === 4) game.ui.toast('quando a gente está triste, gosta de ver o sol se pôr', 4000);
         if (n === 44) { game.ui.toast('quarenta e quatro pores do sol num dia só!', 5000); game.audio.laugh(3); }

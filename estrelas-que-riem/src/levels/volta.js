@@ -16,7 +16,7 @@ export default {
     const base = b612.build(game);
     const planet = base.planet;
     // reaproveita o planeta de casa, mas sem as tarefas
-    planet.interactables.length = 0;
+    planet.interactables.length = 0; // (a cadeira tambem sai: o final e com a rosa)
     const roseDir = dirLL(42, -30);
     const box = sheepBox();
     planet.place(box, dirLL(34, -22));

@@ -310,7 +310,7 @@ export class Game {
     }
     this.focus = best;
 
-    const tgt = L.target && this.mode === 'planet' && !this.ui.busy ? L.target() : null;
+    const tgt = L.target && this.mode === 'planet' && !this.ui.busy && !P.camOverride && !P.frozen ? L.target() : null;
     this.updateGuide(dt, tgt);
 
     if (this.mode === 'title') this.titleCam(dt);

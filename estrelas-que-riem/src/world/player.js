@@ -161,6 +161,11 @@ export class Player {
     if (this.camOverride) {
       ({ pos, look } = this.camOverride);
       up = this.camOverride.up || this.up;
+      // camera de cena tambem nao entra no chao (dunas, montanhas)
+      const P = this.planet;
+      const rel = pos.clone().sub(P.center);
+      const h = P.heightAt(rel.clone().normalize()) + 0.45;
+      if (rel.length() < h) pos = rel.setLength(h).add(P.center);
     } else {
       look = this.pos.clone().addScaledVector(this.up, 0.9);
       const back = this.camFwd.clone().multiplyScalar(-Math.cos(this.camPitch) * this.camDist);
