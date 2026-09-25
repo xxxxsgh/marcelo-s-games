@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0e1638" />
+    <title>Estrelas que Riem</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23142058'/%3E%3Cpath d='M16 5l3 7 7 .6-5.4 4.7 1.7 7.2L16 20.7 9.7 24.5l1.7-7.2L6 12.6l7-.6z' fill='%23f3cf57'/%3E%3C/svg%3E" />
+  </head>
+  <body class="in-title">
+    <div id="app"></div>
+
+    <!-- filtro de borda rasgada/desenhada a mao, usado nos cartoes de papel -->
+    <svg width="0" height="0" style="position:absolute">
+      <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="4" result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+      <filter id="rough2" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="9" result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
+
+    <div id="ui">
+      <div id="quest"></div>
+      <div id="sunsets"></div>
+      <div id="toast"></div>
+      <div id="card"><div class="k"></div><div class="t"></div><div class="s"></div></div>
+      <div id="prompt"><span class="key">E</span><span class="lbl"></span><svg class="ring" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" /></svg></div>
+      <div id="dialog">
+        <div class="bg"></div>
+        <div class="who"></div>
+        <div class="text"></div>
+        <div class="choices"></div>
+        <div class="more">▾</div>
+      </div>
+      <div id="narr"><div class="text"></div></div>
+      <div id="drawing"><div class="sheet-bg"></div><svg viewBox="0 0 200 140"></svg><div class="cap"></div></div>
+      <div id="rhythm"><div class="beat"></div><div class="hit"></div></div>
+      <div id="credits"></div>
+      <div id="skip">segure <b>Tab</b> para pular</div>
+    </div>
+
+    <div id="touch">
+      <div class="look"></div>
+      <div class="pad"><div class="knob"></div></div>
+      <div class="btn b-act" data-act="act">✦</div>
+      <div class="btn b-jump" data-act="jump">⤒</div>
+      <div class="btn b-menu" data-act="menu">❙❙</div>
+    </div>
+
+    <div id="title">
+      <div class="paper"></div>
+      <div class="inner">
+        <div class="small">uma pequena viagem, inspirada em <i>O Pequeno Príncipe</i></div>
+        <h1>Estrelas<br />que Riem</h1>
+        <div class="menu">
+          <button data-m="new">Começar a viagem</button>
+          <button data-m="cont" class="hide">Continuar</button>
+          <button data-m="map" class="hide">Caderno de planetas</button>
+          <button data-m="opts">Opções</button>
+        </div>
+        <div class="hint" id="hint">WASD anda · arraste o mouse gira a câmera · E interage · Espaço pula</div>
+      </div>
+    </div>
+
+    <div id="pause" class="hide">
+      <div class="sheet">
+        <h2>Pausa</h2>
+        <label>Volume geral <input type="range" min="0" max="1" step="0.05" data-v="master" /></label>
+        <label>Música <input type="range" min="0" max="1" step="0.05" data-v="music" /></label>
+        <label>Efeitos <input type="range" min="0" max="1" step="0.05" data-v="sfx" /></label>
+        <label>Qualidade
+          <select data-q>
+            <option value="alta">alta</option>
+            <option value="media">média</option>
+            <option value="baixa">baixa</option>
+          </select>
+        </label>
+        <label>Traço de aquarela <input type="range" min="0" max="1" step="0.05" data-paper /></label>
+        <div class="row">
+          <button data-p="resume">Voltar</button>
+          <button data-p="title">Menu inicial</button>
+        </div>
+        <p class="keys">WASD / setas: andar · arrastar / Q e →: câmera · roda: zoom<br />E: interagir · Espaço: pular · Shift: correr · Tab: pular cena</p>
+      </div>
+    </div>
+
+    <div id="map" class="hide">
+      <div class="sheet wide">
+        <h2>Caderno de planetas</h2>
+        <div class="planets"></div>
+        <div class="row"><button data-p="closemap">Fechar</button></div>
+      </div>
+    </div>
+
+    <div id="boot"><div class="star"></div><div class="lbl">desenhando…</div></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
