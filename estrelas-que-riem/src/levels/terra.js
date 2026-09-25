@@ -111,7 +111,7 @@ export default {
     gardenDirs.forEach((d, i) => {
       const p = planet.surface(d, -0.02);
       surfaceQuat(d, r() * 6, q);
-      sc.setScalar(1.1 + r() * 0.6);
+      sc.setScalar(0.72 + r() * 0.36);
       roses.setMatrixAt(i, m4.compose(p, q, sc));
     });
     roses.castShadow = true; roses.receiveShadow = true;

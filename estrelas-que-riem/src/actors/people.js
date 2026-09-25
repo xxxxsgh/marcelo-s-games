@@ -98,18 +98,18 @@ export class Person {
 
 // -------------------------------------------------------------------- o Rei
 export function king() {
-  const p = new Person({ coat: '#7a3f86', robe: true, width: 0.34, height: 1.3, beard: '#f4f1ea', beardLen: 2.2, skin: '#f0cdb0', scale: 1 });
+  const p = new Person({ coat: '#7a3f86', robe: true, width: 0.27, height: 1.3, beard: '#f4f1ea', beardLen: 2.2, skin: '#f0cdb0', scale: 1 });
   // arminho: bolinhas pretas no manto e gola branca
   const collar = M(new THREE.TorusGeometry(0.28, 0.09, 8, 20).rotateX(Math.PI / 2), '#f6f3ea', { inkW: 0.8 });
   collar.position.y = 1.1; p.body.add(collar);
-  const trim = M(new THREE.TorusGeometry(0.72, 0.07, 6, 28).rotateX(Math.PI / 2), '#f6f3ea', { inkW: 0.8 });
+  const trim = M(new THREE.TorusGeometry(0.58, 0.07, 6, 28).rotateX(Math.PI / 2), '#f6f3ea', { inkW: 0.8 });
   trim.position.y = 0.05; p.body.add(trim);
   const dot = new THREE.SphereGeometry(0.025, 6, 4);
   const dm = new THREE.MeshBasicMaterial({ color: '#1e1a22' });
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2;
     const d = new THREE.Mesh(dot, dm);
-    d.position.set(Math.cos(a) * 0.75, 0.1, Math.sin(a) * 0.75); p.body.add(d);
+    d.position.set(Math.cos(a) * 0.6, 0.1, Math.sin(a) * 0.6); p.body.add(d);
   }
   // coroa
   const crown = M(new THREE.CylinderGeometry(0.16, 0.15, 0.12, 10, 1, true).translate(0, 0.06, 0), '#e7b93f', { inkW: 0.7, side: THREE.DoubleSide, emissive: '#3a2600' });

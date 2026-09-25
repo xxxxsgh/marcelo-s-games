@@ -12,6 +12,7 @@ import { load, save } from './save.js';
 import { clamp, tangent } from './core/math.js';
 import { Planet } from './world/planet.js';
 import { Dust, Motes } from './render/fx.js';
+import { faceDir } from './levels/common.js';
 
 export class Game {
   constructor() {
@@ -173,7 +174,24 @@ export class Game {
     if (d.lengthSq() > 1e-4) this.player.face.copy(d.normalize());
   }
 
+  /** vira um personagem pro principe (so em volta do proprio "cima") */
+  turnToPlayer(obj) {
+    const L = this.level;
+    if (!obj || !L) return;
+    if (obj.parent === L.planet.group) {
+      const dir = obj.position.clone().sub(L.planet.center).normalize();
+      const look = this.player.pos.clone().sub(L.planet.center).normalize();
+      faceDir(obj, dir, look);
+    } else if (obj.parent) {
+      const t = obj.parent.worldToLocal(this.player.pos.clone());
+      const d = t.sub(obj.position);
+      const yaw = Math.atan2(d.x, d.z);
+      obj.rotation.y = obj.userData.maxTurn ? THREE.MathUtils.clamp(yaw, -obj.userData.maxTurn, obj.userData.maxTurn) : yaw;
+    }
+  }
+
   async talk(who, lines, npc, o = {}) {
+    if (npc) this.turnToPlayer(npc.group || npc.g);
     for (const l of lines) {
       const isPrince = l[0] === 'P';
       const text = l.slice(2);

@@ -224,8 +224,17 @@ export function lampPost() {
   g.add(M(new THREE.CylinderGeometry(0.1, 0.14, 0.12, 10), iron, { inkW: 0.7 }));
   const pole = M(new THREE.CylinderGeometry(0.035, 0.05, 1.8, 8).translate(0, 0.95, 0), iron, { inkW: 0.8 });
   g.add(pole);
-  const cage = M(lathe([[0, 0], [0.1, 0], [0.16, 0.22], [0.13, 0.26], [0, 0.26]], 6), iron, { inkW: 0.6 });
-  cage.position.y = 1.84; g.add(cage);
+  // lanterna: base, quatro hastes e vidro (a chama aparece)
+  const cbase = M(new THREE.CylinderGeometry(0.1, 0.07, 0.05, 6), iron, { inkW: 0.5 });
+  cbase.position.y = 1.86; g.add(cbase);
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const bar = M(new THREE.CylinderGeometry(0.012, 0.012, 0.26, 4), iron, { inkW: 0.3 });
+    bar.position.set(Math.cos(a) * 0.12, 1.99, Math.sin(a) * 0.12); bar.rotation.set(Math.sin(a) * 0.25, 0, -Math.cos(a) * 0.25);
+    g.add(bar);
+  }
+  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.09, 0.24, 8, 1, true), new THREE.MeshBasicMaterial({ color: '#ffe9b0', transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide }));
+  glass.position.y = 1.99; g.add(glass);
   const hat = M(new THREE.ConeGeometry(0.2, 0.16, 6).translate(0, 0.08, 0), iron, { inkW: 0.7 });
   hat.position.y = 2.1; g.add(hat);
   const flame = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8).scale(0.8, 1.2, 0.8), glow('#ffcf6b', 3));

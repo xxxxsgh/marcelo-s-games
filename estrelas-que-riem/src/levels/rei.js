@@ -48,7 +48,8 @@ export default {
     placeNPC(planet, throne, D.throne, D.spawn, 0.6);
 
     const K = king();
-    K.group.position.set(0, 0.42, 0.02);
+    K.group.position.set(0, 0.42, 0.06);
+    K.group.userData.maxTurn = 0.7;
     K.group.scale.setScalar(0.85);
     throne.add(K.group);
     upd.push((dt, t) => K.update(dt, t));
