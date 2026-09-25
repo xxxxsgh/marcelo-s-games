@@ -25,7 +25,7 @@ mkdirSync('shots', { recursive: true });
 await page.evaluate((s) => { const g = __game; g.audio.start(); document.getElementById('title').classList.add('out'); g.loadLevel(s); }, START);
 
 let last = -1, stuck = 0;
-for (let step = 0; step < 4000; step++) {
+for (let step = 0; step < 9000; step++) {
   const st = await page.evaluate(() => {
     const g = __game;
     // desenha so de vez em quando
@@ -67,7 +67,7 @@ for (let step = 0; step < 4000; step++) {
   const key = JSON.stringify([st.lv, st.stage, st.mode]);
   if (key !== last) { console.log(step, key, st.used || ''); last = key; stuck = 0; } else stuck++;
   if (st.used && stuck % 40 === 0 && stuck) console.log('   (usando', st.used, ')');
-  if (stuck > 400) { console.log('TRAVOU em', key, await page.evaluate(() => JSON.stringify({ cur: __game.ui.cur && __game.ui.cur.kind, waiters: __game.waiters.map((w) => w.at ? 'at ' + (w.at - __game.t).toFixed(1) : 'cond'), fade: __game.gfx.fade, fa: !!__game.fadeAnim, ons: __game.level.planet.interactables.filter((i) => i.on).map((i) => i.label) }))); break; }
+  if (stuck > 900) { console.log('TRAVOU em', key, await page.evaluate(() => JSON.stringify({ cur: __game.ui.cur && __game.ui.cur.kind, waiters: __game.waiters.map((w) => w.at ? 'at ' + (w.at - __game.t).toFixed(1) : 'cond'), fade: __game.gfx.fade, fa: !!__game.fadeAnim, ons: __game.level.planet.interactables.filter((i) => i.on).map((i) => i.label) }))); break; }
   if (errs.length) break;
   if (st.lv === 8 && st.stage === 'go' && step > 5) {
     // epilogo: usa a rosa
