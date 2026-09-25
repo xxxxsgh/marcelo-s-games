@@ -4,6 +4,7 @@ import { Sky } from './render/sky.js';
 import { U } from './render/paint.js';
 import { Input } from './core/input.js';
 import { Player } from './world/player.js';
+import { Scarf } from './actors/prince.js';
 import { UI } from './ui/ui.js';
 import { Audio } from './audio/audio.js';
 import { Travel } from './travel.js';
@@ -45,6 +46,7 @@ export class Game {
     this.sunDir = new THREE.Vector3(0.5, 0.6, 0.4).normalize();
 
     this.player = new Player(this.scene);
+    Scarf.cam = this.camera;
     this.dust = new Dust(this.scene);
     this.motes = new Motes(this.scene, this.gfx.quality === 'baixa' ? 40 : 90);
     const feet = () => this.player.pos.clone().addScaledVector(this.player.face, -0.1);
@@ -145,6 +147,8 @@ export class Game {
   fadeTo(v, sec = 1) {
     const from = this.gfx.fade;
     const start = this.t;
+    // um fade novo encerra o anterior (senao quem esperava por ele travava)
+    if (this.fadeAnim) { const old = this.fadeAnim; this.fadeAnim = null; old.r(); }
     return new Promise((r) => {
       this.fadeAnim = { from, to: v, start, sec, r };
     });

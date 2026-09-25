@@ -18,6 +18,8 @@ function limb(len, r, color) {
  * O principezinho: casaco verde comprido, cabelo de trigo, e o cachecol
  * amarelo que voa com o vento (simulado com verlet).
  */
+export { Scarf };
+
 export class PrinceModel {
   constructor() {
     this.group = new THREE.Group();
@@ -273,7 +275,18 @@ class Scarf {
     for (let i = 0; i < this.n; i++) {
       const taper = 1 - (i / this.n) * 0.35;
       const tw = Math.sin(performance.now() * 0.004 + i * 0.6) * 0.5;
-      const ax = right.clone().applyAxisAngle(up, tw).multiplyScalar(wdt * taper);
+      // a largura fica sempre perpendicular ao comprimento da fita e virada
+      // um pouco pra camera: de perfil ela nunca vira uma linha fininha
+      const seg = (i < this.n - 1 ? this.p[i + 1].clone().sub(this.p[i]) : this.p[i].clone().sub(this.p[i - 1])).normalize();
+      const side = right.clone().applyAxisAngle(up, tw);
+      side.addScaledVector(seg, -side.dot(seg));
+      if (Scarf.cam) {
+        const toCam = Scarf.cam.position.clone().sub(this.p[i]).normalize();
+        const bill = seg.clone().cross(toCam);
+        if (bill.lengthSq() > 1e-6) side.lerp(bill.normalize().multiplyScalar(Math.sign(bill.dot(side)) || 1), 0.55);
+      }
+      if (side.lengthSq() < 1e-6) side.copy(right);
+      const ax = side.normalize().multiplyScalar(wdt * taper);
       const p = this.p[i];
       this.pos.set([p.x - ax.x, p.y - ax.y, p.z - ax.z, p.x + ax.x, p.y + ax.y, p.z + ax.z], i * 6);
     }

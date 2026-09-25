@@ -151,7 +151,7 @@ export class Player {
     const side = r.clone();
     // brisa leve sempre, pra fita nunca ficar parada
     const wind = this.wind.clone().addScaledVector(f, -this.speed * 2.2 - 0.9).addScaledVector(up, 0.3)
-      .addScaledVector(side, 0.9 + Math.sin(t * 0.7) * 0.9);
+      .addScaledVector(side, 0.5 + Math.sin(t * 0.7) * 0.5);
     this.model.animate(dt, this.speed, this.grounded, t, up, wind, side);
   }
 

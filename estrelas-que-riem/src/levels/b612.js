@@ -44,6 +44,8 @@ export default {
 
     const globe = glassGlobe();
     planet.place(globe, D.globe);
+    // o vidro e solido: o principe nao entra dentro da redoma
+    const globeCol = planet.collider(D.globe, 0.38);
 
     // regador
     const can = new THREE.Group();
@@ -148,7 +150,7 @@ export default {
     });
 
     // a cadeirinha: sentar e ver o sol se por (quantas vezes quiser)
-    const chairIt = planet.interact({ obj: ch, r: 1.3, label: 'sentar e ver o pôr do sol', labelH: 1.2, use: () => sunsetChair() });
+    const chairIt = planet.interact({ obj: ch, r: 1.3, label: 'sentar e ver o pôr do sol', labelH: 1.2, cond: () => game.mode === 'planet' && !game.carrying, use: () => sunsetChair() });
     async function sunsetChair() {
       chairIt.on = false;
       const P = game.player;
@@ -187,7 +189,7 @@ export default {
     });
     const globeIt = planet.interact({
       obj: globe, r: 1.2, label: 'pegar a redoma', on: false,
-      use: () => { globeIt.on = false; carry(game, globe); game.audio.chime(4); },
+      use: () => { globeIt.on = false; globeCol.on = false; carry(game, globe); game.audio.chime(4); },
     });
     const roseIt = planet.interact({
       obj: R.g, r: 1.5, label: 'falar com a rosa', labelH: 1.2, on: false,

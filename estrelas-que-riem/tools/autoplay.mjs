@@ -53,7 +53,7 @@ for (let step = 0; step < 9000; step++) {
     if (id === 7 && S.sitting) { g.advance(1); return out; }
     // usa a primeira interacao disponivel
     for (const it of L.planet.interactables) {
-      if (!it.on || (it.cond && !it.cond())) continue;
+      if (!it.on || (it.cond && !it.cond()) || it.label.includes('pôr do sol')) continue;
       if (it.obj) it.obj.getWorldPosition(it.pos);
       // leva o jogador ate la (teleporte) pra cenas que dependem da posicao
       const dir = it.pos.clone().sub(L.planet.center).normalize();
