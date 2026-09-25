@@ -214,6 +214,13 @@ class Scarf {
       for (let i = 0; i < this.n; i++) { this.p[i].copy(anchor).addScaledVector(up, -i * this.seg); this.o[i].copy(this.p[i]); }
       this.init = true;
     }
+    // teleporte (troca de planeta, cena, cadeira): recomeca a fita no lugar
+    if (this.lastAnchor && this.lastAnchor.distanceTo(anchor) > 0.6) this.init = false;
+    this.lastAnchor = (this.lastAnchor || new THREE.Vector3()).copy(anchor);
+    if (!this.init) {
+      for (let i = 0; i < this.n; i++) { this.p[i].copy(anchor).addScaledVector(up, -i * this.seg); this.o[i].copy(this.p[i]); }
+      this.init = true;
+    }
     const g = up.clone().multiplyScalar(-3.2 * dt * dt);
     const w = wind.clone().multiplyScalar(dt * dt);
     const tmp = new THREE.Vector3();
@@ -247,6 +254,18 @@ class Scarf {
           const l = tmp.length();
           if (l < rad && l > 1e-5) p.addScaledVector(tmp, (rad - l) / l);
         }
+      }
+    }
+    // passo final "duro": nenhum segmento fica mais comprido que o normal
+    // (sem isso, vento forte + framerate alto esticava a fita num fio comprido)
+    for (let i = 1; i < this.n; i++) {
+      const a = this.p[i - 1], b = this.p[i];
+      tmp.copy(b).sub(a);
+      const d = tmp.length();
+      if (!(d <= this.seg * 1.02)) {
+        if (!Number.isFinite(d) || d < 1e-6) tmp.copy(up).negate(); else tmp.divideScalar(d);
+        b.copy(a).addScaledVector(tmp, this.seg);
+        this.o[i].copy(b);
       }
     }
     // monta a fita: largura no eixo "right" torcido pela ondulacao
