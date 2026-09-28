@@ -31,19 +31,35 @@ export class Input {
     addEventListener('blur', () => this.held.clear());
 
     // arrastar com o mouse gira a camera
+    // so o botao esquerdo gira a camera, e o arrasto termina em qualquer
+    // situacao (soltar, perder o foco, menu do botao direito). Antes, clicar
+    // com o botao direito deixava a camera presa seguindo o mouse.
     let drag = null;
+    const end = () => { drag = null; };
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
     el.addEventListener('pointerdown', (e) => {
-      if (e.pointerType === 'touch') return;
-      drag = { x: e.clientX, y: e.clientY };
-      el.setPointerCapture(e.pointerId);
+      if (e.pointerType === 'touch' || e.button !== 0) return;
+      drag = { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: 0 };
+      try { el.setPointerCapture(e.pointerId); } catch { /* ok */ }
     });
     el.addEventListener('pointermove', (e) => {
       if (!drag || e.pointerType === 'touch') return;
-      this.look.x += (e.clientX - drag.x) * 0.005;
-      this.look.y += (e.clientY - drag.y) * 0.004;
-      drag = { x: e.clientX, y: e.clientY };
+      if (!(e.buttons & 1)) { end(); return; }
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      drag.moved += Math.abs(dx) + Math.abs(dy);
+      this.look.x += dx * 0.005;
+      this.look.y += dy * 0.004;
+      drag.x = e.clientX; drag.y = e.clientY;
     });
-    el.addEventListener('pointerup', () => { drag = null; });
+    el.addEventListener('pointerup', (e) => {
+      // clique rapido e parado = interagir (pegar a redoma, falar, etc.)
+      if (drag && e.button === 0 && drag.moved < 6 && performance.now() - drag.t0 < 350) this.edge.add('act');
+      end();
+    });
+    el.addEventListener('pointercancel', end);
+    el.addEventListener('lostpointercapture', end);
+    addEventListener('blur', end);
+    document.addEventListener('visibilitychange', end);
     el.addEventListener('wheel', (e) => { this.zoom += Math.sign(e.deltaY); }, { passive: true });
 
     this.buildTouch();
