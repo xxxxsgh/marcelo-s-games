@@ -91,6 +91,7 @@ export class Player {
     if (this.grounded && !this.frozen && input.pressed('jump')) { vr = 4.2; this.grounded = false; this.onJump && this.onJump(); }
     vr -= P.gravity * dt;
     this.vel.copy(vt).addScaledVector(this.up, vr);
+    const before = this.pos.clone();
     this.pos.addScaledVector(this.vel, dt);
 
     // chao
@@ -105,15 +106,22 @@ export class Player {
       this.grounded = true;
     } else if (dist > ground + 0.08) this.grounded = false;
     // agua: nao entra
+    // agua: a beira funciona como parede (volta pro passo anterior e corta
+    // a velocidade na direcao do mar, sem ficar indo e voltando)
     if (P.water && ground < P.water - 0.05) {
-      const back = this.vel.clone(); tangent(back, dir);
-      this.pos.addScaledVector(back, -dt * 1.05);
-      this.vel.addScaledVector(back, -1);
+      const step = this.pos.clone().sub(before); tangent(step, dir);
+      this.pos.copy(before);
+      const n = step.lengthSq() > 1e-10 ? step.normalize() : null;
+      if (n) { const vn = this.vel.dot(n); if (vn > 0) this.vel.addScaledVector(n, -vn); }
     }
 
     // colisores (empurra no plano tangente)
     for (const c of P.colliders) {
       if (!c.on) continue;
+      // so conta obstaculo perto de verdade (em 3D). Num planeta minusculo,
+      // um vulcao do outro lado caia "em cima" do principe na projecao do
+      // plano do chao e o empurrava todo quadro: ele tremia no mesmo lugar.
+      if (c.pos.distanceToSquared(this.pos) > (c.r + 0.8) * (c.r + 0.8)) continue;
       const d = _w.copy(this.pos).sub(c.pos);
       tangent(d, this.up);
       const l = d.length();
@@ -131,7 +139,7 @@ export class Player {
     this.speed = tangent(this.vel.clone(), this.up).length();
     if (this.speed > 0.3) {
       const f = tangent(this.vel.clone(), this.up).normalize();
-      this.face.lerp(f, 1 - Math.exp(-10 * dt)).normalize();
+      if (this.face.dot(f) < -0.95) this.face.copy(f); else this.face.lerp(f, 1 - Math.exp(-10 * dt)).normalize();
       this.stillTime = 0;
       if (this.grounded) {
         this.stepAcc += this.speed * dt;
