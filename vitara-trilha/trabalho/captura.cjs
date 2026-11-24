@@ -53,7 +53,7 @@ const grabPNG = async (p, file) => { const url = await p.evaluate(() => window._
   } else if (mode === 'poses') {
     fs.mkdirSync(out, { recursive: true });
     // [nome, quadro da volta, câmera]: carCam = [az, el, dist, altura do alvo, fov]; null = câmera do jogo
-    const poses = [['pose1_traseira_3-4', 0, [38, 9, 6.6, 0.85, 0.62]], ['pose2_frente_3-4', 0, [148, 7, 6.4, 0.8, 0.62]], ['pose3_lateral', 0, [-90, 4, 7.4, 0.85, 0.5]],
+    const poses = [['pose1_traseira_3-4', 0, [38, 9, 6.6, 0.85, 0.62]], ['pose2_frente_3-4', 0, [148, 7, 6.4, 0.8, 0.62]], ['pose3_lateral', 0, [-90, 9, 7.4, 0.8, 0.5]],
       ['pose4_riacho_perseguicao', 1105, null], ['pose5_subida_pedras', 1420, [200, 10, 7.5, 0.9, 0.75]], ['pose6_ponte', 2860, [35, 12, 8.5, 0.8, 0.7]]];
     for (const [nm, f, cam] of poses) {
       await p.evaluate(async ([f, cam]) => { const c = window.__cap, t = window.__t; t.App.freeCam = false; if (f > 0) { c.sim(Math.max(c.f, f - 3)); c.render(f - c.f); }

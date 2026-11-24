@@ -1193,7 +1193,7 @@ fn leafAt(p: vec2f, c: vec2f, ang: f32, len: f32, wid: f32) -> vec2f { // (másc
     let wc = pwor(uv * 6.0 + vec2f(n2, n1) * 0.25, vec2f(6.0)); let crack = smoothstep(0.022, 0.0, wc.y - wc.x) * smoothstep(0.05, 0.35, n1) * 0.45;
     h = 0.45 + n1 * 0.22 + n2 * 0.10 + n3 * 0.05 + peb * 0.30 * (1.0 - w.x * 2.0) + grit * 0.07 - crack * 0.18;
     alb = mix(vec3f(0.27, 0.15, 0.09), vec3f(0.45, 0.28, 0.17), sat(0.5 + n1 * 0.9 + n2 * 0.5)); alb *= 0.9 + n3 * 0.3;
-    alb = mix(alb, vec3f(0.40, 0.36, 0.32) * (0.65 + w.z * 0.5), peb); alb = mix(alb, vec3f(0.50, 0.40, 0.30), grit * 0.6); alb *= 1.0 - crack * 0.55;
+    alb = mix(alb, vec3f(0.33, 0.27, 0.22) * (0.75 + w.z * 0.35), peb * 0.8); alb = mix(alb, vec3f(0.40, 0.30, 0.21), grit * 0.4); alb *= 1.0 - crack * 0.55;
     rough = 0.93 - peb * 0.2; ao = 1.0 - crack * 0.6;
   } else if (L == 1u) { // cascalho
     let wp = pfbm(uv * 8.0, vec2f(8.0), 3) * 0.08;
@@ -1391,7 +1391,7 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   let nN = textureSample(nrmNearT, sClamp, uvn).xyz * 2.0 - 1.0;
   var N = normalize(mix(v.nf, nN, inNear));
   let nzA = textureSample(noiseT, sRep, xz / 37.0); let nzB = textureSample(noiseT, sRep, xz / 3.1);
-  let at = abs(fl.x) + (1.0 - inNear) * 60.0; let far = 0.0; gDetail = dist < 55.0; gBlur = 1.0 + smoothstep(6.0, 50.0, dist) * 1.6;
+  let at = abs(fl.x) + (1.0 - inNear) * 60.0; let far = 0.0; gDetail = dist < 55.0; gBlur = 1.0 + smoothstep(5.0, 40.0, dist) * 2.4;
   let slope = 1.0 - N.y;
   // --- pesos ---
   let track = 1.0 - smoothstep(2.45, 4.1, at + (nzB.x - 0.5) * 1.6 + (nzA.z - 0.5) * 0.8);
@@ -1404,7 +1404,7 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   var m = smp2(4, xz, 0.42, gx, gy, far);
   if (litter > 0.01) { m = hblend(m, smp2(9, xz, 0.55, gx, gy, far), litter); }
   if (wDirt > 0.01) { var d = smp2(0, xz, 0.40, gx, gy, far); if (strip > 0.01) { d = hblend(d, m, strip); } m = hblend(m, d, wDirt); }
-  if (wGrav > 0.01 || bed > 0.01) { m = hblend(m, smp2(1, xz, 0.85, gx, gy, far), max(wGrav, bed)); }
+  if (wGrav > 0.01 || bed > 0.01) { var gv = smp2(1, xz, 0.62, gx, gy, far); gv.a = vec4f(gv.a.rgb * 0.78, gv.a.w); m = hblend(m, gv, max(wGrav, bed)); }
   if (wMud > 0.01) { m = hblend(m, smp2(2, xz, 0.33, gx, gy, far), wMud); }
   if (wRock > 0.01) { m = hblend(m, smp2(3, xz, 0.37, gx, gy, far), wRock); }
   var alb = m.a.rgb; var rough = m.n.z; var ao = m.n.w; var nt = (m.n.xy * 2.0 - 1.0);
@@ -1678,10 +1678,10 @@ fn ssr(P: vec3f, R: vec3f, n0: f32) -> vec4f {
   if (smoothK > 0.01 && vz < 150.0) { let h = ssr(wp + N * 0.01 * (1.0 + vz * 0.1), R, n1); cenv = mix(cenv, h.rgb, h.a * select(1.0, 0.55, coat > 0.5)); if (coat < 0.5 || rough < 0.2) { env = mix(env, h.rgb, h.a * (1.0 - smoothstep(0.12, 0.36, rough))); } }
   col += env * envBRDF(f0, rough, nv) * so * (1.0 - coat * 0.0);
   if (coat > 0.0) { // verniz
-    let Fc = (0.04 + 0.96 * pow(1.0 - nv, 5.0)) * coat; let ac = 0.0022;
+    let Fc = (0.04 + 0.96 * pow(1.0 - nv, 5.0)) * coat * 0.8; let ac = 0.0022;
     col = col * (1.0 - Fc) + cenv * Fc * mix(so, 1.0, 0.5) + sc * sh * nl * (ggxD(nh, 0.006) * smithV(nl, nv, 0.006)) * (0.04 + 0.96 * pow(1.0 - vh, 5.0)) * coat * (1.0 + ac);
   }
-  if (mat == 3) { col += alb * gm.b * 9.0; }
+  if (mat == 3) { col += alb * gm.b * 5.0; }
   return vec4f(col, 1.0);
 }
 `;
@@ -1702,7 +1702,7 @@ fn dens(p: vec3f) -> f32 { return 0.00026 * exp(-max(p.y - 19.0, 0.0) / 220.0) +
     let f0 = f32(k) / NS; let f1 = f32(k + 1) / NS; let t0 = nearEnd * f0 * f0; let t1 = nearEnd * f1 * f1; let t = mix(t0, t1, n0); let p = cam + rd * t;
     let nz = textureSampleLevel(noise3T, sRep, p * vec3f(0.021, 0.05, 0.021) + vec3f(F.cam.w * 0.012, 0.0, F.cam.w * 0.007), 0.0).x;
     let de = dens(p) * (0.55 + 1.0 * nz); let s = shadowAt(p, F.sun.xyz, t, fract(n0 + f0 * 7.0), 2);
-    let a = 1.0 - exp(-de * (t1 - t0)); acc += T * a * (sc * s * min(hg, 0.9) * 3.6 + ambC * 12.0); T *= 1.0 - a;
+    let a = 1.0 - exp(-de * (t1 - t0)); acc += T * a * (sc * s * min(hg, 0.55) * 3.6 + ambC * 10.0); T *= 1.0 - a;
   }
   if (dist > 170.0) { // trecho analítico
     let y0 = cam.y + rd.y * 170.0 - 19.0; let ry = rd.y; let len = dist - 170.0;
@@ -1819,7 +1819,7 @@ fn aces(x: vec3f) -> vec3f {
   // nitidez adaptativa leve (compensa a suavização do TAA)
   let n = textureLoad(colT, clamp(px + vec2i(0, -1), vec2i(0), res - 1), 0).rgb + textureLoad(colT, clamp(px + vec2i(0, 1), vec2i(0), res - 1), 0).rgb + textureLoad(colT, clamp(px + vec2i(-1, 0), vec2i(0), res - 1), 0).rgb + textureLoad(colT, clamp(px + vec2i(1, 0), vec2i(0), res - 1), 0).rgb;
   let sharp = c + (c - n * 0.25) * 0.38; c = max(mix(c, sharp, sat(1.0 - luma(abs(c - n * 0.25)) * 0.8)), vec3f(0.0));
-  let bl = textureSampleLevel(bloomT, sClamp, i.uv, 0.0).rgb; c = mix(c, bl, 0.055) + bl * 0.012;
+  let bl = textureSampleLevel(bloomT, sClamp, i.uv, 0.0).rgb; c = mix(c, bl, 0.035) + bl * 0.008;
   c *= F.sunCol.a;
   let q = i.uv - 0.5; c *= 1.0 - dot(q, q) * 0.42;
   c = aces(c * 1.05);
@@ -1927,31 +1927,31 @@ fn classify(p: vec3f, n: vec3f) -> i32 {
   if ((n.y < -0.55 && y < 0.56) || (da < 0.45 && ax < 0.80 && y < 0.83)) { return 11; }
   let anx = abs(n.x);
   // lanterna traseira: sobe pela coluna e dobra a esquina
-  if (y > 0.86 && y < 1.40 && ((z < -1.95 && ax > 0.705) || (z < -1.99 && ax > 0.80))) { return 6; }
+  if (y > 0.86 && y < 1.38 && z < -1.90 && ax > 0.715 && ax < 0.865 && n.z < -0.3) { return 6; }
   // farol: dobra a esquina dianteira
   let hlTop = 1.005 - 0.03 * smoothstep(0.45, 0.9, ax); let hlBot = 0.80 + 0.03 * smoothstep(0.7, 0.4, ax);
   if (z > 1.74 && y > hlBot && y < hlTop && ax > 0.405 && (n.z > 0.2 || z > 1.76)) { return 5; }
   if (anx > 0.45 && y > 0.95 && z < 0.92 && z > -1.85 && n.y < 0.75) { // área envidraçada lateral
-    let zf = 0.64 - (y - 1.03) * 0.98; let zr = -1.44 + (y - 1.07) * 0.30;
+    let zf = 0.66 - (y - 1.03) * 0.82; let zr = -1.44 + (y - 1.07) * 0.30;
     let d = max(max(yBeltF(z) + 0.038 + 0.075 * smoothstep(-1.12, -1.5, z) - y, y - 1.512), max(z - zf, zr - z));
     if (d < 0.0) {
       if (d > -0.020) { return 4; }
-      if (abs(z + 0.165) < 0.058 || abs(z + 1.045) < 0.055) { return 3; }
+      if (abs(z + 0.165) < 0.062) { return 3; } if (abs(z + 1.045) < 0.075) { return 0; }
       return select(2, 1, z > -0.165);
     }
     if (d < 0.012) { return 4; }
   }
-  if (n.y > 0.15 && n.z > 0.1 && z > 0.18 && z < 1.0 && y > 1.0) { // para-brisa
-    let xe = mix(0.775, 0.675, sat((y - 1.045) / 0.54)) - 0.045; let d = max(max(1.118 - y, y - 1.578), ax - xe);
+  if (n.y > 0.15 && n.z > 0.1 && z > 0.28 && z < 1.0 && y > 1.0) { // para-brisa
+    let xe = mix(0.775, 0.675, sat((y - 1.045) / 0.54)) - 0.045; let d = max(max(1.14 - y, y - 1.578), ax - xe);
     if (d < 0.0) { if (d > -0.022) { return 4; } return 1; }
-    if (y < 1.118 && ax < 0.74 && z > 0.86 && n.y > 0.5) { return 8; }
+    if (y < 1.14 && ax < 0.74 && z > 0.86 && n.y > 0.5) { return 8; }
   }
   if (n.z < -0.45 && z < -1.85) { // traseira
     let d = max(max(1.085 - y, y - 1.505), ax - 0.635);
     if (d < 0.0) { if (d > -0.022) { return 4; } return 2; }
     if (y < 0.46) { return 8; }
-    if (y > 0.515 && y < 0.578 && ax > 0.50 && ax < 0.76) { return 13; }
-    if (p.x > 0.30 && p.x < 0.70 && y > 0.775 && y < 0.905) { return 10; }
+    if (y > 0.53 && y < 0.565 && ax > 0.60 && ax < 0.76) { return 13; }
+    if (p.x > 0.30 && p.x < 0.70 && y > 0.565 && y < 0.695) { return 10; }
   }
   if (n.z > 0.35 && z > 1.80) { // frente
     let dg = max(ax - (0.335 + 0.07 * sat((y - 0.735) / 0.215)), max(0.735 - y, y - 0.950));
@@ -1966,13 +1966,12 @@ fn classify(p: vec3f, n: vec3f) -> i32 {
   return 0;
 }
 fn grooves(p: vec3f, n: vec3f) -> f32 { // juntas de portas, capô e tampa
-  let ax = abs(p.x); let y = p.y; let z = p.z; var g = 0.0; let w = 0.0035;
+  let ax = abs(p.x); let y = p.y; let z = p.z; var g = 0.0; let w = 0.006;
   if (abs(n.x) > 0.55) {
     if (y > 0.42 && y < 1.04) { g = max(g, 1.0 - smoothstep(0.0, w, abs(z - 0.80))); g = max(g, 1.0 - smoothstep(0.0, w, abs(z + 0.165))); }
     if (y > 0.93 && y < 1.04) { g = max(g, 1.0 - smoothstep(0.0, w, abs(z + 1.075))); }
     if (y <= 0.95 && y > 0.42 && z > -1.30 && z < -0.70) { g = max(g, 1.0 - smoothstep(0.0, w, abs(length(vec2f(z + 1.32, y - 0.377)) - 0.535))); }
     if (z > -0.80 && z < 0.80) { g = max(g, 1.0 - smoothstep(0.0, w, abs(y - 0.425))); }
-    if (p.x > 0.0) { g = max(g, 1.0 - smoothstep(0.0, w, abs(length(vec2f(z + 1.63, y - 0.90)) - 0.072))); }
     if (z > 1.74 || z < -1.74) { g = max(g, (1.0 - smoothstep(0.0, w, abs(y - 0.752))) * step(y, 0.8)); }
     if (z > 0.92 && z < 1.80) { g = max(g, 1.0 - smoothstep(0.0, w, abs(y - (mix(1.025, 0.935, sat((z - 0.92) / 1.0)) - 0.035)))); }
   }
@@ -1993,7 +1992,7 @@ fn shade(v: CV, ff: bool) -> Surf {
     if (c == 1 || c == 2) { s.glass = f32(c); return s; }
     if (!ff) { s.alb = vec3f(0.055, 0.055, 0.06); s.rough = 0.85; s.ao = 0.7; if (c == 11) { s.alb = vec3f(0.02); } return s; }
     if (c == 0) {
-      s.alb = paint * (0.97 + 0.06 * fl); s.metal = 0.82; s.rough = 0.31 + 0.02 * flk; s.coat = 1.0; s.mat = 2.0;
+      s.alb = paint * (0.97 + 0.06 * fl); s.metal = 0.50; s.rough = 0.42 + 0.02 * flk; s.coat = 0.7; s.mat = 2.0;
       if (n.y > 0.5 && p.z > 1.0) { let dcr = (ax - (0.40 + (p.z - 1.0) * 0.03)) / 0.022; s.bx = sign(p.x) * dcr * exp(-dcr * dcr) * 0.5; }
       let g = grooves(p, n); s.alb = mix(s.alb, vec3f(0.01), g); s.coat *= 1.0 - g; s.ao = 1.0 - g * 0.6;
       // emblema GRAND VITARA na tampa
@@ -2011,7 +2010,7 @@ fn shade(v: CV, ff: bool) -> Surf {
       let rib = 0.72 + 0.28 * sin(p.y * 330.0); s.alb = vec3f(0.36, 0.008, 0.008) * rib; s.rough = 0.22; s.metal = 0.25; s.coat = 1.0; s.mat = 2.0;
       let cr = min(abs(p.y - 1.215), abs(p.y - 1.065)); s.alb = mix(s.alb, vec3f(0.55, 0.02, 0.015), smoothstep(0.055, 0.045, cr) * 0.8);
       if (p.y < 0.945) { s.alb = vec3f(0.80, 0.80, 0.82) * (0.9 + 0.1 * rib); s.metal = 0.3; if (C.p.w > 0.5) { s.mat = 3.0; s.emis = 0.35; s.alb = vec3f(1.0, 0.95, 0.85); } }
-      else if (C.p.z > 0.02 && p.y > 0.99) { s.mat = 3.0; s.emis = C.p.z * (0.45 + 0.5 * smoothstep(0.06, 0.03, cr)); s.alb = vec3f(1.0, 0.03, 0.012); }
+      else if (C.p.z > 0.02 && p.y > 0.99) { s.mat = 3.0; s.emis = C.p.z * (0.45 + 0.5 * smoothstep(0.06, 0.03, cr)); s.alb = vec3f(1.0, 0.012, 0.004); }
       dirtable = 0.6;
     } else if (c == 7) { // grade: colmeia escura, barra cromada e emblema
       let hx = fract(vec2f(ax * 38.0, p.y * 44.0 + floor(ax * 38.0) * 0.5)); let mesh = smoothstep(0.10, 0.2, min(min(hx.x, 1.0 - hx.x), min(hx.y, 1.0 - hx.y)));
@@ -2024,17 +2023,17 @@ fn shade(v: CV, ff: bool) -> Surf {
       if (n.z > 0.35 && p.y > 0.385 && p.y < 0.515 && ax < 0.53) { s.alb *= 0.4 + 0.6 * step(0.5, fract(p.y * 46.0)); s.ao = 0.6; } }
     else if (c == 9) { s.alb = vec3f(0.88); s.metal = 1.0; s.rough = 0.09; }
     else if (c == 10) { // placa genérica
-      var u = vec2f(0.0); if (p.z < 0.0) { u = vec2f((0.70 - p.x) / 0.40, (0.905 - p.y) / 0.13); } else { u = vec2f((p.x + 0.205) / 0.41, (0.678 - p.y) / 0.13); }
+      var u = vec2f(0.0); if (p.z < 0.0) { u = vec2f((0.70 - p.x) / 0.40, (0.695 - p.y) / 0.13); } else { u = vec2f((p.x + 0.205) / 0.41, (0.678 - p.y) / 0.13); }
       let tx = dec(vec2f(u.x, (u.y - 0.2) / 0.78), vec4f(0.0, 0.5, 0.5, 0.5)); s.alb = mix(vec3f(0.72, 0.72, 0.70), vec3f(0.03), tx); if (u.y < 0.17) { s.alb = vec3f(0.03, 0.10, 0.42); }
       let ed = min(min(u.x, 1.0 - u.x) * 3.1, min(u.y, 1.0 - u.y)); if (ed < 0.05) { s.alb = vec3f(0.03); } s.rough = 0.35;
     } else if (c == 11) { s.alb = vec3f(0.018); s.rough = 0.9; s.ao = 0.5; }
     else if (c == 12) { let d = length(vec2f(ax - 0.675, p.y - 0.465)); s.alb = mix(vec3f(0.75, 0.78, 0.8), vec3f(0.03), smoothstep(0.045, 0.052, d)); s.metal = 1.0 - smoothstep(0.045, 0.052, d); s.rough = 0.12; s.coat = 1.0; s.mat = 2.0; }
     else if (c == 13) { s.alb = vec3f(0.45, 0.01, 0.01) * (0.7 + 0.3 * sin(ax * 500.0)); s.rough = 0.25; s.coat = 1.0; s.mat = 2.0; }
   } else if (k == 11 || k == 18) {
-    s.alb = paint; s.metal = 0.75; s.rough = 0.34; s.coat = 1.0; s.mat = 2.0;
+    s.alb = paint; s.metal = 0.45; s.rough = 0.45; s.coat = 0.6; s.mat = 2.0; s.coat = 1.0; s.mat = 2.0;
     if (k == 18) { let rr = length(vec2f(p.x + 0.08, p.y - 0.955));
-      if (rr > 0.318 || abs(n.z) < 0.6) { s.alb = vec3f(0.022); s.metal = 0.0; s.rough = 0.85; s.coat = 0.0; s.mat = 0.0; let tr = step(0.5, fract(atan2(p.y - 0.955, p.x + 0.08) * 9.0)) * step(abs(n.z), 0.4); s.alb *= 1.0 - tr * 0.5; }
-      else { let e = dec(vec2f(0.5 - (p.x + 0.08) / 0.44, 0.5 - (p.y - 0.955) / 0.11), vec4f(0.0, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.92), e); s.metal = mix(s.metal, 1.0, e); s.rough = mix(s.rough, 0.10, e); } }
+      if (rr > 0.345 && abs(n.z) > 0.5) { s.alb *= 0.8; }
+      { let e = dec(vec2f(0.5 - (p.x + 0.08) / 0.44, 0.5 - (p.y - 0.955) / 0.11), vec4f(0.0, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.16, 0.16, 0.17), e); s.metal = mix(s.metal, 0.2, e); s.rough = mix(s.rough, 0.3, e); } }
   } else if (k == 12) { s.alb = v.col.rgb; s.rough = 0.42; }
   else if (k == 13) { s.alb = v.col.rgb * (0.85 + 0.3 * fl); s.rough = 0.88; s.ao = 0.75; dirtable = 0.0; }
   else if (k == 14) { // liga leve: face dos raios clara, vãos escuros
@@ -2059,9 +2058,9 @@ fn shade(v: CV, ff: bool) -> Surf {
   // ---- sujeira: poeira (seco) e respingos de lama (molhado), mais fortes embaixo e atrás das rodas ----
   if (dirtable > 0.0) {
     let low = 1.0 - smoothstep(0.35, 1.25, p.y); let rear = smoothstep(0.6, -2.1, p.z) * 0.5 + 0.25; let da = min(abs(p.z - 1.32 + 0.35), abs(p.z + 1.32 + 0.35));
-    let nA = textureSampleLevel(noiseT, sRep, p.zy * 0.9 + p.xx * 0.5, 0.0); let nB = textureSampleLevel(noiseT, sRep, p.zy * 4.5 + p.xx * 2.0, 0.0);
+    let nA = textureSampleLevel(noiseT, sRep, p.zy * 0.35 + p.xx * 0.2, 0.0); let nB = textureSampleLevel(noiseT, sRep, p.zy * 1.6 + p.xx * 0.8, 1.0);
     var dust = sat(C.p.x * dirtable * (low * 1.25 + rear * 0.3 - 0.30 + (nA.x - 0.5) * 0.6)) * (0.6 + 0.4 * nB.y) * 0.8;
-    if (k == 15 || k == 14) { dust = sat(max(C.p.x * 3.0, C.p.y * 2.0) * dirtable * (0.5 + nB.x)); }
+    if (k == 15 || k == 14) { dust = sat(max(C.p.x * 3.0, C.p.y * 2.0) * (0.5 + nB.x)) * 0.45; }
     let splN = smoothstep(0.62 - 0.30 * low - 0.25 * smoothstep(0.8, 0.0, da), 0.72, nB.z * 0.6 + nB.x * 0.4 + (nA.y - 0.5) * 0.3);
     let mud = sat(C.p.y * 1.6 * dirtable) * splN * smoothstep(1.5, 0.5, p.y) * step(C.p.y, 2.0);
     s.alb = mix(s.alb, vec3f(0.27, 0.175, 0.115) * (0.8 + 0.4 * nB.x), dust * 0.85); s.rough = mix(s.rough, 0.9, dust); s.coat *= 1.0 - dust; s.metal *= 1.0 - dust * 0.9;
@@ -2547,7 +2546,7 @@ const CarD = {
 };
 // ---- perfis da carroceria (as mesmas fórmulas existem no shader para as máscaras) ----
 function _carProfile(z) {
-  const D = CarD, hoodT = smooth(0.80, 0.98, z), wsT = sat((z - 0.22) / 0.70), inWS = z > 0.22 && z < 0.92;
+  const D = CarD, hoodT = smooth(0.80, 0.98, z), wsT = sat((z - 0.32) / 0.60), inWS = z > 0.32 && z < 0.92;
   const taper = 1 - 0.035 * smooth(0.6, 2.0, z) - 0.012 * smooth(-1.2, -2.0, z);
   const yF = 0.30 + 0.07 * smooth(1.55, 2.0, z) + 0.10 * smooth(-1.6, -2.05, z);
   const da = Math.min(Math.abs(z - D.AXF), Math.abs(z - D.AXR));
@@ -2555,16 +2554,16 @@ function _carProfile(z) {
   const yA = da < D.ARCH ? Math.max(yS, D.RW + 0.015 + Math.sqrt(D.ARCH * D.ARCH - da * da)) : yS;
   const flare = 0.052 * Math.exp(-Math.pow(da / 0.55, 8));
   const wS = (0.885 + flare) * taper;
-  const yBelt = z > 0.92 ? lerp(1.025, 0.985, Math.pow(sat((z - 0.92) / 1.0), 1.5)) : 1.035 - 0.012 * z;
+  const yBelt = z > 0.92 ? lerp(1.025, 1.005, Math.pow(sat((z - 0.92) / 1.0), 1.5)) : 1.035 - 0.012 * z;
   const wB = (0.872 - 0.02 * hoodT) * taper;
   let yR, wR, yRe;
-  if (z >= 0.92) { yR = lerp(1.085, 1.030, Math.pow(sat((z - 0.92) / 1.1), 1.6)); wR = wB - 0.13; yRe = yBelt + 0.035; }
-  else if (z > 0.22) { yR = lerp(1.645, 1.085, Math.pow(wsT, 1.12)); wR = lerp(0.675, 0.775, wsT) * taper; yRe = lerp(1.585, 1.045, Math.pow(wsT, 1.05)); }
-  else { yR = 1.645 + 0.022 * Math.sin(sat((0.22 - z) / 2.1) * Math.PI); wR = (0.675 + 0.012 * smooth(0.2, -0.6, z)) * taper; yRe = yR - 0.062; }
+  if (z >= 0.92) { yR = lerp(1.105, 1.060, Math.pow(sat((z - 0.92) / 1.1), 1.6)); wR = wB - 0.13; yRe = yBelt + 0.035; }
+  else if (z > 0.32) { yR = lerp(1.645, 1.105, Math.pow(wsT, 1.12)); wR = lerp(0.675, 0.775, wsT) * taper; yRe = lerp(1.585, 1.045, Math.pow(wsT, 1.05)); }
+  else { yR = 1.645 + 0.022 * Math.sin(sat((0.32 - z) / 2.2) * Math.PI); wR = (0.675 + 0.012 * smooth(0.2, -0.6, z)) * taper; yRe = yR - 0.062; }
   return { yF, yS, yA, wS, yBelt, wB, yR, wR, yRe, xIn: 0.535, taper };
 }
 function _zTipF(y) { // perfil da frente (vista lateral): para-choque saliente, grade e capô recuando
-  const k = [[0.30, 1.955], [0.40, 2.085], [0.52, 2.135], [0.68, 2.130], [0.76, 2.110], [0.86, 2.100], [0.96, 2.080], [1.02, 2.040], [1.10, 1.96]];
+  const k = [[0.30, 1.955], [0.40, 2.085], [0.52, 2.135], [0.68, 2.130], [0.76, 2.110], [0.86, 2.100], [0.98, 2.085], [1.04, 2.045], [1.12, 1.97]];
   for (let i = 0; i < k.length - 1; i++) if (y <= k[i + 1][0]) { const t = sat((y - k[i][0]) / (k[i + 1][0] - k[i][0])); return lerp(k[i][1], k[i + 1][1], t * t * (3 - 2 * t)); } return k[k.length - 1][1];
 }
 function _zTipR(y) {

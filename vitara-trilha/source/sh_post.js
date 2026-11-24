@@ -113,10 +113,10 @@ fn ssr(P: vec3f, R: vec3f, n0: f32) -> vec4f {
   if (smoothK > 0.01 && vz < 150.0) { let h = ssr(wp + N * 0.01 * (1.0 + vz * 0.1), R, n1); cenv = mix(cenv, h.rgb, h.a * select(1.0, 0.55, coat > 0.5)); if (coat < 0.5 || rough < 0.2) { env = mix(env, h.rgb, h.a * (1.0 - smoothstep(0.12, 0.36, rough))); } }
   col += env * envBRDF(f0, rough, nv) * so * (1.0 - coat * 0.0);
   if (coat > 0.0) { // verniz
-    let Fc = (0.04 + 0.96 * pow(1.0 - nv, 5.0)) * coat; let ac = 0.0022;
+    let Fc = (0.04 + 0.96 * pow(1.0 - nv, 5.0)) * coat * 0.8; let ac = 0.0022;
     col = col * (1.0 - Fc) + cenv * Fc * mix(so, 1.0, 0.5) + sc * sh * nl * (ggxD(nh, 0.006) * smithV(nl, nv, 0.006)) * (0.04 + 0.96 * pow(1.0 - vh, 5.0)) * coat * (1.0 + ac);
   }
-  if (mat == 3) { col += alb * gm.b * 9.0; }
+  if (mat == 3) { col += alb * gm.b * 5.0; }
   return vec4f(col, 1.0);
 }
 `;
@@ -137,7 +137,7 @@ fn dens(p: vec3f) -> f32 { return 0.00026 * exp(-max(p.y - 19.0, 0.0) / 220.0) +
     let f0 = f32(k) / NS; let f1 = f32(k + 1) / NS; let t0 = nearEnd * f0 * f0; let t1 = nearEnd * f1 * f1; let t = mix(t0, t1, n0); let p = cam + rd * t;
     let nz = textureSampleLevel(noise3T, sRep, p * vec3f(0.021, 0.05, 0.021) + vec3f(F.cam.w * 0.012, 0.0, F.cam.w * 0.007), 0.0).x;
     let de = dens(p) * (0.55 + 1.0 * nz); let s = shadowAt(p, F.sun.xyz, t, fract(n0 + f0 * 7.0), 2);
-    let a = 1.0 - exp(-de * (t1 - t0)); acc += T * a * (sc * s * min(hg, 0.9) * 3.6 + ambC * 12.0); T *= 1.0 - a;
+    let a = 1.0 - exp(-de * (t1 - t0)); acc += T * a * (sc * s * min(hg, 0.55) * 3.6 + ambC * 10.0); T *= 1.0 - a;
   }
   if (dist > 170.0) { // trecho analítico
     let y0 = cam.y + rd.y * 170.0 - 19.0; let ry = rd.y; let len = dist - 170.0;
@@ -254,7 +254,7 @@ fn aces(x: vec3f) -> vec3f {
   // nitidez adaptativa leve (compensa a suavização do TAA)
   let n = textureLoad(colT, clamp(px + vec2i(0, -1), vec2i(0), res - 1), 0).rgb + textureLoad(colT, clamp(px + vec2i(0, 1), vec2i(0), res - 1), 0).rgb + textureLoad(colT, clamp(px + vec2i(-1, 0), vec2i(0), res - 1), 0).rgb + textureLoad(colT, clamp(px + vec2i(1, 0), vec2i(0), res - 1), 0).rgb;
   let sharp = c + (c - n * 0.25) * 0.38; c = max(mix(c, sharp, sat(1.0 - luma(abs(c - n * 0.25)) * 0.8)), vec3f(0.0));
-  let bl = textureSampleLevel(bloomT, sClamp, i.uv, 0.0).rgb; c = mix(c, bl, 0.055) + bl * 0.012;
+  let bl = textureSampleLevel(bloomT, sClamp, i.uv, 0.0).rgb; c = mix(c, bl, 0.035) + bl * 0.008;
   c *= F.sunCol.a;
   let q = i.uv - 0.5; c *= 1.0 - dot(q, q) * 0.42;
   c = aces(c * 1.05);

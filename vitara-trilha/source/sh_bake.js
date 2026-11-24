@@ -33,7 +33,7 @@ fn leafAt(p: vec2f, c: vec2f, ang: f32, len: f32, wid: f32) -> vec2f { // (másc
     let wc = pwor(uv * 6.0 + vec2f(n2, n1) * 0.25, vec2f(6.0)); let crack = smoothstep(0.022, 0.0, wc.y - wc.x) * smoothstep(0.05, 0.35, n1) * 0.45;
     h = 0.45 + n1 * 0.22 + n2 * 0.10 + n3 * 0.05 + peb * 0.30 * (1.0 - w.x * 2.0) + grit * 0.07 - crack * 0.18;
     alb = mix(vec3f(0.27, 0.15, 0.09), vec3f(0.45, 0.28, 0.17), sat(0.5 + n1 * 0.9 + n2 * 0.5)); alb *= 0.9 + n3 * 0.3;
-    alb = mix(alb, vec3f(0.40, 0.36, 0.32) * (0.65 + w.z * 0.5), peb); alb = mix(alb, vec3f(0.50, 0.40, 0.30), grit * 0.6); alb *= 1.0 - crack * 0.55;
+    alb = mix(alb, vec3f(0.33, 0.27, 0.22) * (0.75 + w.z * 0.35), peb * 0.8); alb = mix(alb, vec3f(0.40, 0.30, 0.21), grit * 0.4); alb *= 1.0 - crack * 0.55;
     rough = 0.93 - peb * 0.2; ao = 1.0 - crack * 0.6;
   } else if (L == 1u) { // cascalho
     let wp = pfbm(uv * 8.0, vec2f(8.0), 3) * 0.08;

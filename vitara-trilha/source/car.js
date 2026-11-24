@@ -8,7 +8,7 @@ const CarD = {
 };
 // ---- perfis da carroceria (as mesmas fórmulas existem no shader para as máscaras) ----
 function _carProfile(z) {
-  const D = CarD, hoodT = smooth(0.80, 0.98, z), wsT = sat((z - 0.22) / 0.70), inWS = z > 0.22 && z < 0.92;
+  const D = CarD, hoodT = smooth(0.80, 0.98, z), wsT = sat((z - 0.32) / 0.60), inWS = z > 0.32 && z < 0.92;
   const taper = 1 - 0.035 * smooth(0.6, 2.0, z) - 0.012 * smooth(-1.2, -2.0, z);
   const yF = 0.30 + 0.07 * smooth(1.55, 2.0, z) + 0.10 * smooth(-1.6, -2.05, z);
   const da = Math.min(Math.abs(z - D.AXF), Math.abs(z - D.AXR));
@@ -16,16 +16,16 @@ function _carProfile(z) {
   const yA = da < D.ARCH ? Math.max(yS, D.RW + 0.015 + Math.sqrt(D.ARCH * D.ARCH - da * da)) : yS;
   const flare = 0.052 * Math.exp(-Math.pow(da / 0.55, 8));
   const wS = (0.885 + flare) * taper;
-  const yBelt = z > 0.92 ? lerp(1.025, 0.985, Math.pow(sat((z - 0.92) / 1.0), 1.5)) : 1.035 - 0.012 * z;
+  const yBelt = z > 0.92 ? lerp(1.025, 1.005, Math.pow(sat((z - 0.92) / 1.0), 1.5)) : 1.035 - 0.012 * z;
   const wB = (0.872 - 0.02 * hoodT) * taper;
   let yR, wR, yRe;
-  if (z >= 0.92) { yR = lerp(1.085, 1.030, Math.pow(sat((z - 0.92) / 1.1), 1.6)); wR = wB - 0.13; yRe = yBelt + 0.035; }
-  else if (z > 0.22) { yR = lerp(1.645, 1.085, Math.pow(wsT, 1.12)); wR = lerp(0.675, 0.775, wsT) * taper; yRe = lerp(1.585, 1.045, Math.pow(wsT, 1.05)); }
-  else { yR = 1.645 + 0.022 * Math.sin(sat((0.22 - z) / 2.1) * Math.PI); wR = (0.675 + 0.012 * smooth(0.2, -0.6, z)) * taper; yRe = yR - 0.062; }
+  if (z >= 0.92) { yR = lerp(1.105, 1.060, Math.pow(sat((z - 0.92) / 1.1), 1.6)); wR = wB - 0.13; yRe = yBelt + 0.035; }
+  else if (z > 0.32) { yR = lerp(1.645, 1.105, Math.pow(wsT, 1.12)); wR = lerp(0.675, 0.775, wsT) * taper; yRe = lerp(1.585, 1.045, Math.pow(wsT, 1.05)); }
+  else { yR = 1.645 + 0.022 * Math.sin(sat((0.32 - z) / 2.2) * Math.PI); wR = (0.675 + 0.012 * smooth(0.2, -0.6, z)) * taper; yRe = yR - 0.062; }
   return { yF, yS, yA, wS, yBelt, wB, yR, wR, yRe, xIn: 0.535, taper };
 }
 function _zTipF(y) { // perfil da frente (vista lateral): para-choque saliente, grade e capô recuando
-  const k = [[0.30, 1.955], [0.40, 2.085], [0.52, 2.135], [0.68, 2.130], [0.76, 2.110], [0.86, 2.100], [0.96, 2.080], [1.02, 2.040], [1.10, 1.96]];
+  const k = [[0.30, 1.955], [0.40, 2.085], [0.52, 2.135], [0.68, 2.130], [0.76, 2.110], [0.86, 2.100], [0.98, 2.085], [1.04, 2.045], [1.12, 1.97]];
   for (let i = 0; i < k.length - 1; i++) if (y <= k[i + 1][0]) { const t = sat((y - k[i][0]) / (k[i + 1][0] - k[i][0])); return lerp(k[i][1], k[i + 1][1], t * t * (3 - 2 * t)); } return k[k.length - 1][1];
 }
 function _zTipR(y) {

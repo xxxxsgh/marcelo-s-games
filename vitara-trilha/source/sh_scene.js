@@ -35,7 +35,7 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   let nN = textureSample(nrmNearT, sClamp, uvn).xyz * 2.0 - 1.0;
   var N = normalize(mix(v.nf, nN, inNear));
   let nzA = textureSample(noiseT, sRep, xz / 37.0); let nzB = textureSample(noiseT, sRep, xz / 3.1);
-  let at = abs(fl.x) + (1.0 - inNear) * 60.0; let far = 0.0; gDetail = dist < 55.0; gBlur = 1.0 + smoothstep(6.0, 50.0, dist) * 1.6;
+  let at = abs(fl.x) + (1.0 - inNear) * 60.0; let far = 0.0; gDetail = dist < 55.0; gBlur = 1.0 + smoothstep(5.0, 40.0, dist) * 2.4;
   let slope = 1.0 - N.y;
   // --- pesos ---
   let track = 1.0 - smoothstep(2.45, 4.1, at + (nzB.x - 0.5) * 1.6 + (nzA.z - 0.5) * 0.8);
@@ -48,7 +48,7 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   var m = smp2(4, xz, 0.42, gx, gy, far);
   if (litter > 0.01) { m = hblend(m, smp2(9, xz, 0.55, gx, gy, far), litter); }
   if (wDirt > 0.01) { var d = smp2(0, xz, 0.40, gx, gy, far); if (strip > 0.01) { d = hblend(d, m, strip); } m = hblend(m, d, wDirt); }
-  if (wGrav > 0.01 || bed > 0.01) { m = hblend(m, smp2(1, xz, 0.85, gx, gy, far), max(wGrav, bed)); }
+  if (wGrav > 0.01 || bed > 0.01) { var gv = smp2(1, xz, 0.62, gx, gy, far); gv.a = vec4f(gv.a.rgb * 0.78, gv.a.w); m = hblend(m, gv, max(wGrav, bed)); }
   if (wMud > 0.01) { m = hblend(m, smp2(2, xz, 0.33, gx, gy, far), wMud); }
   if (wRock > 0.01) { m = hblend(m, smp2(3, xz, 0.37, gx, gy, far), wRock); }
   var alb = m.a.rgb; var rough = m.n.z; var ao = m.n.w; var nt = (m.n.xy * 2.0 - 1.0);
