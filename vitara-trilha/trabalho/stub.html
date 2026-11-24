@@ -1,0 +1,15 @@
+<!doctype html>
+<meta charset="utf-8"><title>stub de teste (sem render)</title>
+<script src="../source/math.js"></script>
+<script src="../source/world.js"></script>
+<script src="../source/physics.js"></script>
+<script src="../source/input.js"></script>
+<script src="../source/game.js"></script>
+<script>
+  // mesmo contrato do main.js em ?test=1&norender=1
+  window.__t = {
+    World, Physics, Input, Game,
+    step(n) { Game.fixedDt = true; for (let i = 0; i < n; i++) Game.update(1 / 60); },
+    ready: new Promise((res) => setTimeout(() => { worldInit(); Game.init(); Game.fixedDt = true; res(true); }, 0)),
+  };
+</script>

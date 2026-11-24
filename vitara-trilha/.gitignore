@@ -1,0 +1,11 @@
+# rascunhos de render (os pacotes do crítico e os relatórios ficam versionados)
+trabalho/p540/
+trabalho/p540*.png
+trabalho/p540.log
+trabalho/m1*.png
+trabalho/m2.png
+trabalho/car*.png
+trabalho/dv1.png
+trabalho/mapa.png
+trabalho/sim.cjs
+trabalho/dbg*.cjs

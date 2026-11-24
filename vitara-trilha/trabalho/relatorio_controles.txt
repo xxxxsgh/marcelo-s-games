@@ -1,0 +1,31 @@
+Teste de controles — trabalho/stub.html — tudo certo
+PASS  gamepad detectado sem recarregar                padConnected 0 -> 1, índice 0
+PASS  RT  acelerador (proporcional)                   RT=0.5 -> 0.5; RT=1 por 2,5 s -> 36 km/h
+PASS  LT  freio em movimento + luz de freio           36 -> 21 km/h em 0,45 s, brakeLight=1
+PASS  LT  ré a partir do repouso                      -25 km/h, reverse=1
+PASS  analógico esq. para a esquerda                  Input.steer=1, rodas 24.1°, rumo 44°
+PASS  analógico esq. para a direita                   Input.steer=-1, rodas -24.0°, rumo -45°
+PASS  analógico esq.: zona morta (0,05 e 0,11 = nada)  0.05 -> 0, -0.11 -> 0, 0.56 -> -0.500 (reescalado)
+PASS  analógico dir.: órbita da câmera                camYaw 2.68 rad, camPitch -0.55, soltar -> 0.000/-0.000
+PASS  A   freio de mão trava as traseiras             giro traseiro 0.000 rad, dianteiro 9.3 rad, slip 1.00
+PASS  Y   troca de câmera 0->1->2->0                  0 -> 1 -> 2 -> 0 (segurar 8 quadros conta uma vez)
+PASS  B   volta para a trilha                         t=13.4 m (offTrack=1) -> t=0.00 m, s 38 -> 34, parado, volta segue correndo
+PASS  Start pausa e a simulação para                  pausado: simFrame 60 -> 60; solto: -> 96
+PASS  tecla W  acelera                                29 km/h em 2 s
+PASS  tecla S  freia em movimento                     29 -> 18 km/h
+PASS  tecla S  ré depois de parar                     -28 km/h
+PASS  tecla A  esterça à esquerda (em rampa)          4 quadros: 0.19; 54 quadros: 1
+PASS  tecla D  esterça à direita (em rampa)           4 quadros: -0.19; 54 quadros: -1; solto volta a 0
+PASS  tecla Espaço  freio de mão                      roda traseira 0.000 rad/s a 30 km/h
+PASS  tecla C  troca de câmera                        0 -> 1 -> 2 -> 0
+PASS  tecla R  volta para a trilha                    t 13.4 m -> 0.00 m
+PASS  tecla Esc  pausa                                simFrame parado em 0, depois 12
+PASS  tecla P  pausa                                  simFrame parado em 0, depois 12
+PASS  volta gravada: volta completa                   tempo da volta 47.917 s, fechada no quadro 3023 (50.38 s)
+PASS  volta gravada: todos os checkpoints             8 cruzamentos (6 por volta)
+PASS  volta gravada: nunca saiu da trilha             margem mínima 1.69 m, resets 0
+PASS  vibração chega a playEffect(dual-rumble)        504 chamadas em 60 s
+PASS  vibração limitada a ~10 chamadas/s              máx 9 em 1 s
+PASS  vibração leve no cascalho                       202 chamadas, fraco 0.38, forte 0.00
+PASS  vibração forte no riacho                        17 chamadas, forte 0.51
+PASS  sem erros de JavaScript na página             
