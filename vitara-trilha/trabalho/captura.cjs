@@ -45,6 +45,8 @@ const grabPNG = async (p, file) => { const url = await p.evaluate(() => window._
     for (let f = ini; f < fim; f++) {
       await p.evaluate(() => window.__cap.render(1)); const raw = await p.evaluate(() => window.__t.grab('raw'));
       if (!ff.stdin.write(Buffer.from(raw, 'base64'))) await new Promise((r) => ff.stdin.once('drain', r));
+      // quadros sem perda para o pacote final do crítico: um a cada meio segundo e as três rajadas
+      if (process.env.CAPPNG && (f % 30 === 0 || (f >= 560 && f < 568) || (f >= 1085 && f < 1093) || (f >= 2200 && f < 2208))) { fs.mkdirSync(process.env.CAPPNG, { recursive: true }); await grabPNG(p, path.join(process.env.CAPPNG, 'q' + String(f).padStart(4, '0') + '.png')); }
       if (f % 20 === 0) console.log('quadro', f, ((Date.now() - t0) / 1000).toFixed(0) + ' s', JSON.stringify(await p.evaluate(() => window.__cap.info())));
     }
     ff.stdin.end(); await new Promise((r) => ff.on('close', r));

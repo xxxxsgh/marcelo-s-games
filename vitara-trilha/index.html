@@ -1479,9 +1479,10 @@ struct SV { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
   var N = normalize(v.n); var alb = v.col.rgb; var rough = 0.8; var ao = v.col.a; var mid = 0.0; var tr = 0.0; var o: GOut;
   if (kind == 1) {
     let a = textureSampleGrad(matA, sRep, v.uv, layer, gx, gy); let dist = length(v.wp - F.cam.xyz);
-    let cov = a.a * (1.0 + smoothstep(12.0, 90.0, dist) * 0.9);
+    let ng = normalize(cross(dpx, dpy)); let edge = smoothstep(0.04, 0.32, abs(dot(ng, normalize(F.cam.xyz - v.wp))));
+    let cov = a.a * (1.0 + smoothstep(12.0, 90.0, dist) * 0.9) * mix(1.0, edge, 1.0 - smoothstep(60.0, 140.0, dist));
     if (cov < 0.36 + (ign(v.pos.xy, F.misc.x) - 0.5) * 0.22) { discard; }
-    let hue = 0.85 + 0.3 * fract(v.seed * 7.3); alb = a.rgb * v.col.rgb * vec3f(hue, 1.0, 0.9) * 1.25; rough = 0.55; mid = 1.0; tr = 1.0;
+    let hue = 0.85 + 0.3 * fract(v.seed * 7.3); alb = a.rgb * v.col.rgb * vec3f(hue, 1.0, 0.9) * 1.25; rough = 0.78; mid = 1.0; tr = 1.0;
   } else if (kind == 2) {
     let w0 = pow(abs(N), vec3f(4.0)); let w = w0 / (w0.x + w0.y + w0.z); let sc = 0.42;
     let ax = textureSampleGrad(matA, sRep, v.wp.zy * sc, 3, dpx.zy * sc, dpy.zy * sc); let ay = textureSampleGrad(matA, sRep, v.wp.xz * sc, 3, dpx.xz * sc, dpy.xz * sc); let az = textureSampleGrad(matA, sRep, v.wp.xy * sc, 3, dpx.xy * sc, dpy.xy * sc);
@@ -1663,7 +1664,7 @@ fn ssr(P: vec3f, R: vec3f, n0: f32) -> vec4f {
   var f0 = mix(vec3f(0.04), alb, metal); let diffC = alb * (1.0 - metal);
   var coat = 0.0; if (mat == 2) { coat = gm.a; }
   let a = rough * rough; let Fr = f0 + (1.0 - f0) * pow(1.0 - vh, 5.0);
-  var col = (diffC / PI + Fr * (ggxD(nh, a) * smithV(nl, nv, a))) * nl * sc * sh;
+  var col = (diffC / PI + Fr * (ggxD(nh, a) * smithV(nl, nv, a)) * select(1.0, 0.3, mat == 1)) * nl * sc * sh;
   // folhagem: luz atravessando
   if (mat == 1) { let tr = gm.b; let back = sat(dot(-N, L) * 0.6 + 0.4); let vl = pow(sat(dot(V, -L)), 4.0); col += alb * sc * mix(sh, 1.0, 0.12) * tr * back * (0.20 + 0.5 * vl) / PI * 1.1; }
   // ambiente difuso
@@ -2201,7 +2202,7 @@ function renderInit() {
   R.aoT = mk(hw, hh, 'r8unorm', 'ao'); R.fogT = mk(hw, hh, 'rgba16float', 'fog');
   R.shadow = mkTex(R.SH, R.SH, 'depth32float', TU | RA, { layers: 3, label: 'sombra' });
   R.bloom = []; for (let i = 0, w = hw, h = hh; i < 6; i++, w = Math.max(1, w >> 1), h = Math.max(1, h >> 1)) R.bloom.push(mk(w, h, 'rgba16float', 'bloom' + i));
-  R.skyT = mkTex(2048, 1024, 'rgba16float', TU | RA, { mips: 11, label: 'ceu' }); R.envT = mkTex(1024, 512, 'rgba16float', TU | RA, { mips: 10, label: 'amb' });
+  R.skyT = mkTex(4096, 2048, 'rgba16float', TU | RA, { mips: 12, label: 'ceu' }); R.envT = mkTex(1024, 512, 'rgba16float', TU | RA, { mips: 10, label: 'amb' });
   const V = (t) => t.createView();
   R.vDepth = V(R.depth); R.vHdr = V(R.hdr); R.vHist = R.hist.map(V); R.vShadowL = [0, 1, 2].map((i) => R.shadow.createView({ dimension: '2d', baseArrayLayer: i, arrayLayerCount: 1 })); R.vShadow = R.shadow.createView({ dimension: '2d-array' });
   // ---- pipelines ----
@@ -2222,7 +2223,7 @@ function renderInit() {
     const le = mkBGL(['t']), pE = mkPipe({ label: 'amb', code: WG_ENVBAKE, layouts: [R.L0, le], targets: [{ format: 'rgba16float' }] });
     R.bakeSky = () => {
       let enc = dev.createCommandEncoder(); let ps = enc.beginRenderPass({ colorAttachments: [{ view: R.skyT.createView({ baseMipLevel: 0, mipLevelCount: 1 }), loadOp: 'clear', storeOp: 'store' }] });
-      ps.setPipeline(pS); ps.setBindGroup(0, R.bg0); ps.draw(3); ps.end(); dev.queue.submit([enc.finish()]); genMips(R.skyT, 'rgba16float', 1, 11);
+      ps.setPipeline(pS); ps.setBindGroup(0, R.bg0); ps.draw(3); ps.end(); dev.queue.submit([enc.finish()]); genMips(R.skyT, 'rgba16float', 1, 12);
       enc = dev.createCommandEncoder(); ps = enc.beginRenderPass({ colorAttachments: [{ view: R.envT.createView({ baseMipLevel: 0, mipLevelCount: 1 }), loadOp: 'clear', storeOp: 'store' }] });
       ps.setPipeline(pE); ps.setBindGroup(0, R.bg0); ps.setBindGroup(1, mkBG(le, [R.skyT.createView()])); ps.draw(3); ps.end(); dev.queue.submit([enc.finish()]); genMips(R.envT, 'rgba16float', 1, 10);
     }; }
