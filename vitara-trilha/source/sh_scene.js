@@ -123,9 +123,10 @@ struct SV { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
   var N = normalize(v.n); var alb = v.col.rgb; var rough = 0.8; var ao = v.col.a; var mid = 0.0; var tr = 0.0; var o: GOut;
   if (kind == 1) {
     let a = textureSampleGrad(matA, sRep, v.uv, layer, gx, gy); let dist = length(v.wp - F.cam.xyz);
-    let cov = a.a * (1.0 + smoothstep(12.0, 90.0, dist) * 0.9);
+    let ng = normalize(cross(dpx, dpy)); let edge = smoothstep(0.04, 0.32, abs(dot(ng, normalize(F.cam.xyz - v.wp))));
+    let cov = a.a * (1.0 + smoothstep(12.0, 90.0, dist) * 0.9) * mix(1.0, edge, 1.0 - smoothstep(60.0, 140.0, dist));
     if (cov < 0.36 + (ign(v.pos.xy, F.misc.x) - 0.5) * 0.22) { discard; }
-    let hue = 0.85 + 0.3 * fract(v.seed * 7.3); alb = a.rgb * v.col.rgb * vec3f(hue, 1.0, 0.9) * 1.25; rough = 0.55; mid = 1.0; tr = 1.0;
+    let hue = 0.85 + 0.3 * fract(v.seed * 7.3); alb = a.rgb * v.col.rgb * vec3f(hue, 1.0, 0.9) * 1.25; rough = 0.78; mid = 1.0; tr = 1.0;
   } else if (kind == 2) {
     let w0 = pow(abs(N), vec3f(4.0)); let w = w0 / (w0.x + w0.y + w0.z); let sc = 0.42;
     let ax = textureSampleGrad(matA, sRep, v.wp.zy * sc, 3, dpx.zy * sc, dpy.zy * sc); let ay = textureSampleGrad(matA, sRep, v.wp.xz * sc, 3, dpx.xz * sc, dpy.xz * sc); let az = textureSampleGrad(matA, sRep, v.wp.xy * sc, 3, dpx.xy * sc, dpy.xy * sc);

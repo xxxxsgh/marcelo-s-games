@@ -99,7 +99,7 @@ fn ssr(P: vec3f, R: vec3f, n0: f32) -> vec4f {
   var f0 = mix(vec3f(0.04), alb, metal); let diffC = alb * (1.0 - metal);
   var coat = 0.0; if (mat == 2) { coat = gm.a; }
   let a = rough * rough; let Fr = f0 + (1.0 - f0) * pow(1.0 - vh, 5.0);
-  var col = (diffC / PI + Fr * (ggxD(nh, a) * smithV(nl, nv, a))) * nl * sc * sh;
+  var col = (diffC / PI + Fr * (ggxD(nh, a) * smithV(nl, nv, a)) * select(1.0, 0.3, mat == 1)) * nl * sc * sh;
   // folhagem: luz atravessando
   if (mat == 1) { let tr = gm.b; let back = sat(dot(-N, L) * 0.6 + 0.4); let vl = pow(sat(dot(V, -L)), 4.0); col += alb * sc * mix(sh, 1.0, 0.12) * tr * back * (0.20 + 0.5 * vl) / PI * 1.1; }
   // ambiente difuso

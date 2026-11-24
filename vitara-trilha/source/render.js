@@ -108,7 +108,7 @@ function renderInit() {
   R.aoT = mk(hw, hh, 'r8unorm', 'ao'); R.fogT = mk(hw, hh, 'rgba16float', 'fog');
   R.shadow = mkTex(R.SH, R.SH, 'depth32float', TU | RA, { layers: 3, label: 'sombra' });
   R.bloom = []; for (let i = 0, w = hw, h = hh; i < 6; i++, w = Math.max(1, w >> 1), h = Math.max(1, h >> 1)) R.bloom.push(mk(w, h, 'rgba16float', 'bloom' + i));
-  R.skyT = mkTex(2048, 1024, 'rgba16float', TU | RA, { mips: 11, label: 'ceu' }); R.envT = mkTex(1024, 512, 'rgba16float', TU | RA, { mips: 10, label: 'amb' });
+  R.skyT = mkTex(4096, 2048, 'rgba16float', TU | RA, { mips: 12, label: 'ceu' }); R.envT = mkTex(1024, 512, 'rgba16float', TU | RA, { mips: 10, label: 'amb' });
   const V = (t) => t.createView();
   R.vDepth = V(R.depth); R.vHdr = V(R.hdr); R.vHist = R.hist.map(V); R.vShadowL = [0, 1, 2].map((i) => R.shadow.createView({ dimension: '2d', baseArrayLayer: i, arrayLayerCount: 1 })); R.vShadow = R.shadow.createView({ dimension: '2d-array' });
   // ---- pipelines ----
@@ -129,7 +129,7 @@ function renderInit() {
     const le = mkBGL(['t']), pE = mkPipe({ label: 'amb', code: WG_ENVBAKE, layouts: [R.L0, le], targets: [{ format: 'rgba16float' }] });
     R.bakeSky = () => {
       let enc = dev.createCommandEncoder(); let ps = enc.beginRenderPass({ colorAttachments: [{ view: R.skyT.createView({ baseMipLevel: 0, mipLevelCount: 1 }), loadOp: 'clear', storeOp: 'store' }] });
-      ps.setPipeline(pS); ps.setBindGroup(0, R.bg0); ps.draw(3); ps.end(); dev.queue.submit([enc.finish()]); genMips(R.skyT, 'rgba16float', 1, 11);
+      ps.setPipeline(pS); ps.setBindGroup(0, R.bg0); ps.draw(3); ps.end(); dev.queue.submit([enc.finish()]); genMips(R.skyT, 'rgba16float', 1, 12);
       enc = dev.createCommandEncoder(); ps = enc.beginRenderPass({ colorAttachments: [{ view: R.envT.createView({ baseMipLevel: 0, mipLevelCount: 1 }), loadOp: 'clear', storeOp: 'store' }] });
       ps.setPipeline(pE); ps.setBindGroup(0, R.bg0); ps.setBindGroup(1, mkBG(le, [R.skyT.createView()])); ps.draw(3); ps.end(); dev.queue.submit([enc.finish()]); genMips(R.envT, 'rgba16float', 1, 10);
     }; }
