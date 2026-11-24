@@ -48,7 +48,7 @@ const WG_LIGHT = WG_COMMON + FS_TRI + WG_VIEWPOS + /* wgsl */`
 @group(1) @binding(10) var aoT: texture_2d<f32>;
 @group(1) @binding(11) var histT: texture_2d<f32>;
 ` + wgShadow(1, 5, 6) + /* wgsl */`
-fn envAt(d: vec3f, rough: f32) -> vec3f { return textureSampleLevel(envT, sPano, dirToPano(d), rough * 6.5).rgb; }
+fn envAt(d: vec3f, rough: f32) -> vec3f { return textureSampleLevel(envT, sPano, dirToPano(d), rough * 7.5).rgb; }
 fn ggxD(nh: f32, a: f32) -> f32 { let a2 = a * a; let d = nh * nh * (a2 - 1.0) + 1.0; return a2 / (PI * d * d + 1e-7); }
 fn smithV(nl: f32, nv: f32, a: f32) -> f32 { let k = a * 0.5 + 1e-4; return 0.25 / ((nl * (1.0 - k) + k) * (nv * (1.0 - k) + k)); }
 fn envBRDF(f0: vec3f, rough: f32, nv: f32) -> vec3f { let c0 = vec4f(-1.0, -0.0275, -0.572, 0.022); let c1 = vec4f(1.0, 0.0425, 1.04, -0.04); let r = rough * c0 + c1; let a004 = min(r.x * r.x, exp2(-9.28 * nv)) * r.x + r.y; let ab = vec2f(-1.04, 1.04) * a004 + r.zw; return f0 * ab.x + ab.y; }
@@ -101,7 +101,7 @@ fn ssr(P: vec3f, R: vec3f, n0: f32) -> vec4f {
   let a = rough * rough; let Fr = f0 + (1.0 - f0) * pow(1.0 - vh, 5.0);
   var col = (diffC / PI + Fr * (ggxD(nh, a) * smithV(nl, nv, a))) * nl * sc * sh;
   // folhagem: luz atravessando
-  if (mat == 1) { let tr = gm.b; let back = sat(dot(-N, L) * 0.6 + 0.4); let vl = pow(sat(dot(V, -L)), 4.0); col += alb * sc * mix(sh, 1.0, 0.12) * tr * back * (0.22 + 0.9 * vl) / PI * 1.9; }
+  if (mat == 1) { let tr = gm.b; let back = sat(dot(-N, L) * 0.6 + 0.4); let vl = pow(sat(dot(V, -L)), 4.0); col += alb * sc * mix(sh, 1.0, 0.12) * tr * back * (0.20 + 0.5 * vl) / PI * 1.1; }
   // ambiente difuso
   let amb = envAt(normalize(N + vec3f(0.0, 0.25, 0.0)), 1.0) * 1.0 + envAt(vec3f(0.0, 1.0, 0.0), 1.0) * 0.25;
   col += diffC * amb * ao;
@@ -110,13 +110,13 @@ fn ssr(P: vec3f, R: vec3f, n0: f32) -> vec4f {
   var env = envAt(R, rough) * mix(1.0, sat(1.0 + R.y * 4.0) * 0.6 + 0.4, 0.5);
   var cenv = envAt(R, 0.0);
   let smoothK = max(coat, 1.0 - smoothstep(0.12, 0.36, rough));
-  if (smoothK > 0.01 && vz < 150.0) { let h = ssr(wp + N * 0.01 * (1.0 + vz * 0.1), R, n1); cenv = mix(cenv, h.rgb, h.a); if (coat < 0.5 || rough < 0.2) { env = mix(env, h.rgb, h.a * (1.0 - smoothstep(0.12, 0.36, rough))); } }
+  if (smoothK > 0.01 && vz < 150.0) { let h = ssr(wp + N * 0.01 * (1.0 + vz * 0.1), R, n1); cenv = mix(cenv, h.rgb, h.a * select(1.0, 0.55, coat > 0.5)); if (coat < 0.5 || rough < 0.2) { env = mix(env, h.rgb, h.a * (1.0 - smoothstep(0.12, 0.36, rough))); } }
   col += env * envBRDF(f0, rough, nv) * so * (1.0 - coat * 0.0);
   if (coat > 0.0) { // verniz
     let Fc = (0.04 + 0.96 * pow(1.0 - nv, 5.0)) * coat; let ac = 0.0022;
     col = col * (1.0 - Fc) + cenv * Fc * mix(so, 1.0, 0.5) + sc * sh * nl * (ggxD(nh, 0.006) * smithV(nl, nv, 0.006)) * (0.04 + 0.96 * pow(1.0 - vh, 5.0)) * coat * (1.0 + ac);
   }
-  if (mat == 3) { col += alb * gm.b * 30.0; }
+  if (mat == 3) { col += alb * gm.b * 9.0; }
   return vec4f(col, 1.0);
 }
 `;
@@ -137,7 +137,7 @@ fn dens(p: vec3f) -> f32 { return 0.00026 * exp(-max(p.y - 19.0, 0.0) / 220.0) +
     let f0 = f32(k) / NS; let f1 = f32(k + 1) / NS; let t0 = nearEnd * f0 * f0; let t1 = nearEnd * f1 * f1; let t = mix(t0, t1, n0); let p = cam + rd * t;
     let nz = textureSampleLevel(noise3T, sRep, p * vec3f(0.021, 0.05, 0.021) + vec3f(F.cam.w * 0.012, 0.0, F.cam.w * 0.007), 0.0).x;
     let de = dens(p) * (0.55 + 1.0 * nz); let s = shadowAt(p, F.sun.xyz, t, fract(n0 + f0 * 7.0), 2);
-    let a = 1.0 - exp(-de * (t1 - t0)); acc += T * a * (sc * s * hg * 5.2 + ambC * 12.0); T *= 1.0 - a;
+    let a = 1.0 - exp(-de * (t1 - t0)); acc += T * a * (sc * s * min(hg, 0.9) * 3.6 + ambC * 12.0); T *= 1.0 - a;
   }
   if (dist > 170.0) { // trecho analítico
     let y0 = cam.y + rd.y * 170.0 - 19.0; let ry = rd.y; let len = dist - 170.0;
@@ -146,7 +146,7 @@ fn dens(p: vec3f) -> f32 { return 0.00026 * exp(-max(p.y - 19.0, 0.0) / 220.0) +
       if (abs(ry) > 1e-4) { od += b * e0 * hsc / ry * (1.0 - exp(-ry * len / hsc)); } else { od += b * e0 * len; } }
     od = max(od, 0.0); let a = 1.0 - exp(-od);
     let hz = textureSampleLevel(envT, sPano, dirToPano(normalize(vec3f(rd.x, max(rd.y, 0.02) + 0.06, rd.z))), 3.0).rgb;
-    acc += T * a * (hz * 0.62 + vec3f(0.10, 0.14, 0.20) + sc * hg * 0.6); T *= 1.0 - a;
+    acc += T * a * (hz * 0.62 + vec3f(0.10, 0.14, 0.20) + sc * min(hg, 0.9) * 0.35); T *= 1.0 - a;
   }
   return vec4f(acc, T);
 }
@@ -192,7 +192,7 @@ fn hist(uv: vec2f) -> vec3f { // Catmull-Rom em 5 amostras
   let mean = m1 / 9.0; let sd = sqrt(max(m2 / 9.0 - mean * mean, vec3f(0.0)));
   let spd = length(mv * F.res.xy); let gam = mix(1.35, 0.9, sat(spd / 12.0));
   let lo = max(mn, mean - sd * gam); let hi = min(mx, mean + sd * gam);
-  if (puv.x < 0.0 || puv.x > 1.0 || puv.y < 0.0 || puv.y > 1.0 || F.misc.x < 0.5) { return vec4f(itm(cc), 1.0); }
+  if (puv.x < 0.0 || puv.x > 1.0 || puv.y < 0.0 || puv.y > 1.0 || F.misc.x < 0.5 || F.pad1.w > 0.5) { return vec4f(itm(cc), 1.0); }
   var h = tm(hist(puv));
   // recorte em direção ao centro da vizinhança
   let cen = 0.5 * (lo + hi); let ext = 0.5 * (hi - lo) + 1e-5; let dv = h - cen; let u = abs(dv) / ext; let mu = max(u.x, max(u.y, u.z)); if (mu > 1.0) { h = cen + dv / mu; }
@@ -206,13 +206,13 @@ const WG_MB = WG_COMMON + FS_TRI + /* wgsl */`
 @group(1) @binding(2) var depthT: texture_depth_2d;
 @fragment fn fs(i: FsV) -> @location(0) vec4f {
   let px = vec2i(i.pos.xy); let res = vec2i(F.res.xy); let c0 = textureLoad(colT, px, 0).rgb;
-  var mv = textureLoad(mvT, px, 0).xy * (0.55 / max(F.misc.y * 60.0, 0.25)); let l = length(mv * F.res.xy);
-  if (l < 1.2) { return vec4f(c0, 1.0); }
-  let mxl = 46.0; if (l > mxl) { mv *= mxl / l; }
+  var mv = textureLoad(mvT, px, 0).xy * (0.32 / max(F.misc.y * 60.0, 0.25)); let l = length(mv * F.res.xy);
+  if (l < 1.2 || F.pad1.w > 0.5) { return vec4f(c0, 1.0); }
+  let mxl = 30.0; if (l > mxl) { mv *= mxl / l; }
   let d0 = linDepth(textureLoad(depthT, px, 0)); let n0 = ign(i.pos.xy, F.misc.x); var acc = c0; var ws = 1.0; let ml = min(l, mxl);
   for (var k = 0; k < 9; k++) {
     let t = (f32(k) + n0) / 9.0 - 0.5; let uv = i.uv + mv * t; let q = clamp(vec2i(uv * F.res.xy), vec2i(0), res - 1);
-    let ms = length(textureLoad(mvT, q, 0).xy * F.res.xy) * (0.55 / max(F.misc.y * 60.0, 0.25)); let ds = linDepth(textureLoad(depthT, q, 0));
+    let ms = length(textureLoad(mvT, q, 0).xy * F.res.xy) * (0.32 / max(F.misc.y * 60.0, 0.25)); let ds = linDepth(textureLoad(depthT, q, 0));
     let w = max(sat(ms / (ml * 0.6)), sat((ds - d0) / (d0 * 0.05 + 0.2)) * 0.0) + 0.02;
     acc += textureSampleLevel(colT, sClamp, uv, 0.0).rgb * w; ws += w;
   }

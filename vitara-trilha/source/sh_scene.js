@@ -16,8 +16,9 @@ fn tvert(g: vec2f, L: vec4f) -> vec3f {
 @vertex fn vsShadow(@location(0) g: vec2f, @location(1) L: vec4f) -> @builtin(position) vec4f { return F.vp * vec4f(tvert(g, L), 1.0); }
 struct Mat { a: vec4f, n: vec4f };
 var<private> gDetail: bool = true;
+var<private> gBlur: f32 = 1.0;
 fn smp2(L: i32, xz: vec2f, sc: f32, gx: vec2f, gy: vec2f, far: f32) -> Mat { // albedo sempre; normal/rugosidade só perto
-  var m: Mat; m.a = textureSampleGrad(matA, sAni, xz * sc, L, gx * sc, gy * sc); m.n = vec4f(0.5, 0.5, 0.88, 0.9);
+  var m: Mat; m.a = textureSampleGrad(matA, sAni, xz * sc, L, gx * sc * gBlur, gy * sc * gBlur); m.n = vec4f(0.5, 0.5, 0.88, 0.9);
   if (gDetail) { m.n = textureSampleGrad(matN, sAni, xz * sc, L, gx * sc, gy * sc); }
   return m;
 }
@@ -34,10 +35,10 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   let nN = textureSample(nrmNearT, sClamp, uvn).xyz * 2.0 - 1.0;
   var N = normalize(mix(v.nf, nN, inNear));
   let nzA = textureSample(noiseT, sRep, xz / 37.0); let nzB = textureSample(noiseT, sRep, xz / 3.1);
-  let at = abs(fl.x) + (1.0 - inNear) * 60.0; let far = 0.0; gDetail = dist < 55.0;
+  let at = abs(fl.x) + (1.0 - inNear) * 60.0; let far = 0.0; gDetail = dist < 55.0; gBlur = 1.0 + smoothstep(6.0, 50.0, dist) * 1.6;
   let slope = 1.0 - N.y;
   // --- pesos ---
-  let track = 1.0 - smoothstep(2.75, 3.75, at + (nzB.x - 0.5) * 1.1);
+  let track = 1.0 - smoothstep(2.45, 4.1, at + (nzB.x - 0.5) * 1.6 + (nzA.z - 0.5) * 0.8);
   let hard = max(mk.r, max(mk.g, mk.a));
   var wDirt = track; let wMud = mk.r; let wGrav = max(mk.g, mk.a * 0.9); let wRock = max(mk.a * smoothstep(0.42, 0.62, nzB.y * 0.6 + nzA.z * 0.5), smoothstep(0.30, 0.48, slope + (nzB.y - 0.5) * 0.15));
   let strip = (1.0 - smoothstep(0.05, 0.60, at + (nzB.z - 0.5) * 0.9)) * (1.0 - hard) * track * 0.7 * smoothstep(0.3, 0.55, nzA.z + nzB.x * 0.3);
@@ -47,7 +48,7 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   var m = smp2(4, xz, 0.42, gx, gy, far);
   if (litter > 0.01) { m = hblend(m, smp2(9, xz, 0.55, gx, gy, far), litter); }
   if (wDirt > 0.01) { var d = smp2(0, xz, 0.40, gx, gy, far); if (strip > 0.01) { d = hblend(d, m, strip); } m = hblend(m, d, wDirt); }
-  if (wGrav > 0.01 || bed > 0.01) { m = hblend(m, smp2(1, xz, 0.55, gx, gy, far), max(wGrav, bed)); }
+  if (wGrav > 0.01 || bed > 0.01) { m = hblend(m, smp2(1, xz, 0.85, gx, gy, far), max(wGrav, bed)); }
   if (wMud > 0.01) { m = hblend(m, smp2(2, xz, 0.33, gx, gy, far), wMud); }
   if (wRock > 0.01) { m = hblend(m, smp2(3, xz, 0.37, gx, gy, far), wRock); }
   var alb = m.a.rgb; var rough = m.n.z; var ao = m.n.w; var nt = (m.n.xy * 2.0 - 1.0);
@@ -93,6 +94,8 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
     alb = mix(alb, cc, can); rough = mix(rough, 0.75, can); ao = mix(ao, 0.45 + 0.55 * c1.z, can);
     Nw = normalize(mix(Nw, normalize(v.nf + vec3f(c1.x - 0.5, 0.0, c1.y - 0.5) * 1.3 + vec3f(c2.x - 0.5, 0.0, c2.z - 0.5) * 0.6), can));
   }
+  // oclusão sob o carro (assenta o carro no chão)
+  { let dc = xz - F.car.xz; let fw = F.pad1.yz; let e = pow(dot(dc, fw) / 2.45, 2.0) + pow((dc.x * fw.y - dc.y * fw.x) / 1.08, 2.0); ao *= 1.0 - 0.72 * (1.0 - smoothstep(0.35, 1.15, e)) * (1.0 - smoothstep(0.2, 1.2, abs(p.y - F.car.y))) * step(0.5, dot(fw, fw)); }
   var o: GOut; o.alb = vec4f(alb, rough); o.nrm = vec4f(Nw, 0.0); o.misc = vec4f(0.0, ao, 0.0, pud); o.mv = motionOf(v.cur, v.prv); return o;
 }
 `;
@@ -123,7 +126,6 @@ struct SV { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
     let cov = a.a * (1.0 + smoothstep(12.0, 90.0, dist) * 0.9);
     if (cov < 0.36 + (ign(v.pos.xy, F.misc.x) - 0.5) * 0.22) { discard; }
     let hue = 0.85 + 0.3 * fract(v.seed * 7.3); alb = a.rgb * v.col.rgb * vec3f(hue, 1.0, 0.9) * 1.25; rough = 0.55; mid = 1.0; tr = 1.0;
-    let nt = textureSampleGrad(matN, sRep, v.uv, layer, gx, gy); ao *= nt.w;
   } else if (kind == 2) {
     let w0 = pow(abs(N), vec3f(4.0)); let w = w0 / (w0.x + w0.y + w0.z); let sc = 0.42;
     let ax = textureSampleGrad(matA, sRep, v.wp.zy * sc, 3, dpx.zy * sc, dpy.zy * sc); let ay = textureSampleGrad(matA, sRep, v.wp.xz * sc, 3, dpx.xz * sc, dpy.xz * sc); let az = textureSampleGrad(matA, sRep, v.wp.xy * sc, 3, dpx.xy * sc, dpy.xy * sc);
@@ -163,7 +165,7 @@ struct Ind { vc: u32, ic: atomic<u32>, fv: u32, fi: u32 };
   if (fade > 0.001 && max(abs(xz.x), abs(xz.y)) < 460.0) {
     let uv = nearUV(xz); let fl = textureSampleLevel(fieldT, sClamp, uv, 0.0); let mk = textureSampleLevel(maskT, sClamp, uv, 0.0);
     let nz = textureSampleLevel(noiseT, sRep, xz / 3.1, 0.0); let nA = textureSampleLevel(noiseT, sRep, xz / 37.0, 0.0);
-    let at = abs(fl.x); let track = 1.0 - smoothstep(2.75, 3.75, at + (nz.x - 0.5) * 1.1); let hard = max(mk.r, max(mk.g, mk.a));
+    let at = abs(fl.x); let track = 1.0 - smoothstep(2.45, 4.1, at + (nz.x - 0.5) * 1.6 + (nA.z - 0.5) * 0.8); let hard = max(mk.r, max(mk.g, mk.a));
     let strip = (1.0 - smoothstep(0.05, 0.60, at + (nz.z - 0.5) * 0.9)) * (1.0 - hard) * track * smoothstep(0.3, 0.55, nA.z + nz.x * 0.3);
     var dens = max((1.0 - track) * (1.0 - smoothstep(0.56, 0.72, nA.y + (nz.y - 0.5) * 0.25) * 0.7), strip * 0.8) * smoothstep(0.5, 1.6, fl.w) * (1.0 - mk.b);
     let nrm = textureSampleLevel(nrmNearT, sClamp, uv, 0.0).xyz * 2.0 - 1.0; dens *= smoothstep(0.62, 0.8, nrm.y);
@@ -189,14 +191,14 @@ const BS = array<f32, 7>(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 0.0);
   let b = blades[ii]; let hgt = b.p.w; if (hgt <= 0.0) { return o; }
   let ring = b.c.w >= 2.0; let h2x = b.c.w - select(0.0, 2.0, ring); let tall = b.q.z; let dry = b.q.w; let base = b.p.xyz;
   let d = distance(base.xz, F.cam.xz); let t = BT[vi]; let sd = BS[vi]; let a = b.q.x; let dir = vec2f(cos(a), sin(a)); let perp = vec2f(-dir.y, dir.x);
-  let wdt = select(0.012, 0.030, ring) * (1.0 + tall * 0.6) * (1.0 - t * 0.9) * (1.0 + d * 0.05);
+  let wdt = select(0.010, 0.015, ring) * (1.0 + tall * 0.5) * (1.0 - t * t * t * 0.96) * (1.0 + d * 0.035);
   let bend = (0.18 + fract(h2x * 7.7) * 0.45) * hgt * t * t;
   let loc = vec3f(perp.x * sd * wdt + dir.x * bend, hgt * t * (1.0 - 0.12 * t), perp.y * sd * wdt + dir.y * bend);
   let ww = t * t * (0.10 + hgt * 0.42); let wp = base + loc + windOff(base, ww, b.q.y, F.cam.w) * vec3f(1.0, 0.25, 1.0); let pw = base + loc + windOff(base, ww, b.q.y, F.sun.w) * vec3f(1.0, 0.25, 1.0);
   let dc = wp.xz - F.car.xz; let push = (1.0 - smoothstep(0.9, 1.7, length(dc))) * t; let wpp = wp + vec3f(normalize(dc + 1e-4).x, -0.6, normalize(dc + 1e-4).y) * push * hgt * 0.7;
   var c0 = mix(vec3f(0.040, 0.080, 0.016), vec3f(0.070, 0.105, 0.024), h2x); var c1 = mix(vec3f(0.105, 0.175, 0.035), vec3f(0.17, 0.20, 0.05), b.q.y);
   c1 = mix(c1, vec3f(0.36, 0.30, 0.13), dry * 0.55 + tall * 0.25 * t); c0 = mix(c0, vec3f(0.12, 0.10, 0.04), dry * 0.4);
-  o.col = mix(c0, c1, t) * (0.8 + 0.4 * b.c.z); o.ao = mix(0.30, 1.0, t);
+  o.col = mix(c0, c1, t) * (0.7 + 0.6 * b.c.z) * (0.8 + 0.4 * fract(h2x * 13.7)); o.ao = mix(0.30, 1.0, t);
   let nrm = vec3f(b.c.x, sqrt(max(1.0 - b.c.x * b.c.x - b.c.y * b.c.y, 0.0)), b.c.y); o.n = normalize(nrm + vec3f(dir.x, 0.0, dir.y) * 0.35 * t);
   o.pos = F.vp * vec4f(wpp, 1.0); o.cur = F.vpNJ * vec4f(wpp, 1.0); o.prv = F.pvp * vec4f(pw + (wpp - wp), 1.0); return o;
 }

@@ -148,17 +148,17 @@ function particlesUpdate(dt) {
         if (dx * dx + dz * dz < 9 && dx * dx + dz * dz > 0.0004) { S.rut[k] = S.lastC[w * 3]; S.rut[k + 1] = S.lastC[w * 3 + 2]; S.rut[k + 2] = cx; S.rut[k + 3] = cz; S.rut[k + 4] = 0.135; S.rut[k + 5] = clamp(0.55 + wet * 0.45 + slip * 0.3, 0, 1); S.rutN++; } }
       S.lastC[w * 3] = cx; S.lastC[w * 3 + 1] = cy; S.lastC[w * 3 + 2] = cz; S.lastOk[w] = 1;
     } else S.lastOk[w] = 0;
-    const bx = fx * dirS, bz = fz * dirS, act = sp * 0.06 + slip * 1.2;
+    const bx = fx * dirS, bz = fz * dirS, act = sp * 0.05 + Math.min(slip, 0.6) * 0.5;
     if (surf === SURF_AGUA || P.water[w] > 0.04) {
       const nsp = Math.min(6, (sp * 0.55 + slip * 3) | 0);
       for (let k = 0; k < nsp; k++) { const u = prand(), v = prand(), out = (0.6 + u * 2.6) * side * (0.25 + sp * 0.11);
         emit(2, cx + (v - 0.5) * 0.4, cy + 0.12, cz + (u - 0.5) * 0.4, lx * out + bx * sp * (0.15 + v * 0.3) + P.vel[0] * 0.55, 1.2 + prand() * (1.6 + sp * 0.28), lz * out + bz * sp * (0.15 + v * 0.3) + P.vel[2] * 0.55, 0.05 + prand() * 0.10, 0.25, 0.5 + prand() * 0.45, 2.3, 2.2, 2.1, 0.55, 0.8); }
-      if (sp > 2 && prand() < 0.6) emit(3, cx, cy + 0.3, cz, lx * side * 1.2 + P.vel[0] * 0.5, 1.4 + prand(), lz * side * 1.2 + P.vel[2] * 0.5, 0.35, 1.6, 0.9 + prand() * 0.5, 1.9, 1.75, 1.6, 0.22, 1.2);
+      if (sp > 2 && prand() < 0.6) emit(3, cx, cy + 0.3, cz, lx * side * 1.2 + P.vel[0] * 0.5, 1.4 + prand(), lz * side * 1.2 + P.vel[2] * 0.5, 0.25, 0.9, 0.7 + prand() * 0.4, 1.5, 1.4, 1.3, 0.12, 1.2);
     } else if (wet > 0.35) {
       if (prand() < act * 1.6) for (let k = 0; k < 2; k++) emit(1, cx, cy + 0.08, cz, bx * sp * (0.2 + prand() * 0.35) + lx * side * (prand() - 0.3) * 2 + P.vel[0] * 0.3, 0.8 + prand() * (1.5 + sp * 0.2 + slip * 3), bz * sp * (0.2 + prand() * 0.35) + lz * side * (prand() - 0.3) * 2 + P.vel[2] * 0.3, 0.025 + prand() * 0.05, 0, 0.5 + prand() * 0.5, 0.09, 0.055, 0.032, 1, 0.3);
     } else if (surf !== SURF_MADEIRA) {
       const du = (surf === SURF_GRAMA ? 0.2 : surf === SURF_PEDRA ? 0.55 : 1) * (1 - wet);
-      if (sp > 2.5 && prand() < act * du * 1.1 * (w >= 2 ? 1 : 0.45)) emit(0, cx + (prand() - 0.5) * 0.25, cy + 0.15, cz + (prand() - 0.5) * 0.25, bx * sp * 0.12 + P.vel[0] * 0.22 + (prand() - 0.5) * 0.8, 0.35 + prand() * 0.7, bz * sp * 0.12 + P.vel[2] * 0.22 + (prand() - 0.5) * 0.8, 0.22 + prand() * 0.18, 0.9 + sp * 0.05, 1.3 + prand() * 1.3, 1.15, 0.80, 0.52, 0.075 + Math.min(0.10, slip * 0.15), 0.9);
+      if (sp > 2.5 && prand() < act * du * 1.1 * (w >= 2 ? 1 : 0.45)) emit(0, cx + (prand() - 0.5) * 0.25, cy + 0.15, cz + (prand() - 0.5) * 0.25, bx * sp * 0.12 + P.vel[0] * 0.22 + (prand() - 0.5) * 0.8, 0.35 + prand() * 0.7, bz * sp * 0.12 + P.vel[2] * 0.22 + (prand() - 0.5) * 0.8, 0.16 + prand() * 0.14, 0.32 + sp * 0.02, 1.0 + prand() * 1.0, 0.95, 0.62, 0.40, 0.08 + Math.min(0.05, slip * 0.08), 0.9);
       if ((surf === SURF_CASCALHO || surf === SURF_PEDRA) && prand() < slip * 0.9 + sp * 0.004) emit(1, cx, cy + 0.05, cz, bx * sp * 0.4 + (prand() - 0.5) * 2, 0.8 + prand() * 2, bz * sp * 0.4 + (prand() - 0.5) * 2, 0.02 + prand() * 0.025, 0, 0.6, 0.30, 0.26, 0.22, 1, 0.2);
     }
   }
@@ -172,7 +172,7 @@ function cameraUpdate(dt) {
   if (App.freeCam || typeof Physics === 'undefined') return;
   const P = Physics, px = P.pos[0], py = P.pos[1], pz = P.pos[2], mode = Game.cam, q = P.quat;
   const fx = 2 * (q[0] * q[2] + q[3] * q[1]), fz = 1 - 2 * (q[0] * q[0] + q[1] * q[1]), yaw = Math.atan2(fx, fz);
-  const snap = !S.camInit || S.camPrev !== mode; S.camPrev = mode; S.camInit = true; R.camMode = mode;
+  const snap = !S.camInit || S.camPrev !== mode; S.camPrev = mode; S.camInit = true; R.camMode = mode; if (snap) R.cut = 2;
   if (mode === 0) {
     let dy = yaw - S.camYaw; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI;
     S.camYaw += snap ? dy : dy * (1 - Math.exp(-dt * 4.2));
@@ -183,14 +183,14 @@ function cameraUpdate(dt) {
     const kt = snap ? 1 : 1 - Math.exp(-dt * 14); S.camT[0] += (px - S.camT[0]) * kt; S.camT[1] += (py + 1.25 - S.camT[1]) * kt; S.camT[2] += (pz - S.camT[2]) * kt;
     R.setCamera(S.camE[0], S.camE[1], S.camE[2], S.camT[0], S.camT[1], S.camT[2], 0.98 + Math.min(0.14, sp * 0.005));
   } else if (mode === 1) {
-    _carLocal(0, 1.36, 0.42); const ex = px + _cq[0], ey = py + _cq[1], ez = pz + _cq[2]; _carLocal(0, 1.05, 9);
+    _carLocal(0, 1.315, 0.86); const ex = px + _cq[0], ey = py + _cq[1], ez = pz + _cq[2]; _carLocal(0, 1.05, 9);
     const tx = px + _cq[0], ty = py + _cq[1], tz = pz + _cq[2]; _carLocal(0, 1, 0);
     R.setCamera(ex, ey, ez, tx, ty, tz, 1.12); m4look(R.view, 0, ex, ey, ez, tx, ty, tz, _cq[0] * 0.6, 0.8 + _cq[1] * 0.2, _cq[2] * 0.6);
     S.camYaw = yaw;
   } else {
     const F = S.fixCams, n = F.length / 4; let best = S.fixI, bd = 1e9;
     if (best >= 0) { const dx = F[best * 4] - px, dz = F[best * 4 + 2] - pz; bd = dx * dx + dz * dz; }
-    if (best < 0 || bd > 58 * 58 || snap) { best = 0; bd = 1e9; const T = World.trk, sA = Game.trackS + 20;
+    if (best < 0 || bd > 58 * 58 || snap) { R.cut = 2; best = 0; bd = 1e9; const T = World.trk, sA = Game.trackS + 20;
       for (let i = 0; i < n; i++) { let ds = F[i * 4 + 3] - sA; if (ds > T.L / 2) ds -= T.L; if (ds < -T.L / 2) ds += T.L; const d = Math.abs(ds); if (d < bd) { bd = d; best = i; } } S.fixI = best; }
     const d = Math.hypot(F[best * 4] - px, F[best * 4 + 2] - pz);
     const kt = snap ? 1 : 1 - Math.exp(-dt * 10); S.camT[0] += (px - S.camT[0]) * kt; S.camT[1] += (py + 0.8 - S.camT[1]) * kt; S.camT[2] += (pz - S.camT[2]) * kt;
@@ -198,4 +198,7 @@ function cameraUpdate(dt) {
     S.camYaw = yaw;
   }
 }
-function sceneUpdate(dt) { particlesUpdate(dt); if (typeof carUpdate !== 'undefined') carUpdate(dt); cameraUpdate(dt); if (typeof hudUpdate !== 'undefined') hudUpdate(dt); }
+function sceneUpdate(dt) {
+  // limite do mundo: quem se afasta demais da trilha é devolvido a ela, bem antes de enxergar o fim do cenário
+  if (typeof Physics !== 'undefined' && (Math.hypot(Physics.pos[0], Physics.pos[2]) > 300 || Physics.pos[1] < 5)) Game.resetToTrack();
+  particlesUpdate(dt); if (typeof carUpdate !== 'undefined') carUpdate(dt); cameraUpdate(dt); if (typeof hudUpdate !== 'undefined') hudUpdate(dt); }

@@ -43,11 +43,11 @@ fn leafAt(p: vec2f, c: vec2f, ang: f32, len: f32, wid: f32) -> vec2f { // (másc
     let m3 = smoothstep(0.02, 0.14, w3.y - w3.x); let h3 = sat(1.0 - w3.x * 1.8) * 0.18;
     let n = pfbm(uv * 40.0, vec2f(40.0), 3);
     h = max(max(m1 * h1, m2 * h2), m3 * h3 + 0.06) + n * 0.03;
-    let c1 = mix(vec3f(0.36, 0.33, 0.30), vec3f(0.52, 0.46, 0.38), w1.z) * mix(vec3f(1.0), vec3f(1.1, 0.85, 0.7), step(0.8, w1.z));
+    let c1 = mix(vec3f(0.36, 0.32, 0.28), vec3f(0.46, 0.40, 0.33), w1.z) * mix(vec3f(1.0), vec3f(1.1, 0.85, 0.7), step(0.8, w1.z));
     let c2 = mix(vec3f(0.30, 0.27, 0.24), vec3f(0.55, 0.50, 0.44), w2.z);
-    alb = mix(vec3f(0.26, 0.18, 0.12), vec3f(0.40, 0.33, 0.26) * (0.7 + w3.z * 0.5), m3);
+    alb = mix(vec3f(0.30, 0.23, 0.17), vec3f(0.40, 0.33, 0.26) * (0.8 + w3.z * 0.35), m3);
     if (m2 * h2 > m3 * h3 + 0.06) { alb = c2; } if (m1 * h1 >= max(m2 * h2, m3 * h3 + 0.06)) { alb = c1; }
-    alb *= 0.85 + n * 0.3; ao = smoothstep(0.02, 0.3, h) * 0.6 + 0.4; rough = 0.82;
+    alb *= 0.9 + n * 0.2; ao = smoothstep(0.02, 0.3, h) * 0.3 + 0.7; rough = 0.82;
   } else if (L == 2u) { // lama
     let n1 = pfbm(uv * 3.0, vec2f(3.0), 4); let n2 = pfbm(uv * 9.0 + 3.0, vec2f(9.0), 4); let r = 1.0 - abs(pfbm(uv * 5.0 + 1.0, vec2f(5.0), 4));
     let n3 = pfbm(uv * 60.0, vec2f(60.0), 2);
@@ -61,7 +61,7 @@ fn leafAt(p: vec2f, c: vec2f, ang: f32, len: f32, wid: f32) -> vec2f { // (másc
     alb = mix(vec3f(0.20, 0.175, 0.15), vec3f(0.37, 0.33, 0.28), sat(r * 0.8 + n * 0.5)) * (0.8 + wc.z * 0.4);
     alb = mix(alb, vec3f(0.30, 0.34, 0.17), smoothstep(0.12, 0.4, pfbm(uv * 7.0 + 9.0, vec2f(7.0), 4)) * 0.55);
     alb = mix(alb, vec3f(0.36, 0.22, 0.14), smoothstep(0.2, 0.5, pfbm(uv * 3.0 + 4.0, vec2f(3.0), 3)) * 0.35);
-    alb *= 1.0 - crack * 0.6; rough = 0.86; ao = 1.0 - crack * 0.7;
+    alb *= 1.0 - crack * 0.3; rough = 0.86; ao = 1.0 - crack * 0.35;
   } else if (L == 4u) { // chão de capim
     let n1 = pfbm(uv * 4.0, vec2f(4.0), 4); let n2 = pfbm(uv * 32.0, vec2f(32.0), 3); let fib = pvn(vec2f(uv.x * 220.0 + n1 * 6.0, uv.y * 55.0), vec2f(220.0, 55.0));
     let fib2 = pvn(vec2f(uv.x * 60.0, uv.y * 200.0 + n1 * 5.0), vec2f(60.0, 200.0));
@@ -73,8 +73,8 @@ fn leafAt(p: vec2f, c: vec2f, ang: f32, len: f32, wid: f32) -> vec2f { // (másc
     let wr = pwor(vec2f(uv.x * 9.0, uv.y * 3.0) + pfbm(uv * vec2f(6.0, 3.0), vec2f(6.0, 3.0), 3) * 0.5, vec2f(9.0, 3.0));
     let fur = smoothstep(0.0, 0.16, wr.y - wr.x); let n = pfbm(uv * vec2f(48.0, 12.0), vec2f(48.0, 12.0), 3); let n2 = pfbm(uv * 5.0, vec2f(5.0), 3);
     h = fur * (0.55 + 0.4 * wr.z) + n * 0.14;
-    alb = mix(vec3f(0.07, 0.052, 0.04), vec3f(0.25, 0.21, 0.17), sat(h)) * (0.85 + n2 * 0.4);
-    alb = mix(alb, vec3f(0.16, 0.20, 0.09), smoothstep(0.15, 0.5, n2) * 0.4); rough = 0.9; ao = 0.45 + 0.55 * fur;
+    alb = mix(vec3f(0.12, 0.095, 0.075), vec3f(0.25, 0.21, 0.17), sat(h)) * (0.85 + n2 * 0.4);
+    alb = mix(alb, vec3f(0.16, 0.20, 0.09), smoothstep(0.15, 0.5, n2) * 0.4); rough = 0.9; ao = 0.72 + 0.28 * fur;
   } else if (L == 6u) { // tábuas
     let pl = uv.y * 4.0; let id = floor(pl); let f = fract(pl); let hh = hash11(id + 3.0);
     let gap = smoothstep(0.0, 0.035, f) * smoothstep(1.0, 0.965, f);

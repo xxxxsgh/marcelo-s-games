@@ -14,7 +14,7 @@ function _carProfile(z) {
   const da = Math.min(Math.abs(z - D.AXF), Math.abs(z - D.AXR));
   const yS = 0.335 + 0.05 * smooth(1.6, 2.0, z) + 0.07 * smooth(-1.7, -2.05, z);
   const yA = da < D.ARCH ? Math.max(yS, D.RW + 0.015 + Math.sqrt(D.ARCH * D.ARCH - da * da)) : yS;
-  const flare = 0.034 * Math.exp(-Math.pow(da / 0.54, 6));
+  const flare = 0.052 * Math.exp(-Math.pow(da / 0.55, 8));
   const wS = (0.885 + flare) * taper;
   const yBelt = z > 0.92 ? lerp(1.025, 0.985, Math.pow(sat((z - 0.92) / 1.0), 1.5)) : 1.035 - 0.012 * z;
   const wB = (0.872 - 0.02 * hoodT) * taper;
@@ -33,11 +33,11 @@ function _zTipR(y) {
   for (let i = 0; i < k.length - 1; i++) if (y <= k[i + 1][0]) { const t = sat((y - k[i][0]) / (k[i + 1][0] - k[i][0])); return lerp(k[i][1], k[i + 1][1], t * t * (3 - 2 * t)); } return k[k.length - 1][1];
 }
 function makeCarBody() {
-  const m = new MeshB(), fr = [0.992, 0.97, 0.935, 0.885, 0.82, 0.74, 0.64, 0.52, 0.39, 0.25, 0.12, 0.0];
+  const m = new MeshB(), fr = [0.997, 0.988, 0.972, 0.95, 0.92, 0.88, 0.83, 0.765, 0.69, 0.60, 0.50, 0.39, 0.27, 0.14, 0.0];
   // estações: fecho traseiro, miolo, fecho dianteiro
   const st = []; const ZR = -1.80, ZFm = 1.76, CR = 0.30, CF = 0.38, nR = 4.2, nF = 3.0;
   for (let k = fr.length - 1; k >= 0; k--) st.push({ z: ZR - CR * (1 - Math.pow(1 - Math.pow(fr[k], nR), 1 / nR)) * 1, zp: ZR, f: fr[k], end: -1 });
-  const NM = 96; for (let i = 0; i <= NM; i++) st.push({ z: lerp(ZR, ZFm, i / NM), f: 1, end: 0 });
+  const NM = 120; for (let i = 0; i <= NM; i++) st.push({ z: lerp(ZR, ZFm, i / NM), f: 1, end: 0 });
   for (let k = 0; k < fr.length; k++) st.push({ z: ZFm + CF * (1 - Math.pow(1 - Math.pow(fr[k], nF), 1 / nF)), zp: ZFm, f: fr[k], end: 1 });
   // corrige: nos fechos, a profundidade a partir da ponta é d(f) = C*(1-(1-f^n)^(1/n)); z = ponta -+ ... (ponta em f=0)
   for (const s of st) if (s.end === -1) s.z = (ZR - CR) + CR * (1 - Math.pow(1 - Math.pow(s.f, nR), 1 / nR)); else if (s.end === 1) s.z = (ZFm + CF) - CF * (1 - Math.pow(1 - Math.pow(s.f, nF), 1 / nF));
@@ -82,10 +82,10 @@ function _revolve(m, prof, n, axis, c, kind, col, flip) {
 function makeWheel() {
   const m = new MeshB(), R = CarD.RW;
   // pneu (perfil: posição ao longo do eixo x, raio) — face externa em +x
-  const tp = [[-0.108, 0.222], [-0.118, 0.255], [-0.121, 0.300], [-0.112, 0.338], [-0.098, 0.354], [-0.080, R], [-0.04, R + 0.002], [0, R + 0.003], [0.04, R + 0.002], [0.080, R], [0.098, 0.354], [0.112, 0.338], [0.121, 0.300], [0.118, 0.255], [0.108, 0.222]];
+  const tp = [[-0.108, 0.236], [-0.118, 0.262], [-0.121, 0.300], [-0.112, 0.338], [-0.098, 0.354], [-0.080, R], [-0.04, R + 0.002], [0, R + 0.003], [0.04, R + 0.002], [0.080, R], [0.098, 0.354], [0.112, 0.338], [0.121, 0.300], [0.118, 0.262], [0.108, 0.236]];
   _revolve(m, tp, 72, 0, [0, 0, 0], 15, [1, 1, 1], true);
   // aro: grade polar com 5 raios em relevo; uv = (raio, ângulo)
-  const NA = 150, NR = 16, RR = 0.224, base = m.n;
+  const NA = 150, NR = 16, RR = 0.238, base = m.n;
   const depth = (r, a) => { const rn = r / RR; let x = 0.066;
     const k = ((a / 6.2832 * 5) % 1 + 1) % 1, ad = Math.abs(k - 0.5) * 2 * (Math.PI / 5) * r; // distância angular (m) ao eixo do raio mais próximo... centro do raio em k=0.5
     const sw = 0.030 + 0.016 * rn, spoke = 1 - smooth(sw, sw + 0.014, ad), hub = 1 - smooth(0.052, 0.066, r), lip = smooth(0.185, 0.197, r);
@@ -106,13 +106,13 @@ function makeCarParts() {
   const boxK = (c, h, kind, col, ax, ay, az) => { const n0 = m.n; m.box(c[0], c[1], c[2], ax || X, ay || Y, az || Z, h[0], h[1], h[2], col || [1, 1, 1], 0, 0, kind); return n0; };
   const tubeK = (a, b, r0, r1, sd, kind, col) => { m.tube(a, b, r0, r1, sd, col || [1, 1, 1, 1], 0, kind, 0, 0, 1); };
   // estepe: capa rígida na cor do carro, deslocada para a direita (-X), na tampa traseira
-  { const c = [-0.10, 0.955, -2.335]; // eixo Z; perfil (z, r) do fundo (junto à tampa) até a face traseira
+  { const c = [-0.08, 0.955, -2.335]; // eixo Z; perfil (z, r) do fundo (junto à tampa) até a face traseira
     _revolve(m, [[0.262, 0.33], [0.235, 0.372], [0.06, 0.378], [0.022, 0.368], [0.004, 0.345], [0.0, 0.30], [0.0, 0.0]], 64, 2, c, 18, [1, 1, 1], true);
     boxK([c[0], c[1], c[2] + 0.27], [0.09, 0.09, 0.03], 12, [0.2, 0.2, 0.2]); }
   // longarinas de teto (pretas) com pés
-  for (const sd of [1, -1]) { const x = 0.565 * sd, pts = [[x, 1.612, 0.03], [x, 1.668, -0.04], [x, 1.708, -0.16], [x, 1.722, -0.85], [x, 1.712, -1.55], [x, 1.672, -1.70], [x, 1.612, -1.78]];
+  for (const sd of [1, -1]) { const x = 0.565 * sd, pts = [[x, 1.612, 0.03], [x, 1.668, -0.04], [x, 1.685, -0.16], [x, 1.692, -0.85], [x, 1.685, -1.55], [x, 1.672, -1.70], [x, 1.612, -1.78]];
     for (let i = 0; i < pts.length - 1; i++) tubeK(pts[i], pts[i + 1], 0.021, 0.021, 8, 12, [0.05, 0.05, 0.055, 1]);
-    for (const z of [-0.12, -0.86, -1.60]) boxK([x, 1.672, z], [0.022, 0.04, 0.06], 12, [0.05, 0.05, 0.055]); }
+    for (const z of [-0.12, -1.60]) boxK([x, 1.655, z], [0.02, 0.03, 0.06], 12, [0.05, 0.05, 0.055]); }
   // antena no fim do teto
   tubeK([0.0, 1.66, -1.78], [0.0, 1.69, -1.80], 0.03, 0.016, 8, 12, [0.05, 0.05, 0.055, 1]); tubeK([0.0, 1.685, -1.80], [0.0, 1.99, -2.07], 0.0085, 0.006, 6, 12, [0.05, 0.05, 0.055, 1]);
   // retrovisores
@@ -128,7 +128,6 @@ function makeCarParts() {
   boxK([0.60, 0.99, -2.075], [0.07, 0.022, 0.012], 12, [0.06, 0.06, 0.065]);
   for (const y of [0.92, 1.30]) boxK([-0.735, y, -2.07], [0.02, 0.05, 0.012], 12, [0.06, 0.06, 0.065]);
   // limpador traseiro e saída de escape
-  tubeK([-0.52, 0.30, -1.95], [-0.52, 0.30, -2.13], 0.03, 0.032, 10, 16, [0.6, 0.6, 0.6, 1]);
   // ---- interior ----
   const g1 = [0.075, 0.075, 0.08], g2 = [0.12, 0.12, 0.125], g3 = [0.035, 0.035, 0.04];
   boxK([0, 0.44, -0.3], [0.80, 0.02, 1.55], 13, g3);
@@ -158,7 +157,7 @@ function _decals() { // atlas de letreiros gerado com canvas 2D (nenhum arquivo)
   g.font = 'italic 800 50px Arial, sans-serif'; if (g.letterSpacing !== undefined) g.letterSpacing = '3px'; g.fillText('GRAND VITARA', 768, 66);
   g.font = '800 92px "Arial Narrow", Arial, sans-serif'; if (g.letterSpacing !== undefined) g.letterSpacing = '8px'; g.fillText('TRL 4X4', 256, 196);
   // emblema: "S" anguloso estilizado
-  g.save(); g.translate(576, 192); g.lineWidth = 17; g.strokeStyle = '#fff'; g.lineJoin = 'miter'; g.beginPath(); g.moveTo(34, -30); g.lineTo(2, -52); g.lineTo(-36, -22); g.lineTo(36, 22); g.lineTo(-2, 52); g.lineTo(-34, 30); g.stroke(); g.restore();
+  g.save(); g.translate(576, 192); g.transform(1, 0, -0.18, 1, 0, 0); g.font = '900 150px "Arial Black", Impact, Arial, sans-serif'; if (g.letterSpacing !== undefined) g.letterSpacing = '0px'; g.fillText('S', 0, 8); g.restore();
   const d = g.getImageData(0, 0, 1024, 256).data, out = new Uint8Array(1024 * 256 * 4); out.set(d);
   const t = texFromData(1024, 256, 'rgba8unorm', out, 4, { mips: 6 }); genMips(t, 'rgba8unorm', 1, 6); return t;
 }
@@ -190,9 +189,9 @@ function carUpdate(dt) {
   if (D.first) { for (let i = 0; i < 80; i++) u[80 + i] = u[i]; D.first = false; }
   // sujeira acumulada
   if (hasP && !Game.paused) { const P = Physics, sp = Math.abs(P.speed); let du = 0, mu = 0;
-    for (let w = 0; w < 4; w++) if (P.contact[w] > 0.5) { const s = P.surf[w]; if (P.wet[w] > 0.35 || s === SURF_AGUA) mu += (0.004 + P.slip[w] * 0.02) * sp; else if (s !== SURF_MADEIRA && s !== SURF_GRAMA) du += 0.0011 * sp; }
+    for (let w = 0; w < 4; w++) if (P.contact[w] > 0.5) { const s = P.surf[w]; if (P.wet[w] > 0.35 || s === SURF_AGUA) mu += (0.004 + P.slip[w] * 0.02) * sp; else if (s !== SURF_MADEIRA && s !== SURF_GRAMA) du += 0.0005 * sp; }
     D.dust = Math.min(1, D.dust + du * dt * 0.25); D.mud = Math.min(1, D.mud + mu * dt * 0.25); D.brake += ((P.brakeLight ? 1 : 0) - D.brake) * Math.min(1, dt * 30); D.rev = P.reverse ? 1 : 0;
-    R.fb[180] = P.pos[0]; R.fb[181] = P.pos[1]; R.fb[182] = P.pos[2]; R.fb[183] = sp; }
+    R.fb[180] = P.pos[0]; R.fb[181] = P.pos[1]; R.fb[182] = P.pos[2]; R.fb[183] = sp; R.fb[185] = D.body[8]; R.fb[186] = D.body[10]; }
   else if (D.pose) { R.fb[180] = D.pose[0]; R.fb[181] = D.pose[1]; R.fb[182] = D.pose[2]; }
   u[160] = D.dust; u[161] = D.mud; u[162] = D.brake; u[163] = D.rev || 0;
 }

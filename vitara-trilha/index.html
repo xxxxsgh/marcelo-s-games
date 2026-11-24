@@ -507,6 +507,7 @@ World.onBridge = function (x, z) {
 World.waterAt = function (x, z) {
   if (!World.streamQ(x, z)) return -1e9; const q = World.stq; if (q.d > q.w + 3) return -1e9; return q.bed + 0.30;
 };
+const _SF_GRIP = [1.00, 0.88, 0.62, 0.70, 0.78, 0.95, 0.92], _SF_DRAG = [0.015, 0.03, 0.10, 0.16, 0.07, 0.012, 0.035], _SF_RUMBLE = [0.05, 0.30, 0.08, 0.55, 0.10, 0.18, 0.40], _SF_DUST = [1.0, 0.8, 0.0, 0.0, 0.15, 0.1, 0.5];
 // piso em (x,z): preenche World.sf e devolve o tipo
 World.surfaceAt = function (x, z) {
   const W = World, sf = W.sf, M = W.mask; let type = SURF_GRAMA;
@@ -523,10 +524,7 @@ World.surfaceAt = function (x, z) {
   }
   sf.type = type;
   //            terra  casc  lama  água  grama mad   pedra
-  sf.grip = [1.00, 0.88, 0.62, 0.70, 0.78, 0.95, 0.92][type];
-  sf.drag = [0.015, 0.03, 0.10, 0.16, 0.07, 0.012, 0.035][type];
-  sf.rumble = [0.05, 0.30, 0.08, 0.55, 0.10, 0.18, 0.40][type];
-  sf.dust = [1.0, 0.8, 0.0, 0.0, 0.15, 0.1, 0.5][type] * (1 - sf.wet);
+  sf.grip = _SF_GRIP[type]; sf.drag = _SF_DRAG[type]; sf.rumble = _SF_RUMBLE[type]; sf.dust = _SF_DUST[type] * (1 - sf.wet);
   return type;
 };
 // pose sobre a trilha no comprimento s (out: x,y,z,yaw) — yaw tal que a frente (+Z local) aponta no sentido da volta
@@ -1205,11 +1203,11 @@ fn leafAt(p: vec2f, c: vec2f, ang: f32, len: f32, wid: f32) -> vec2f { // (másc
     let m3 = smoothstep(0.02, 0.14, w3.y - w3.x); let h3 = sat(1.0 - w3.x * 1.8) * 0.18;
     let n = pfbm(uv * 40.0, vec2f(40.0), 3);
     h = max(max(m1 * h1, m2 * h2), m3 * h3 + 0.06) + n * 0.03;
-    let c1 = mix(vec3f(0.36, 0.33, 0.30), vec3f(0.52, 0.46, 0.38), w1.z) * mix(vec3f(1.0), vec3f(1.1, 0.85, 0.7), step(0.8, w1.z));
+    let c1 = mix(vec3f(0.36, 0.32, 0.28), vec3f(0.46, 0.40, 0.33), w1.z) * mix(vec3f(1.0), vec3f(1.1, 0.85, 0.7), step(0.8, w1.z));
     let c2 = mix(vec3f(0.30, 0.27, 0.24), vec3f(0.55, 0.50, 0.44), w2.z);
-    alb = mix(vec3f(0.26, 0.18, 0.12), vec3f(0.40, 0.33, 0.26) * (0.7 + w3.z * 0.5), m3);
+    alb = mix(vec3f(0.30, 0.23, 0.17), vec3f(0.40, 0.33, 0.26) * (0.8 + w3.z * 0.35), m3);
     if (m2 * h2 > m3 * h3 + 0.06) { alb = c2; } if (m1 * h1 >= max(m2 * h2, m3 * h3 + 0.06)) { alb = c1; }
-    alb *= 0.85 + n * 0.3; ao = smoothstep(0.02, 0.3, h) * 0.6 + 0.4; rough = 0.82;
+    alb *= 0.9 + n * 0.2; ao = smoothstep(0.02, 0.3, h) * 0.3 + 0.7; rough = 0.82;
   } else if (L == 2u) { // lama
     let n1 = pfbm(uv * 3.0, vec2f(3.0), 4); let n2 = pfbm(uv * 9.0 + 3.0, vec2f(9.0), 4); let r = 1.0 - abs(pfbm(uv * 5.0 + 1.0, vec2f(5.0), 4));
     let n3 = pfbm(uv * 60.0, vec2f(60.0), 2);
@@ -1223,7 +1221,7 @@ fn leafAt(p: vec2f, c: vec2f, ang: f32, len: f32, wid: f32) -> vec2f { // (másc
     alb = mix(vec3f(0.20, 0.175, 0.15), vec3f(0.37, 0.33, 0.28), sat(r * 0.8 + n * 0.5)) * (0.8 + wc.z * 0.4);
     alb = mix(alb, vec3f(0.30, 0.34, 0.17), smoothstep(0.12, 0.4, pfbm(uv * 7.0 + 9.0, vec2f(7.0), 4)) * 0.55);
     alb = mix(alb, vec3f(0.36, 0.22, 0.14), smoothstep(0.2, 0.5, pfbm(uv * 3.0 + 4.0, vec2f(3.0), 3)) * 0.35);
-    alb *= 1.0 - crack * 0.6; rough = 0.86; ao = 1.0 - crack * 0.7;
+    alb *= 1.0 - crack * 0.3; rough = 0.86; ao = 1.0 - crack * 0.35;
   } else if (L == 4u) { // chão de capim
     let n1 = pfbm(uv * 4.0, vec2f(4.0), 4); let n2 = pfbm(uv * 32.0, vec2f(32.0), 3); let fib = pvn(vec2f(uv.x * 220.0 + n1 * 6.0, uv.y * 55.0), vec2f(220.0, 55.0));
     let fib2 = pvn(vec2f(uv.x * 60.0, uv.y * 200.0 + n1 * 5.0), vec2f(60.0, 200.0));
@@ -1235,8 +1233,8 @@ fn leafAt(p: vec2f, c: vec2f, ang: f32, len: f32, wid: f32) -> vec2f { // (másc
     let wr = pwor(vec2f(uv.x * 9.0, uv.y * 3.0) + pfbm(uv * vec2f(6.0, 3.0), vec2f(6.0, 3.0), 3) * 0.5, vec2f(9.0, 3.0));
     let fur = smoothstep(0.0, 0.16, wr.y - wr.x); let n = pfbm(uv * vec2f(48.0, 12.0), vec2f(48.0, 12.0), 3); let n2 = pfbm(uv * 5.0, vec2f(5.0), 3);
     h = fur * (0.55 + 0.4 * wr.z) + n * 0.14;
-    alb = mix(vec3f(0.07, 0.052, 0.04), vec3f(0.25, 0.21, 0.17), sat(h)) * (0.85 + n2 * 0.4);
-    alb = mix(alb, vec3f(0.16, 0.20, 0.09), smoothstep(0.15, 0.5, n2) * 0.4); rough = 0.9; ao = 0.45 + 0.55 * fur;
+    alb = mix(vec3f(0.12, 0.095, 0.075), vec3f(0.25, 0.21, 0.17), sat(h)) * (0.85 + n2 * 0.4);
+    alb = mix(alb, vec3f(0.16, 0.20, 0.09), smoothstep(0.15, 0.5, n2) * 0.4); rough = 0.9; ao = 0.72 + 0.28 * fur;
   } else if (L == 6u) { // tábuas
     let pl = uv.y * 4.0; let id = floor(pl); let f = fract(pl); let hh = hash11(id + 3.0);
     let gap = smoothstep(0.0, 0.035, f) * smoothstep(1.0, 0.965, f);
@@ -1374,8 +1372,9 @@ fn tvert(g: vec2f, L: vec4f) -> vec3f {
 @vertex fn vsShadow(@location(0) g: vec2f, @location(1) L: vec4f) -> @builtin(position) vec4f { return F.vp * vec4f(tvert(g, L), 1.0); }
 struct Mat { a: vec4f, n: vec4f };
 var<private> gDetail: bool = true;
+var<private> gBlur: f32 = 1.0;
 fn smp2(L: i32, xz: vec2f, sc: f32, gx: vec2f, gy: vec2f, far: f32) -> Mat { // albedo sempre; normal/rugosidade só perto
-  var m: Mat; m.a = textureSampleGrad(matA, sAni, xz * sc, L, gx * sc, gy * sc); m.n = vec4f(0.5, 0.5, 0.88, 0.9);
+  var m: Mat; m.a = textureSampleGrad(matA, sAni, xz * sc, L, gx * sc * gBlur, gy * sc * gBlur); m.n = vec4f(0.5, 0.5, 0.88, 0.9);
   if (gDetail) { m.n = textureSampleGrad(matN, sAni, xz * sc, L, gx * sc, gy * sc); }
   return m;
 }
@@ -1392,10 +1391,10 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   let nN = textureSample(nrmNearT, sClamp, uvn).xyz * 2.0 - 1.0;
   var N = normalize(mix(v.nf, nN, inNear));
   let nzA = textureSample(noiseT, sRep, xz / 37.0); let nzB = textureSample(noiseT, sRep, xz / 3.1);
-  let at = abs(fl.x) + (1.0 - inNear) * 60.0; let far = 0.0; gDetail = dist < 55.0;
+  let at = abs(fl.x) + (1.0 - inNear) * 60.0; let far = 0.0; gDetail = dist < 55.0; gBlur = 1.0 + smoothstep(6.0, 50.0, dist) * 1.6;
   let slope = 1.0 - N.y;
   // --- pesos ---
-  let track = 1.0 - smoothstep(2.75, 3.75, at + (nzB.x - 0.5) * 1.1);
+  let track = 1.0 - smoothstep(2.45, 4.1, at + (nzB.x - 0.5) * 1.6 + (nzA.z - 0.5) * 0.8);
   let hard = max(mk.r, max(mk.g, mk.a));
   var wDirt = track; let wMud = mk.r; let wGrav = max(mk.g, mk.a * 0.9); let wRock = max(mk.a * smoothstep(0.42, 0.62, nzB.y * 0.6 + nzA.z * 0.5), smoothstep(0.30, 0.48, slope + (nzB.y - 0.5) * 0.15));
   let strip = (1.0 - smoothstep(0.05, 0.60, at + (nzB.z - 0.5) * 0.9)) * (1.0 - hard) * track * 0.7 * smoothstep(0.3, 0.55, nzA.z + nzB.x * 0.3);
@@ -1405,7 +1404,7 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   var m = smp2(4, xz, 0.42, gx, gy, far);
   if (litter > 0.01) { m = hblend(m, smp2(9, xz, 0.55, gx, gy, far), litter); }
   if (wDirt > 0.01) { var d = smp2(0, xz, 0.40, gx, gy, far); if (strip > 0.01) { d = hblend(d, m, strip); } m = hblend(m, d, wDirt); }
-  if (wGrav > 0.01 || bed > 0.01) { m = hblend(m, smp2(1, xz, 0.55, gx, gy, far), max(wGrav, bed)); }
+  if (wGrav > 0.01 || bed > 0.01) { m = hblend(m, smp2(1, xz, 0.85, gx, gy, far), max(wGrav, bed)); }
   if (wMud > 0.01) { m = hblend(m, smp2(2, xz, 0.33, gx, gy, far), wMud); }
   if (wRock > 0.01) { m = hblend(m, smp2(3, xz, 0.37, gx, gy, far), wRock); }
   var alb = m.a.rgb; var rough = m.n.z; var ao = m.n.w; var nt = (m.n.xy * 2.0 - 1.0);
@@ -1451,6 +1450,8 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
     alb = mix(alb, cc, can); rough = mix(rough, 0.75, can); ao = mix(ao, 0.45 + 0.55 * c1.z, can);
     Nw = normalize(mix(Nw, normalize(v.nf + vec3f(c1.x - 0.5, 0.0, c1.y - 0.5) * 1.3 + vec3f(c2.x - 0.5, 0.0, c2.z - 0.5) * 0.6), can));
   }
+  // oclusão sob o carro (assenta o carro no chão)
+  { let dc = xz - F.car.xz; let fw = F.pad1.yz; let e = pow(dot(dc, fw) / 2.45, 2.0) + pow((dc.x * fw.y - dc.y * fw.x) / 1.08, 2.0); ao *= 1.0 - 0.72 * (1.0 - smoothstep(0.35, 1.15, e)) * (1.0 - smoothstep(0.2, 1.2, abs(p.y - F.car.y))) * step(0.5, dot(fw, fw)); }
   var o: GOut; o.alb = vec4f(alb, rough); o.nrm = vec4f(Nw, 0.0); o.misc = vec4f(0.0, ao, 0.0, pud); o.mv = motionOf(v.cur, v.prv); return o;
 }
 `;
@@ -1481,7 +1482,6 @@ struct SV { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
     let cov = a.a * (1.0 + smoothstep(12.0, 90.0, dist) * 0.9);
     if (cov < 0.36 + (ign(v.pos.xy, F.misc.x) - 0.5) * 0.22) { discard; }
     let hue = 0.85 + 0.3 * fract(v.seed * 7.3); alb = a.rgb * v.col.rgb * vec3f(hue, 1.0, 0.9) * 1.25; rough = 0.55; mid = 1.0; tr = 1.0;
-    let nt = textureSampleGrad(matN, sRep, v.uv, layer, gx, gy); ao *= nt.w;
   } else if (kind == 2) {
     let w0 = pow(abs(N), vec3f(4.0)); let w = w0 / (w0.x + w0.y + w0.z); let sc = 0.42;
     let ax = textureSampleGrad(matA, sRep, v.wp.zy * sc, 3, dpx.zy * sc, dpy.zy * sc); let ay = textureSampleGrad(matA, sRep, v.wp.xz * sc, 3, dpx.xz * sc, dpy.xz * sc); let az = textureSampleGrad(matA, sRep, v.wp.xy * sc, 3, dpx.xy * sc, dpy.xy * sc);
@@ -1521,7 +1521,7 @@ struct Ind { vc: u32, ic: atomic<u32>, fv: u32, fi: u32 };
   if (fade > 0.001 && max(abs(xz.x), abs(xz.y)) < 460.0) {
     let uv = nearUV(xz); let fl = textureSampleLevel(fieldT, sClamp, uv, 0.0); let mk = textureSampleLevel(maskT, sClamp, uv, 0.0);
     let nz = textureSampleLevel(noiseT, sRep, xz / 3.1, 0.0); let nA = textureSampleLevel(noiseT, sRep, xz / 37.0, 0.0);
-    let at = abs(fl.x); let track = 1.0 - smoothstep(2.75, 3.75, at + (nz.x - 0.5) * 1.1); let hard = max(mk.r, max(mk.g, mk.a));
+    let at = abs(fl.x); let track = 1.0 - smoothstep(2.45, 4.1, at + (nz.x - 0.5) * 1.6 + (nA.z - 0.5) * 0.8); let hard = max(mk.r, max(mk.g, mk.a));
     let strip = (1.0 - smoothstep(0.05, 0.60, at + (nz.z - 0.5) * 0.9)) * (1.0 - hard) * track * smoothstep(0.3, 0.55, nA.z + nz.x * 0.3);
     var dens = max((1.0 - track) * (1.0 - smoothstep(0.56, 0.72, nA.y + (nz.y - 0.5) * 0.25) * 0.7), strip * 0.8) * smoothstep(0.5, 1.6, fl.w) * (1.0 - mk.b);
     let nrm = textureSampleLevel(nrmNearT, sClamp, uv, 0.0).xyz * 2.0 - 1.0; dens *= smoothstep(0.62, 0.8, nrm.y);
@@ -1547,14 +1547,14 @@ const BS = array<f32, 7>(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 0.0);
   let b = blades[ii]; let hgt = b.p.w; if (hgt <= 0.0) { return o; }
   let ring = b.c.w >= 2.0; let h2x = b.c.w - select(0.0, 2.0, ring); let tall = b.q.z; let dry = b.q.w; let base = b.p.xyz;
   let d = distance(base.xz, F.cam.xz); let t = BT[vi]; let sd = BS[vi]; let a = b.q.x; let dir = vec2f(cos(a), sin(a)); let perp = vec2f(-dir.y, dir.x);
-  let wdt = select(0.012, 0.030, ring) * (1.0 + tall * 0.6) * (1.0 - t * 0.9) * (1.0 + d * 0.05);
+  let wdt = select(0.010, 0.015, ring) * (1.0 + tall * 0.5) * (1.0 - t * t * t * 0.96) * (1.0 + d * 0.035);
   let bend = (0.18 + fract(h2x * 7.7) * 0.45) * hgt * t * t;
   let loc = vec3f(perp.x * sd * wdt + dir.x * bend, hgt * t * (1.0 - 0.12 * t), perp.y * sd * wdt + dir.y * bend);
   let ww = t * t * (0.10 + hgt * 0.42); let wp = base + loc + windOff(base, ww, b.q.y, F.cam.w) * vec3f(1.0, 0.25, 1.0); let pw = base + loc + windOff(base, ww, b.q.y, F.sun.w) * vec3f(1.0, 0.25, 1.0);
   let dc = wp.xz - F.car.xz; let push = (1.0 - smoothstep(0.9, 1.7, length(dc))) * t; let wpp = wp + vec3f(normalize(dc + 1e-4).x, -0.6, normalize(dc + 1e-4).y) * push * hgt * 0.7;
   var c0 = mix(vec3f(0.040, 0.080, 0.016), vec3f(0.070, 0.105, 0.024), h2x); var c1 = mix(vec3f(0.105, 0.175, 0.035), vec3f(0.17, 0.20, 0.05), b.q.y);
   c1 = mix(c1, vec3f(0.36, 0.30, 0.13), dry * 0.55 + tall * 0.25 * t); c0 = mix(c0, vec3f(0.12, 0.10, 0.04), dry * 0.4);
-  o.col = mix(c0, c1, t) * (0.8 + 0.4 * b.c.z); o.ao = mix(0.30, 1.0, t);
+  o.col = mix(c0, c1, t) * (0.7 + 0.6 * b.c.z) * (0.8 + 0.4 * fract(h2x * 13.7)); o.ao = mix(0.30, 1.0, t);
   let nrm = vec3f(b.c.x, sqrt(max(1.0 - b.c.x * b.c.x - b.c.y * b.c.y, 0.0)), b.c.y); o.n = normalize(nrm + vec3f(dir.x, 0.0, dir.y) * 0.35 * t);
   o.pos = F.vp * vec4f(wpp, 1.0); o.cur = F.vpNJ * vec4f(wpp, 1.0); o.prv = F.pvp * vec4f(pw + (wpp - wp), 1.0); return o;
 }
@@ -1612,7 +1612,7 @@ const WG_LIGHT = WG_COMMON + FS_TRI + WG_VIEWPOS + /* wgsl */`
 @group(1) @binding(10) var aoT: texture_2d<f32>;
 @group(1) @binding(11) var histT: texture_2d<f32>;
 ` + wgShadow(1, 5, 6) + /* wgsl */`
-fn envAt(d: vec3f, rough: f32) -> vec3f { return textureSampleLevel(envT, sPano, dirToPano(d), rough * 6.5).rgb; }
+fn envAt(d: vec3f, rough: f32) -> vec3f { return textureSampleLevel(envT, sPano, dirToPano(d), rough * 7.5).rgb; }
 fn ggxD(nh: f32, a: f32) -> f32 { let a2 = a * a; let d = nh * nh * (a2 - 1.0) + 1.0; return a2 / (PI * d * d + 1e-7); }
 fn smithV(nl: f32, nv: f32, a: f32) -> f32 { let k = a * 0.5 + 1e-4; return 0.25 / ((nl * (1.0 - k) + k) * (nv * (1.0 - k) + k)); }
 fn envBRDF(f0: vec3f, rough: f32, nv: f32) -> vec3f { let c0 = vec4f(-1.0, -0.0275, -0.572, 0.022); let c1 = vec4f(1.0, 0.0425, 1.04, -0.04); let r = rough * c0 + c1; let a004 = min(r.x * r.x, exp2(-9.28 * nv)) * r.x + r.y; let ab = vec2f(-1.04, 1.04) * a004 + r.zw; return f0 * ab.x + ab.y; }
@@ -1665,7 +1665,7 @@ fn ssr(P: vec3f, R: vec3f, n0: f32) -> vec4f {
   let a = rough * rough; let Fr = f0 + (1.0 - f0) * pow(1.0 - vh, 5.0);
   var col = (diffC / PI + Fr * (ggxD(nh, a) * smithV(nl, nv, a))) * nl * sc * sh;
   // folhagem: luz atravessando
-  if (mat == 1) { let tr = gm.b; let back = sat(dot(-N, L) * 0.6 + 0.4); let vl = pow(sat(dot(V, -L)), 4.0); col += alb * sc * mix(sh, 1.0, 0.12) * tr * back * (0.22 + 0.9 * vl) / PI * 1.9; }
+  if (mat == 1) { let tr = gm.b; let back = sat(dot(-N, L) * 0.6 + 0.4); let vl = pow(sat(dot(V, -L)), 4.0); col += alb * sc * mix(sh, 1.0, 0.12) * tr * back * (0.20 + 0.5 * vl) / PI * 1.1; }
   // ambiente difuso
   let amb = envAt(normalize(N + vec3f(0.0, 0.25, 0.0)), 1.0) * 1.0 + envAt(vec3f(0.0, 1.0, 0.0), 1.0) * 0.25;
   col += diffC * amb * ao;
@@ -1674,13 +1674,13 @@ fn ssr(P: vec3f, R: vec3f, n0: f32) -> vec4f {
   var env = envAt(R, rough) * mix(1.0, sat(1.0 + R.y * 4.0) * 0.6 + 0.4, 0.5);
   var cenv = envAt(R, 0.0);
   let smoothK = max(coat, 1.0 - smoothstep(0.12, 0.36, rough));
-  if (smoothK > 0.01 && vz < 150.0) { let h = ssr(wp + N * 0.01 * (1.0 + vz * 0.1), R, n1); cenv = mix(cenv, h.rgb, h.a); if (coat < 0.5 || rough < 0.2) { env = mix(env, h.rgb, h.a * (1.0 - smoothstep(0.12, 0.36, rough))); } }
+  if (smoothK > 0.01 && vz < 150.0) { let h = ssr(wp + N * 0.01 * (1.0 + vz * 0.1), R, n1); cenv = mix(cenv, h.rgb, h.a * select(1.0, 0.55, coat > 0.5)); if (coat < 0.5 || rough < 0.2) { env = mix(env, h.rgb, h.a * (1.0 - smoothstep(0.12, 0.36, rough))); } }
   col += env * envBRDF(f0, rough, nv) * so * (1.0 - coat * 0.0);
   if (coat > 0.0) { // verniz
     let Fc = (0.04 + 0.96 * pow(1.0 - nv, 5.0)) * coat; let ac = 0.0022;
     col = col * (1.0 - Fc) + cenv * Fc * mix(so, 1.0, 0.5) + sc * sh * nl * (ggxD(nh, 0.006) * smithV(nl, nv, 0.006)) * (0.04 + 0.96 * pow(1.0 - vh, 5.0)) * coat * (1.0 + ac);
   }
-  if (mat == 3) { col += alb * gm.b * 30.0; }
+  if (mat == 3) { col += alb * gm.b * 9.0; }
   return vec4f(col, 1.0);
 }
 `;
@@ -1701,7 +1701,7 @@ fn dens(p: vec3f) -> f32 { return 0.00026 * exp(-max(p.y - 19.0, 0.0) / 220.0) +
     let f0 = f32(k) / NS; let f1 = f32(k + 1) / NS; let t0 = nearEnd * f0 * f0; let t1 = nearEnd * f1 * f1; let t = mix(t0, t1, n0); let p = cam + rd * t;
     let nz = textureSampleLevel(noise3T, sRep, p * vec3f(0.021, 0.05, 0.021) + vec3f(F.cam.w * 0.012, 0.0, F.cam.w * 0.007), 0.0).x;
     let de = dens(p) * (0.55 + 1.0 * nz); let s = shadowAt(p, F.sun.xyz, t, fract(n0 + f0 * 7.0), 2);
-    let a = 1.0 - exp(-de * (t1 - t0)); acc += T * a * (sc * s * hg * 5.2 + ambC * 12.0); T *= 1.0 - a;
+    let a = 1.0 - exp(-de * (t1 - t0)); acc += T * a * (sc * s * min(hg, 0.9) * 3.6 + ambC * 12.0); T *= 1.0 - a;
   }
   if (dist > 170.0) { // trecho analítico
     let y0 = cam.y + rd.y * 170.0 - 19.0; let ry = rd.y; let len = dist - 170.0;
@@ -1710,7 +1710,7 @@ fn dens(p: vec3f) -> f32 { return 0.00026 * exp(-max(p.y - 19.0, 0.0) / 220.0) +
       if (abs(ry) > 1e-4) { od += b * e0 * hsc / ry * (1.0 - exp(-ry * len / hsc)); } else { od += b * e0 * len; } }
     od = max(od, 0.0); let a = 1.0 - exp(-od);
     let hz = textureSampleLevel(envT, sPano, dirToPano(normalize(vec3f(rd.x, max(rd.y, 0.02) + 0.06, rd.z))), 3.0).rgb;
-    acc += T * a * (hz * 0.62 + vec3f(0.10, 0.14, 0.20) + sc * hg * 0.6); T *= 1.0 - a;
+    acc += T * a * (hz * 0.62 + vec3f(0.10, 0.14, 0.20) + sc * min(hg, 0.9) * 0.35); T *= 1.0 - a;
   }
   return vec4f(acc, T);
 }
@@ -1756,7 +1756,7 @@ fn hist(uv: vec2f) -> vec3f { // Catmull-Rom em 5 amostras
   let mean = m1 / 9.0; let sd = sqrt(max(m2 / 9.0 - mean * mean, vec3f(0.0)));
   let spd = length(mv * F.res.xy); let gam = mix(1.35, 0.9, sat(spd / 12.0));
   let lo = max(mn, mean - sd * gam); let hi = min(mx, mean + sd * gam);
-  if (puv.x < 0.0 || puv.x > 1.0 || puv.y < 0.0 || puv.y > 1.0 || F.misc.x < 0.5) { return vec4f(itm(cc), 1.0); }
+  if (puv.x < 0.0 || puv.x > 1.0 || puv.y < 0.0 || puv.y > 1.0 || F.misc.x < 0.5 || F.pad1.w > 0.5) { return vec4f(itm(cc), 1.0); }
   var h = tm(hist(puv));
   // recorte em direção ao centro da vizinhança
   let cen = 0.5 * (lo + hi); let ext = 0.5 * (hi - lo) + 1e-5; let dv = h - cen; let u = abs(dv) / ext; let mu = max(u.x, max(u.y, u.z)); if (mu > 1.0) { h = cen + dv / mu; }
@@ -1770,13 +1770,13 @@ const WG_MB = WG_COMMON + FS_TRI + /* wgsl */`
 @group(1) @binding(2) var depthT: texture_depth_2d;
 @fragment fn fs(i: FsV) -> @location(0) vec4f {
   let px = vec2i(i.pos.xy); let res = vec2i(F.res.xy); let c0 = textureLoad(colT, px, 0).rgb;
-  var mv = textureLoad(mvT, px, 0).xy * (0.55 / max(F.misc.y * 60.0, 0.25)); let l = length(mv * F.res.xy);
-  if (l < 1.2) { return vec4f(c0, 1.0); }
-  let mxl = 46.0; if (l > mxl) { mv *= mxl / l; }
+  var mv = textureLoad(mvT, px, 0).xy * (0.32 / max(F.misc.y * 60.0, 0.25)); let l = length(mv * F.res.xy);
+  if (l < 1.2 || F.pad1.w > 0.5) { return vec4f(c0, 1.0); }
+  let mxl = 30.0; if (l > mxl) { mv *= mxl / l; }
   let d0 = linDepth(textureLoad(depthT, px, 0)); let n0 = ign(i.pos.xy, F.misc.x); var acc = c0; var ws = 1.0; let ml = min(l, mxl);
   for (var k = 0; k < 9; k++) {
     let t = (f32(k) + n0) / 9.0 - 0.5; let uv = i.uv + mv * t; let q = clamp(vec2i(uv * F.res.xy), vec2i(0), res - 1);
-    let ms = length(textureLoad(mvT, q, 0).xy * F.res.xy) * (0.55 / max(F.misc.y * 60.0, 0.25)); let ds = linDepth(textureLoad(depthT, q, 0));
+    let ms = length(textureLoad(mvT, q, 0).xy * F.res.xy) * (0.32 / max(F.misc.y * 60.0, 0.25)); let ds = linDepth(textureLoad(depthT, q, 0));
     let w = max(sat(ms / (ml * 0.6)), sat((ds - d0) / (d0 * 0.05 + 0.2)) * 0.0) + 0.02;
     acc += textureSampleLevel(colT, sClamp, uv, 0.0).rgb * w; ws += w;
   }
@@ -1845,21 +1845,21 @@ struct WV { @builtin(position) pos: vec4f, @location(0) wp: vec3f, @location(1) 
   let q = vec2f(dot(v.wp.xz, flow), dot(v.wp.xz, side));
   let n1 = textureSample(noiseT, sRep, q * vec2f(0.21, 0.45) - vec2f(t * 0.22, 0.0)).xy; let n2 = textureSample(noiseT, sRep, q * vec2f(0.55, 0.9) - vec2f(t * 0.41, t * 0.03) + 0.4).yz; let n3 = textureSample(noiseT, sRep, q * vec2f(1.7, 2.3) - vec2f(t * 0.7, 0.0)).zx;
   let dv = sat(thick * abs(V.y) * 1.0 + thick * 0.2);
-  let amp = 0.10 + 0.10 * (1.0 - smoothstep(0.0, 0.25, dv)) + F.car.w * 0.0;
+  let amp = 0.045 + 0.05 * (1.0 - smoothstep(0.0, 0.25, dv));
   let nl = (n1 - 0.5) * 1.0 + (n2 - 0.5) * 0.7 + (n3 - 0.5) * 0.35; let nw = flow * nl.x + side * nl.y; let N = normalize(vec3f(nw.x * amp, 1.0, nw.y * amp));
   var ruv = uv + N.xz * vec2f(0.035, -0.035) * sat(thick * 3.0) / max(zw * 0.15, 1.0);
   let zr = linDepth(textureLoad(depthT, clamp(vec2i(ruv * F.res.xy), vec2i(0), vec2i(F.res.xy) - 1), 0)); if (zr < zw) { ruv = uv; }
   var refr = textureSampleLevel(sceneT, sClamp, ruv, 0.0).rgb; let depthW = max(zr - zw, thick) * (0.35 + 0.65 * abs(V.y));
   let n0 = ign(v.pos.xy, F.misc.x); let sh = shadowAt(v.wp, vec3f(0.0, 1.0, 0.0), zw, n0, 4); let sc = F.sunCol.rgb;
   let amb = textureSampleLevel(envT, sPano, vec2f(0.5, 0.05), 7.0).rgb;
-  refr = refr * exp(-depthW * vec3f(2.6, 1.5, 1.3)) + vec3f(0.16, 0.115, 0.065) * (sc * sh * 0.06 + amb * 0.5) * (1.0 - exp(-depthW * 3.0));
+  refr = refr * exp(-depthW * vec3f(1.6, 0.9, 0.8)) + vec3f(0.16, 0.115, 0.065) * (sc * sh * 0.06 + amb * 0.5) * (1.0 - exp(-depthW * 3.0));
   let nv = sat(dot(N, V)); let Fr = 0.02 + 0.98 * pow(1.0 - nv, 5.0); let R = reflect(-V, N);
-  var refl = textureSampleLevel(envT, sPano, dirToPano(normalize(vec3f(R.x, abs(R.y) + 0.02, R.z))), 1.0).rgb;
+  var refl = textureSampleLevel(envT, sPano, dirToPano(normalize(vec3f(R.x, abs(R.y) + 0.02, R.z))), 1.5).rgb * 0.75;
   let H = normalize(F.sun.xyz + V); let sp = pow(sat(dot(N, H)), 900.0) * 60.0 * sh;
   var col = mix(refr, refl, Fr) + sc * sp * Fr;
   let foamN = textureSample(noiseT, sRep, q * vec2f(1.1, 1.6) - vec2f(t * 0.5, 0.0)).w * 0.6 + n3.x * 0.6;
-  let foam = smoothstep(0.075, 0.0, depthW) * smoothstep(0.35, 0.8, foamN) * 0.8 + smoothstep(0.80, 0.98, foamN * (0.6 + 0.6 * n2.x)) * 0.22;
-  col = mix(col, (sc * sh * 0.22 + amb * 1.1) * 0.8, sat(foam));
+  let foam = smoothstep(0.05, 0.0, depthW) * smoothstep(0.45, 0.85, foamN) * 0.55 + smoothstep(0.88, 1.0, foamN * (0.6 + 0.6 * n2.x)) * 0.10;
+  col = mix(col, (sc * sh * 0.10 + amb * 0.7) * 0.8, sat(foam));
   return vec4f(col, smoothstep(0.0, 0.025, thick));
 }
 `;
@@ -1887,7 +1887,7 @@ struct QV { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
 }
 @fragment fn fs(v: QV) -> @location(0) vec4f {
   let r = length(v.uv); if (r > 1.0) { discard; }
-  let zs = linDepth(textureLoad(depthT, vec2i(v.pos.xy), 0)); let soft = sat((zs - v.pos.w) / 0.35 + 0.15) * sat((v.pos.w - 0.25) / 0.9);
+  let zs = linDepth(textureLoad(depthT, vec2i(v.pos.xy), 0)); let soft = sat((zs - v.pos.w) / 0.35 + 0.15) * sat((v.pos.w - 0.4) / 2.2);
   let ca = cos(v.sd * 6.28); let sa = sin(v.sd * 6.28); let ruv = vec2f(v.uv.x * ca - v.uv.y * sa, v.uv.x * sa + v.uv.y * ca);
   let n = textureSampleLevel(noiseT, sRep, ruv * 0.21 + v.sd * 3.0, 0.0);
   var a = smoothstep(1.0, 0.25, r + (n.x - 0.5) * 0.7) * (0.55 + 0.6 * n.y);
@@ -1926,17 +1926,16 @@ fn classify(p: vec3f, n: vec3f) -> i32 {
   if ((n.y < -0.55 && y < 0.56) || (da < 0.45 && ax < 0.80 && y < 0.83)) { return 11; }
   let anx = abs(n.x);
   // lanterna traseira: sobe pela coluna e dobra a esquina
-  if (y > 0.80 && y < 1.385 && ((z < -1.93 && ax > 0.662) || (z < -1.885 && ax > 0.80))) { return 6; }
+  if (y > 0.86 && y < 1.40 && ((z < -1.95 && ax > 0.705) || (z < -1.99 && ax > 0.80))) { return 6; }
   // farol: dobra a esquina dianteira
   let hlTop = 1.005 - 0.03 * smoothstep(0.45, 0.9, ax); let hlBot = 0.80 + 0.03 * smoothstep(0.7, 0.4, ax);
   if (z > 1.74 && y > hlBot && y < hlTop && ax > 0.405 && (n.z > 0.2 || z > 1.76)) { return 5; }
   if (anx > 0.45 && y > 0.95 && z < 0.92 && z > -1.85 && n.y < 0.75) { // área envidraçada lateral
-    let zf = 0.64 - (y - 1.03) * 0.98; let zr = -1.56 + (y - 1.07) * 0.34;
+    let zf = 0.64 - (y - 1.03) * 0.98; let zr = -1.44 + (y - 1.07) * 0.30;
     let d = max(max(yBeltF(z) + 0.038 + 0.075 * smoothstep(-1.12, -1.5, z) - y, y - 1.512), max(z - zf, zr - z));
-    if (z > zf && z < zf + 0.16 - (y - 1.03) * 0.5 && y > yBeltF(z) + 0.03 && y < 1.2) { return 3; }
     if (d < 0.0) {
       if (d > -0.020) { return 4; }
-      if (abs(z + 0.165) < 0.058 || abs(z + 1.075) < 0.040) { return 3; }
+      if (abs(z + 0.165) < 0.058 || abs(z + 1.045) < 0.055) { return 3; }
       return select(2, 1, z > -0.165);
     }
     if (d < 0.012) { return 4; }
@@ -1951,11 +1950,11 @@ fn classify(p: vec3f, n: vec3f) -> i32 {
     if (d < 0.0) { if (d > -0.022) { return 4; } return 2; }
     if (y < 0.46) { return 8; }
     if (y > 0.515 && y < 0.578 && ax > 0.50 && ax < 0.76) { return 13; }
-    if (p.x > 0.165 && p.x < 0.565 && y > 0.795 && y < 0.925) { return 10; }
+    if (p.x > 0.30 && p.x < 0.70 && y > 0.775 && y < 0.905) { return 10; }
   }
   if (n.z > 0.35 && z > 1.80) { // frente
-    let dg = max(ax - 0.392, max(0.732 - y, y - 0.950));
-    if (dg < 0.0) { if (dg > -0.020) { return 9; } return 7; }
+    let dg = max(ax - (0.335 + 0.07 * sat((y - 0.735) / 0.215)), max(0.735 - y, y - 0.950));
+    if (dg < 0.0) { if (dg > -0.013) { return 9; } return 7; }
     if (y < 0.35) { return 8; }
     if (ax < 0.53 && y > 0.385 && y < 0.515) { return 8; }
     if (length(vec2f(ax - 0.675, y - 0.465)) < 0.060) { return 12; }
@@ -1963,7 +1962,6 @@ fn classify(p: vec3f, n: vec3f) -> i32 {
   }
   if (y < 0.385 && abs(z) < 0.92 && anx > 0.3) { return 8; }
   if (y < 0.40 && abs(z) > 1.72) { return 8; }
-  if (anx > 0.6 && z > 0.895 && z < 0.955 && y > 0.80 && y < 0.95) { return 8; }
   return 0;
 }
 fn grooves(p: vec3f, n: vec3f) -> f32 { // juntas de portas, capô e tampa
@@ -1982,11 +1980,11 @@ fn grooves(p: vec3f, n: vec3f) -> f32 { // juntas de portas, capô e tampa
   if (n.y > 0.5 && z > 0.98 && z < 2.0) { g = max(g, (1.0 - smoothstep(0.0, w, abs(z - 0.985))) * step(ax, 0.74)); }
   return g;
 }
-struct Surf { alb: vec3f, rough: f32, metal: f32, coat: f32, emis: f32, mat: f32, ao: f32, glass: f32 };
+struct Surf { alb: vec3f, rough: f32, metal: f32, coat: f32, emis: f32, mat: f32, ao: f32, glass: f32, bx: f32 };
 fn dec(uv: vec2f, r: vec4f) -> f32 { if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return 0.0; } return textureSampleLevel(decT, sClamp, r.xy + uv * r.zw, 0.0).r; }
 fn shade(v: CV, ff: bool) -> Surf {
-  var s: Surf; s.alb = vec3f(0.5); s.rough = 0.5; s.metal = 0.0; s.coat = 0.0; s.emis = 0.0; s.mat = 0.0; s.ao = 1.0; s.glass = 0.0;
-  let k = i32(v.kind + 0.5); let p = v.op; let n = normalize(v.on); let paint = vec3f(0.56, 0.57, 0.585);
+  var s: Surf; s.alb = vec3f(0.5); s.rough = 0.5; s.metal = 0.0; s.coat = 0.0; s.emis = 0.0; s.mat = 0.0; s.ao = 1.0; s.glass = 0.0; s.bx = 0.0;
+  let k = i32(v.kind + 0.5); let p = v.op; let n = normalize(v.on); let paint = vec3f(0.62, 0.63, 0.645);
   let fl = textureSampleLevel(noiseT, sRep, (p.zy + p.xx * 0.7) * 23.0, 0.0).w; let flk = textureSampleLevel(noiseT, sRep, (p.zy + p.xx) * 61.0, 0.0).w;
   var dirtable = 1.0;
   if (k == 10) {
@@ -1994,50 +1992,55 @@ fn shade(v: CV, ff: bool) -> Surf {
     if (c == 1 || c == 2) { s.glass = f32(c); return s; }
     if (!ff) { s.alb = vec3f(0.055, 0.055, 0.06); s.rough = 0.85; s.ao = 0.7; if (c == 11) { s.alb = vec3f(0.02); } return s; }
     if (c == 0) {
-      s.alb = paint * (0.97 + 0.06 * fl); s.metal = 0.70; s.rough = 0.36 + 0.05 * flk; s.coat = 1.0; s.mat = 2.0;
+      s.alb = paint * (0.97 + 0.06 * fl); s.metal = 0.82; s.rough = 0.31 + 0.02 * flk; s.coat = 1.0; s.mat = 2.0;
+      if (n.y > 0.5 && p.z > 1.0) { let dcr = (ax - (0.40 + (p.z - 1.0) * 0.03)) / 0.022; s.bx = sign(p.x) * dcr * exp(-dcr * dcr) * 0.5; }
       let g = grooves(p, n); s.alb = mix(s.alb, vec3f(0.01), g); s.coat *= 1.0 - g; s.ao = 1.0 - g * 0.6;
       // emblema GRAND VITARA na tampa
-      if (n.z < -0.5 && p.z < -1.9) { let e = dec(vec2f((0.60 - p.x) / 0.36, (1.012 - p.y) / 0.055), vec4f(0.5, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.9), e); s.metal = mix(s.metal, 1.0, e); s.rough = mix(s.rough, 0.12, e); }
+      if (n.z < -0.5 && p.z < -1.9) { let e = dec(vec2f((0.69 - p.x) / 0.36, (1.0 - p.y) / 0.055), vec4f(0.5, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.9), e); s.metal = mix(s.metal, 1.0, e); s.rough = mix(s.rough, 0.12, e); }
     } else if (c == 3) { s.alb = vec3f(0.012); s.rough = 0.06; s.coat = 1.0; s.mat = 2.0; }
     else if (c == 4) { s.alb = vec3f(0.014); s.rough = 0.55; }
     else if (c == 5) { // farol: refletor cromado, projetor e lente
-      let q = vec2f(ax, p.y); let d1 = length(q - vec2f(0.56, 0.905)); let d2 = length(q - vec2f(0.735, 0.900));
+      let q = vec2f(ax, p.y); let d1 = length((q - vec2f(0.63, 0.905)) * vec2f(0.8, 1.0)); let d2 = 1.0;
       s.alb = vec3f(0.80, 0.82, 0.84) * (0.75 + 0.25 * sin(ax * 260.0)); s.metal = 1.0; s.rough = 0.16; s.coat = 1.0; s.mat = 2.0;
-      let ring = smoothstep(0.078, 0.072, d1) * smoothstep(0.056, 0.062, d1) + smoothstep(0.062, 0.056, d2) * smoothstep(0.042, 0.048, d2);
-      s.alb = mix(s.alb, vec3f(0.03), ring); let lens = smoothstep(0.056, 0.050, d1) + smoothstep(0.042, 0.037, d2); let hb = min(min(p.y - (0.80 + 0.03 * smoothstep(0.7, 0.4, ax)), 1.005 - 0.03 * smoothstep(0.45, 0.9, ax) - p.y), ax - 0.405); s.alb = mix(vec3f(0.02), s.alb, smoothstep(0.008, 0.016, hb)); s.metal *= smoothstep(0.008, 0.016, hb); s.alb = mix(s.alb, vec3f(0.55, 0.60, 0.66), lens); s.rough = mix(s.rough, 0.05, lens);
+      let ring = smoothstep(0.094, 0.088, d1) * smoothstep(0.074, 0.080, d1) + 0.0 * d2;
+      s.alb = mix(s.alb, vec3f(0.03), ring); let lens = smoothstep(0.074, 0.066, d1) * (0.6 + 0.4 * smoothstep(0.03, 0.02, d1)); let hb = min(min(p.y - (0.80 + 0.03 * smoothstep(0.7, 0.4, ax)), 1.005 - 0.03 * smoothstep(0.45, 0.9, ax) - p.y), ax - 0.405); s.alb = mix(vec3f(0.02), s.alb, smoothstep(0.008, 0.016, hb)); s.metal *= smoothstep(0.008, 0.016, hb); s.alb = mix(s.alb, vec3f(0.55, 0.60, 0.66), lens); s.rough = mix(s.rough, 0.05, lens);
       if (ax > 0.83) { s.alb = vec3f(0.85, 0.42, 0.06) * (0.7 + 0.3 * sin(p.y * 300.0)); s.metal = 0.5; }
       dirtable = 0.6;
     } else if (c == 6) { // lanterna: vermelha com frisos; ré clara embaixo; acende no freio
       let rib = 0.72 + 0.28 * sin(p.y * 330.0); s.alb = vec3f(0.36, 0.008, 0.008) * rib; s.rough = 0.22; s.metal = 0.25; s.coat = 1.0; s.mat = 2.0;
       let cr = min(abs(p.y - 1.215), abs(p.y - 1.065)); s.alb = mix(s.alb, vec3f(0.55, 0.02, 0.015), smoothstep(0.055, 0.045, cr) * 0.8);
-      if (p.y < 0.935) { s.alb = vec3f(0.62, 0.62, 0.64) * rib; s.metal = 0.6; if (C.p.w > 0.5) { s.mat = 3.0; s.emis = 0.35; s.alb = vec3f(1.0, 0.95, 0.85); } }
-      else if (C.p.z > 0.02 && p.y > 0.99) { s.mat = 3.0; s.emis = C.p.z * (0.55 + 0.6 * smoothstep(0.06, 0.03, cr)); s.alb = vec3f(1.0, 0.045, 0.02); }
+      if (p.y < 0.945) { s.alb = vec3f(0.80, 0.80, 0.82) * (0.9 + 0.1 * rib); s.metal = 0.3; if (C.p.w > 0.5) { s.mat = 3.0; s.emis = 0.35; s.alb = vec3f(1.0, 0.95, 0.85); } }
+      else if (C.p.z > 0.02 && p.y > 0.99) { s.mat = 3.0; s.emis = C.p.z * (0.45 + 0.5 * smoothstep(0.06, 0.03, cr)); s.alb = vec3f(1.0, 0.03, 0.012); }
       dirtable = 0.6;
     } else if (c == 7) { // grade: colmeia escura, barra cromada e emblema
       let hx = fract(vec2f(ax * 38.0, p.y * 44.0 + floor(ax * 38.0) * 0.5)); let mesh = smoothstep(0.10, 0.2, min(min(hx.x, 1.0 - hx.x), min(hx.y, 1.0 - hx.y)));
       s.alb = mix(vec3f(0.06), vec3f(0.008), mesh); s.rough = 0.45; s.ao = 0.45 + 0.4 * (1.0 - mesh);
-      let bar = 1.0 - smoothstep(0.014, 0.018, abs(p.y - 0.842)); let em = dec(vec2f((p.x + 0.07) / 0.14, (0.912 - p.y) / 0.14), vec4f(0.5, 0.5, 0.125, 0.5)); let disc = 1.0 - smoothstep(0.066, 0.07, length(vec2f(p.x, p.y - 0.842)));
+      let by = abs(fract((p.y - 0.735) / 0.0717) - 0.5); let bar = (1.0 - smoothstep(0.30, 0.36, by)) * 0.0; let slat = 1.0 - smoothstep(0.28, 0.34, by); let em = dec(vec2f((p.x + 0.085) / 0.17, (0.927 - p.y) / 0.17), vec4f(0.5, 0.5, 0.125, 0.5)); let disc = 0.0;
+      s.alb = mix(s.alb, vec3f(0.11, 0.11, 0.115), slat); s.ao = mix(s.ao, 0.9, slat);
       s.alb = mix(s.alb, vec3f(0.86), max(bar, em)); s.metal = max(bar, em); s.rough = mix(s.rough, 0.10, max(bar, em)); s.ao = mix(s.ao, 1.0, max(bar, em));
       if (disc > 0.0 && em < 0.5) { s.alb = mix(s.alb, vec3f(0.02), disc * (1.0 - bar)); }
     } else if (c == 8) { s.alb = vec3f(0.030, 0.031, 0.033) * (0.8 + 0.4 * fl); s.rough = 0.58;
       if (n.z > 0.35 && p.y > 0.385 && p.y < 0.515 && ax < 0.53) { s.alb *= 0.4 + 0.6 * step(0.5, fract(p.y * 46.0)); s.ao = 0.6; } }
     else if (c == 9) { s.alb = vec3f(0.88); s.metal = 1.0; s.rough = 0.09; }
     else if (c == 10) { // placa genérica
-      var u = vec2f(0.0); if (p.z < 0.0) { u = vec2f((0.565 - p.x) / 0.40, (0.925 - p.y) / 0.13); } else { u = vec2f((p.x + 0.205) / 0.41, (0.678 - p.y) / 0.13); }
+      var u = vec2f(0.0); if (p.z < 0.0) { u = vec2f((0.70 - p.x) / 0.40, (0.905 - p.y) / 0.13); } else { u = vec2f((p.x + 0.205) / 0.41, (0.678 - p.y) / 0.13); }
       let tx = dec(vec2f(u.x, (u.y - 0.2) / 0.78), vec4f(0.0, 0.5, 0.5, 0.5)); s.alb = mix(vec3f(0.72, 0.72, 0.70), vec3f(0.03), tx); if (u.y < 0.17) { s.alb = vec3f(0.03, 0.10, 0.42); }
       let ed = min(min(u.x, 1.0 - u.x) * 3.1, min(u.y, 1.0 - u.y)); if (ed < 0.05) { s.alb = vec3f(0.03); } s.rough = 0.35;
     } else if (c == 11) { s.alb = vec3f(0.018); s.rough = 0.9; s.ao = 0.5; }
     else if (c == 12) { let d = length(vec2f(ax - 0.675, p.y - 0.465)); s.alb = mix(vec3f(0.75, 0.78, 0.8), vec3f(0.03), smoothstep(0.045, 0.052, d)); s.metal = 1.0 - smoothstep(0.045, 0.052, d); s.rough = 0.12; s.coat = 1.0; s.mat = 2.0; }
     else if (c == 13) { s.alb = vec3f(0.45, 0.01, 0.01) * (0.7 + 0.3 * sin(ax * 500.0)); s.rough = 0.25; s.coat = 1.0; s.mat = 2.0; }
   } else if (k == 11 || k == 18) {
-    s.alb = paint * (0.97 + 0.06 * fl); s.metal = 0.70; s.rough = 0.36 + 0.05 * flk; s.coat = 1.0; s.mat = 2.0;
-    if (k == 18 && p.z < -2.30) { let e = dec(vec2f(0.5 - (p.x + 0.10) / 0.50, 0.5 - (p.y - 0.955) / 0.125), vec4f(0.0, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.10, 0.10, 0.11), e); s.metal *= 1.0 - e * 0.7; }
+    s.alb = paint; s.metal = 0.75; s.rough = 0.34; s.coat = 1.0; s.mat = 2.0;
+    if (k == 18) { let rr = length(vec2f(p.x + 0.08, p.y - 0.955));
+      if (rr > 0.318 || abs(n.z) < 0.6) { s.alb = vec3f(0.022); s.metal = 0.0; s.rough = 0.85; s.coat = 0.0; s.mat = 0.0; let tr = step(0.5, fract(atan2(p.y - 0.955, p.x + 0.08) * 9.0)) * step(abs(n.z), 0.4); s.alb *= 1.0 - tr * 0.5; }
+      else { let e = dec(vec2f(0.5 - (p.x + 0.08) / 0.44, 0.5 - (p.y - 0.955) / 0.11), vec4f(0.0, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.92), e); s.metal = mix(s.metal, 1.0, e); s.rough = mix(s.rough, 0.10, e); } }
   } else if (k == 12) { s.alb = v.col.rgb; s.rough = 0.42; }
   else if (k == 13) { s.alb = v.col.rgb * (0.85 + 0.3 * fl); s.rough = 0.88; s.ao = 0.75; dirtable = 0.0; }
   else if (k == 14) { // liga leve: face dos raios clara, vãos escuros
-    let r = v.uv.x * 0.224; let a = v.uv.y; let kk = fract(a / 6.2832 * 5.0); let ad = abs(kk - 0.5) * 2.0 * (PI / 5.0) * r; let rn = v.uv.x; let sw = 0.030 + 0.016 * rn;
+    let r = v.uv.x * 0.238; let a = v.uv.y; let kk = fract(a / 6.2832 * 5.0); let ad = abs(kk - 0.5) * 2.0 * (PI / 5.0) * r; let rn = v.uv.x; let sw = 0.030 + 0.016 * rn;
     let face = max(max(1.0 - smoothstep(sw, sw + 0.012, ad), 1.0 - smoothstep(0.052, 0.064, r)), smoothstep(0.186, 0.196, r));
-    s.alb = mix(vec3f(0.02), vec3f(0.80, 0.805, 0.82), face); s.metal = face * 0.6; s.rough = mix(0.7, 0.30, face); s.ao = mix(0.35, 1.0, face);
+    let twin = (1.0 - smoothstep(0.003, 0.007, ad)) * smoothstep(0.07, 0.09, r) * (1.0 - smoothstep(0.17, 0.19, r));
+    s.alb = mix(vec3f(0.02), vec3f(0.70, 0.705, 0.72), face * (1.0 - twin * 0.85)); s.metal = face * 0.45; s.rough = mix(0.7, 0.36, face); s.ao = mix(0.35, 1.0, face);
     let la = fract(a / 6.2832 * 5.0 + 0.5) - 0.5; let lug = length(vec2f(la * 2.0 * PI / 5.0 * r, r - 0.056)); s.alb = mix(s.alb, vec3f(0.25), smoothstep(0.011, 0.008, lug)); if (r < 0.03) { s.alb = vec3f(0.30, 0.30, 0.32); s.rough = 0.35; }
     dirtable = 0.9;
   } else if (k == 15) { // pneu: sulcos na banda, ombro em blocos, flanco liso
@@ -2046,8 +2049,8 @@ fn shade(v: CV, ff: bool) -> Surf {
     let zig = abs(fract(u * 22.0) - 0.5) * 0.05; let gc = min(abs(ac - 0.045 - zig), abs(ac - 0.125 + zig));
     let cg = 1.0 - smoothstep(0.008, 0.014, gc); let lg = 1.0 - smoothstep(0.10, 0.17, abs(fract(u * 44.0 + ac * 3.5 + step(0.5, w) * 0.5) - 0.5));
     let sh = smoothstep(0.155, 0.18, ac) * (1.0 - smoothstep(0.12, 0.2, abs(fract(u * 30.0 + step(0.5, w) * 0.5) - 0.5)));
-    let gr = max(max(cg, lg * smoothstep(0.02, 0.05, ac)) * tread, sh * smoothstep(0.33, 0.24, ac));
-    s.alb *= 1.0 - gr * 0.75; s.ao = 1.0 - gr * 0.65; s.rough = mix(s.rough, 0.95, gr);
+    let gr = max(cg, lg * smoothstep(0.02, 0.05, ac) * 0.6) * tread + sh * 0.0;
+    s.alb *= 1.0 - gr * 0.6; s.ao = 1.0 - gr * 0.5; s.rough = mix(s.rough, 0.95, gr);
     let sw = 1.0 - tread; s.alb = mix(s.alb, vec3f(0.035), sw * smoothstep(0.5, 0.3, abs(fract(ac * 30.0) - 0.5)) * 0.4);
     dirtable = 1.6;
   } else if (k == 16) { s.alb = v.col.rgb; s.metal = 1.0; s.rough = 0.35; }
@@ -2056,11 +2059,11 @@ fn shade(v: CV, ff: bool) -> Surf {
   if (dirtable > 0.0) {
     let low = 1.0 - smoothstep(0.35, 1.25, p.y); let rear = smoothstep(0.6, -2.1, p.z) * 0.5 + 0.25; let da = min(abs(p.z - 1.32 + 0.35), abs(p.z + 1.32 + 0.35));
     let nA = textureSampleLevel(noiseT, sRep, p.zy * 0.9 + p.xx * 0.5, 0.0); let nB = textureSampleLevel(noiseT, sRep, p.zy * 4.5 + p.xx * 2.0, 0.0);
-    var dust = sat(C.p.x * dirtable * (0.25 + low * 0.9 + rear * 0.5 + (nA.x - 0.5) * 0.7) * 1.25) * (0.75 + 0.25 * nB.y);
+    var dust = sat(C.p.x * dirtable * (low * 1.25 + rear * 0.3 - 0.30 + (nA.x - 0.5) * 0.6)) * (0.6 + 0.4 * nB.y) * 0.8;
     if (k == 15 || k == 14) { dust = sat(max(C.p.x * 3.0, C.p.y * 2.0) * dirtable * (0.5 + nB.x)); }
     let splN = smoothstep(0.62 - 0.30 * low - 0.25 * smoothstep(0.8, 0.0, da), 0.72, nB.z * 0.6 + nB.x * 0.4 + (nA.y - 0.5) * 0.3);
     let mud = sat(C.p.y * 1.6 * dirtable) * splN * smoothstep(1.5, 0.5, p.y) * step(C.p.y, 2.0);
-    s.alb = mix(s.alb, vec3f(0.36, 0.265, 0.185) * (0.8 + 0.4 * nB.x), dust * 0.88); s.rough = mix(s.rough, 0.9, dust); s.coat *= 1.0 - dust; s.metal *= 1.0 - dust * 0.9;
+    s.alb = mix(s.alb, vec3f(0.27, 0.175, 0.115) * (0.8 + 0.4 * nB.x), dust * 0.85); s.rough = mix(s.rough, 0.9, dust); s.coat *= 1.0 - dust; s.metal *= 1.0 - dust * 0.9;
     s.alb = mix(s.alb, vec3f(0.13, 0.08, 0.05) * (0.7 + 0.6 * nB.y), mud); s.rough = mix(s.rough, 0.45, mud); s.coat *= 1.0 - mud; s.metal *= 1.0 - mud;
     if (s.mat > 2.5) { s.emis *= 1.0 - 0.6 * max(dust, mud); } else if (s.coat < 0.05) { s.mat = 0.0; }
   }
@@ -2069,7 +2072,8 @@ fn shade(v: CV, ff: bool) -> Surf {
 @fragment fn fs(v: CV, @builtin(front_facing) ff: bool) -> GOut {
   let s = shade(v, ff); if (s.glass > 0.5) { discard; }
   var N = normalize(v.n); if (!ff) { N = -N; }
-  if (s.mat > 1.5 && s.mat < 2.5 && s.metal > 0.5) { let sp = (textureSampleLevel(noiseT, sRep, (v.op.zy + v.op.xx * 0.9) * 37.0, 0.0).xy - 0.5) * 0.012; N = normalize(N + vec3f(sp.x, sp.y, -sp.x)); }
+  if (s.bx != 0.0) { N = normalize(N + (C.m[0] * vec4f(1.0, 0.0, 0.0, 0.0)).xyz * s.bx); }
+  if (s.mat > 1.5 && s.mat < 2.5 && s.metal > 0.5) { let sp = (textureSampleLevel(noiseT, sRep, (v.op.zy + v.op.xx * 0.9) * 37.0, 0.0).xy - 0.5) * 0.0; N = normalize(N + vec3f(sp.x, sp.y, -sp.x)); }
   var o: GOut; o.alb = vec4f(s.alb, s.rough); o.nrm = vec4f(N, s.mat); o.misc = vec4f(s.metal, s.ao * v.col.a, s.emis, s.coat); o.mv = motionOf(v.cur, v.prv); return o;
 }
 @fragment fn fsGlass(v: CV) -> @location(0) vec4f {
@@ -2077,7 +2081,7 @@ fn shade(v: CV, ff: bool) -> Surf {
   let N = normalize(v.n); let V = normalize(F.cam.xyz - v.wp); let nv = sat(dot(N, V)); let Fr = 0.045 + 0.955 * pow(1.0 - nv, 5.0); let R = reflect(-V, N);
   let env = textureSampleLevel(envT, sPano, dirToPano(R), 0.5).rgb; let H = normalize(F.sun.xyz + V); let sp = pow(sat(dot(N, H)), 2500.0) * 150.0;
   let nB = textureSampleLevel(noiseT, sRep, v.op.zy * 4.5 + v.op.xx * 2.0, 0.0); let low = 1.0 - smoothstep(0.9, 1.6, v.op.y);
-  let dust = sat(C.p.x * (0.25 + low * 0.5 + (nB.x - 0.5) * 0.4)) * 0.55 + sat(C.p.y) * smoothstep(0.66, 0.74, nB.z * 0.6 + nB.x * 0.4) * low * 0.8;
+  let dust = sat(C.p.x * (low * 0.5 - 0.1 + (nB.x - 0.5) * 0.4)) * 0.4 + sat(C.p.y) * smoothstep(0.66, 0.74, nB.z * 0.6 + nB.x * 0.4) * low * 0.8;
   let tintA = select(0.80, 0.10, c == 1); let tintC = select(vec3f(0.012, 0.014, 0.016), vec3f(0.03, 0.045, 0.04), c == 1);
   let dcol = vec3f(0.36, 0.265, 0.185) * (F.sunCol.rgb * 0.10 + 0.25);
   let a = 1.0 - (1.0 - Fr) * (1.0 - tintA) * (1.0 - dust);
@@ -2089,6 +2093,7 @@ fn shade(v: CV, ff: bool) -> Surf {
 // ---- render.js ----
 // render.js — recursos de GPU e o quadro. Nada aqui aloca por quadro: descritores, arrays e grupos são criados na carga.
 const R = {
+  cut: 0,
   dbg: 0,
   fb: new Float32Array(192), sfb: [new Float32Array(192), new Float32Array(192), new Float32Array(192)],
   view: new Float32Array(16), proj: new Float32Array(16), projJ: new Float32Array(16), vpNJ: new Float32Array(16), vp: new Float32Array(16), pvp: new Float32Array(16), ivp: new Float32Array(16),
@@ -2196,7 +2201,7 @@ function renderInit() {
   R.aoT = mk(hw, hh, 'r8unorm', 'ao'); R.fogT = mk(hw, hh, 'rgba16float', 'fog');
   R.shadow = mkTex(R.SH, R.SH, 'depth32float', TU | RA, { layers: 3, label: 'sombra' });
   R.bloom = []; for (let i = 0, w = hw, h = hh; i < 6; i++, w = Math.max(1, w >> 1), h = Math.max(1, h >> 1)) R.bloom.push(mk(w, h, 'rgba16float', 'bloom' + i));
-  R.skyT = mkTex(2048, 1024, 'rgba16float', TU | RA, { mips: 11, label: 'ceu' }); R.envT = mkTex(512, 256, 'rgba16float', TU | RA, { mips: 9, label: 'amb' });
+  R.skyT = mkTex(2048, 1024, 'rgba16float', TU | RA, { mips: 11, label: 'ceu' }); R.envT = mkTex(1024, 512, 'rgba16float', TU | RA, { mips: 10, label: 'amb' });
   const V = (t) => t.createView();
   R.vDepth = V(R.depth); R.vHdr = V(R.hdr); R.vHist = R.hist.map(V); R.vShadowL = [0, 1, 2].map((i) => R.shadow.createView({ dimension: '2d', baseArrayLayer: i, arrayLayerCount: 1 })); R.vShadow = R.shadow.createView({ dimension: '2d-array' });
   // ---- pipelines ----
@@ -2219,7 +2224,7 @@ function renderInit() {
       let enc = dev.createCommandEncoder(); let ps = enc.beginRenderPass({ colorAttachments: [{ view: R.skyT.createView({ baseMipLevel: 0, mipLevelCount: 1 }), loadOp: 'clear', storeOp: 'store' }] });
       ps.setPipeline(pS); ps.setBindGroup(0, R.bg0); ps.draw(3); ps.end(); dev.queue.submit([enc.finish()]); genMips(R.skyT, 'rgba16float', 1, 11);
       enc = dev.createCommandEncoder(); ps = enc.beginRenderPass({ colorAttachments: [{ view: R.envT.createView({ baseMipLevel: 0, mipLevelCount: 1 }), loadOp: 'clear', storeOp: 'store' }] });
-      ps.setPipeline(pE); ps.setBindGroup(0, R.bg0); ps.setBindGroup(1, mkBG(le, [R.skyT.createView()])); ps.draw(3); ps.end(); dev.queue.submit([enc.finish()]); genMips(R.envT, 'rgba16float', 1, 9);
+      ps.setPipeline(pE); ps.setBindGroup(0, R.bg0); ps.setBindGroup(1, mkBG(le, [R.skyT.createView()])); ps.draw(3); ps.end(); dev.queue.submit([enc.finish()]); genMips(R.envT, 'rgba16float', 1, 10);
     }; }
   // passadas de tela cheia
   const lAO = mkBGL(['td', 't']); R.pAO = mkPipe({ label: 'ao', code: WG_AO, layouts: [R.L0, lAO], targets: [{ format: 'r8unorm' }] }); R.bgAO = mkBG(lAO, [R.vDepth, V(R.gN)]);
@@ -2287,7 +2292,8 @@ function renderUniforms() {
   R.projJ[8] = _jx[j] * 2 / W; R.projJ[9] = _jy[j] * 2 / H;
   for (let i = 0; i < 16; i++) R.pvp[i] = R.vpNJ[i];
   m4mul(R.vpNJ, 0, R.proj, 0, R.view, 0); m4mul(R.vp, 0, R.projJ, 0, R.view, 0); m4inv(R.ivp, 0, R.vp, 0);
-  if (R.frame === 0) for (let i = 0; i < 16; i++) R.pvp[i] = R.vpNJ[i];
+  if (R.frame === 0 || R.cut > 0) { for (let i = 0; i < 16; i++) R.pvp[i] = R.vpNJ[i]; if (typeof CarD !== 'undefined') CarD.u.copyWithin(80, 0, 80); }
+  f[187] = R.cut > 0 ? 1 : 0; if (R.cut > 0) R.cut--;
   f.set(R.vp, 0); f.set(R.pvp, 16); f.set(R.vpNJ, 32); f.set(R.ivp, 48); f.set(R.view, 64); f.set(R.projJ, 80);
   _cascade(0, R.near, R.splits[0]); if (R.frame < 2 || !(R.frame & 1)) _cascade(1, R.splits[0] * 0.9, R.splits[1]); if (R.frame < 2 || (R.frame & 1)) _cascade(2, R.splits[1] * 0.9, R.splits[2]);
   f[144] = R.eye[0]; f[145] = R.eye[1]; f[146] = R.eye[2]; f[147] = R.time;
@@ -2546,7 +2552,7 @@ function _carProfile(z) {
   const da = Math.min(Math.abs(z - D.AXF), Math.abs(z - D.AXR));
   const yS = 0.335 + 0.05 * smooth(1.6, 2.0, z) + 0.07 * smooth(-1.7, -2.05, z);
   const yA = da < D.ARCH ? Math.max(yS, D.RW + 0.015 + Math.sqrt(D.ARCH * D.ARCH - da * da)) : yS;
-  const flare = 0.034 * Math.exp(-Math.pow(da / 0.54, 6));
+  const flare = 0.052 * Math.exp(-Math.pow(da / 0.55, 8));
   const wS = (0.885 + flare) * taper;
   const yBelt = z > 0.92 ? lerp(1.025, 0.985, Math.pow(sat((z - 0.92) / 1.0), 1.5)) : 1.035 - 0.012 * z;
   const wB = (0.872 - 0.02 * hoodT) * taper;
@@ -2565,11 +2571,11 @@ function _zTipR(y) {
   for (let i = 0; i < k.length - 1; i++) if (y <= k[i + 1][0]) { const t = sat((y - k[i][0]) / (k[i + 1][0] - k[i][0])); return lerp(k[i][1], k[i + 1][1], t * t * (3 - 2 * t)); } return k[k.length - 1][1];
 }
 function makeCarBody() {
-  const m = new MeshB(), fr = [0.992, 0.97, 0.935, 0.885, 0.82, 0.74, 0.64, 0.52, 0.39, 0.25, 0.12, 0.0];
+  const m = new MeshB(), fr = [0.997, 0.988, 0.972, 0.95, 0.92, 0.88, 0.83, 0.765, 0.69, 0.60, 0.50, 0.39, 0.27, 0.14, 0.0];
   // estações: fecho traseiro, miolo, fecho dianteiro
   const st = []; const ZR = -1.80, ZFm = 1.76, CR = 0.30, CF = 0.38, nR = 4.2, nF = 3.0;
   for (let k = fr.length - 1; k >= 0; k--) st.push({ z: ZR - CR * (1 - Math.pow(1 - Math.pow(fr[k], nR), 1 / nR)) * 1, zp: ZR, f: fr[k], end: -1 });
-  const NM = 96; for (let i = 0; i <= NM; i++) st.push({ z: lerp(ZR, ZFm, i / NM), f: 1, end: 0 });
+  const NM = 120; for (let i = 0; i <= NM; i++) st.push({ z: lerp(ZR, ZFm, i / NM), f: 1, end: 0 });
   for (let k = 0; k < fr.length; k++) st.push({ z: ZFm + CF * (1 - Math.pow(1 - Math.pow(fr[k], nF), 1 / nF)), zp: ZFm, f: fr[k], end: 1 });
   // corrige: nos fechos, a profundidade a partir da ponta é d(f) = C*(1-(1-f^n)^(1/n)); z = ponta -+ ... (ponta em f=0)
   for (const s of st) if (s.end === -1) s.z = (ZR - CR) + CR * (1 - Math.pow(1 - Math.pow(s.f, nR), 1 / nR)); else if (s.end === 1) s.z = (ZFm + CF) - CF * (1 - Math.pow(1 - Math.pow(s.f, nF), 1 / nF));
@@ -2614,10 +2620,10 @@ function _revolve(m, prof, n, axis, c, kind, col, flip) {
 function makeWheel() {
   const m = new MeshB(), R = CarD.RW;
   // pneu (perfil: posição ao longo do eixo x, raio) — face externa em +x
-  const tp = [[-0.108, 0.222], [-0.118, 0.255], [-0.121, 0.300], [-0.112, 0.338], [-0.098, 0.354], [-0.080, R], [-0.04, R + 0.002], [0, R + 0.003], [0.04, R + 0.002], [0.080, R], [0.098, 0.354], [0.112, 0.338], [0.121, 0.300], [0.118, 0.255], [0.108, 0.222]];
+  const tp = [[-0.108, 0.236], [-0.118, 0.262], [-0.121, 0.300], [-0.112, 0.338], [-0.098, 0.354], [-0.080, R], [-0.04, R + 0.002], [0, R + 0.003], [0.04, R + 0.002], [0.080, R], [0.098, 0.354], [0.112, 0.338], [0.121, 0.300], [0.118, 0.262], [0.108, 0.236]];
   _revolve(m, tp, 72, 0, [0, 0, 0], 15, [1, 1, 1], true);
   // aro: grade polar com 5 raios em relevo; uv = (raio, ângulo)
-  const NA = 150, NR = 16, RR = 0.224, base = m.n;
+  const NA = 150, NR = 16, RR = 0.238, base = m.n;
   const depth = (r, a) => { const rn = r / RR; let x = 0.066;
     const k = ((a / 6.2832 * 5) % 1 + 1) % 1, ad = Math.abs(k - 0.5) * 2 * (Math.PI / 5) * r; // distância angular (m) ao eixo do raio mais próximo... centro do raio em k=0.5
     const sw = 0.030 + 0.016 * rn, spoke = 1 - smooth(sw, sw + 0.014, ad), hub = 1 - smooth(0.052, 0.066, r), lip = smooth(0.185, 0.197, r);
@@ -2638,13 +2644,13 @@ function makeCarParts() {
   const boxK = (c, h, kind, col, ax, ay, az) => { const n0 = m.n; m.box(c[0], c[1], c[2], ax || X, ay || Y, az || Z, h[0], h[1], h[2], col || [1, 1, 1], 0, 0, kind); return n0; };
   const tubeK = (a, b, r0, r1, sd, kind, col) => { m.tube(a, b, r0, r1, sd, col || [1, 1, 1, 1], 0, kind, 0, 0, 1); };
   // estepe: capa rígida na cor do carro, deslocada para a direita (-X), na tampa traseira
-  { const c = [-0.10, 0.955, -2.335]; // eixo Z; perfil (z, r) do fundo (junto à tampa) até a face traseira
+  { const c = [-0.08, 0.955, -2.335]; // eixo Z; perfil (z, r) do fundo (junto à tampa) até a face traseira
     _revolve(m, [[0.262, 0.33], [0.235, 0.372], [0.06, 0.378], [0.022, 0.368], [0.004, 0.345], [0.0, 0.30], [0.0, 0.0]], 64, 2, c, 18, [1, 1, 1], true);
     boxK([c[0], c[1], c[2] + 0.27], [0.09, 0.09, 0.03], 12, [0.2, 0.2, 0.2]); }
   // longarinas de teto (pretas) com pés
-  for (const sd of [1, -1]) { const x = 0.565 * sd, pts = [[x, 1.612, 0.03], [x, 1.668, -0.04], [x, 1.708, -0.16], [x, 1.722, -0.85], [x, 1.712, -1.55], [x, 1.672, -1.70], [x, 1.612, -1.78]];
+  for (const sd of [1, -1]) { const x = 0.565 * sd, pts = [[x, 1.612, 0.03], [x, 1.668, -0.04], [x, 1.685, -0.16], [x, 1.692, -0.85], [x, 1.685, -1.55], [x, 1.672, -1.70], [x, 1.612, -1.78]];
     for (let i = 0; i < pts.length - 1; i++) tubeK(pts[i], pts[i + 1], 0.021, 0.021, 8, 12, [0.05, 0.05, 0.055, 1]);
-    for (const z of [-0.12, -0.86, -1.60]) boxK([x, 1.672, z], [0.022, 0.04, 0.06], 12, [0.05, 0.05, 0.055]); }
+    for (const z of [-0.12, -1.60]) boxK([x, 1.655, z], [0.02, 0.03, 0.06], 12, [0.05, 0.05, 0.055]); }
   // antena no fim do teto
   tubeK([0.0, 1.66, -1.78], [0.0, 1.69, -1.80], 0.03, 0.016, 8, 12, [0.05, 0.05, 0.055, 1]); tubeK([0.0, 1.685, -1.80], [0.0, 1.99, -2.07], 0.0085, 0.006, 6, 12, [0.05, 0.05, 0.055, 1]);
   // retrovisores
@@ -2660,7 +2666,6 @@ function makeCarParts() {
   boxK([0.60, 0.99, -2.075], [0.07, 0.022, 0.012], 12, [0.06, 0.06, 0.065]);
   for (const y of [0.92, 1.30]) boxK([-0.735, y, -2.07], [0.02, 0.05, 0.012], 12, [0.06, 0.06, 0.065]);
   // limpador traseiro e saída de escape
-  tubeK([-0.52, 0.30, -1.95], [-0.52, 0.30, -2.13], 0.03, 0.032, 10, 16, [0.6, 0.6, 0.6, 1]);
   // ---- interior ----
   const g1 = [0.075, 0.075, 0.08], g2 = [0.12, 0.12, 0.125], g3 = [0.035, 0.035, 0.04];
   boxK([0, 0.44, -0.3], [0.80, 0.02, 1.55], 13, g3);
@@ -2690,7 +2695,7 @@ function _decals() { // atlas de letreiros gerado com canvas 2D (nenhum arquivo)
   g.font = 'italic 800 50px Arial, sans-serif'; if (g.letterSpacing !== undefined) g.letterSpacing = '3px'; g.fillText('GRAND VITARA', 768, 66);
   g.font = '800 92px "Arial Narrow", Arial, sans-serif'; if (g.letterSpacing !== undefined) g.letterSpacing = '8px'; g.fillText('TRL 4X4', 256, 196);
   // emblema: "S" anguloso estilizado
-  g.save(); g.translate(576, 192); g.lineWidth = 17; g.strokeStyle = '#fff'; g.lineJoin = 'miter'; g.beginPath(); g.moveTo(34, -30); g.lineTo(2, -52); g.lineTo(-36, -22); g.lineTo(36, 22); g.lineTo(-2, 52); g.lineTo(-34, 30); g.stroke(); g.restore();
+  g.save(); g.translate(576, 192); g.transform(1, 0, -0.18, 1, 0, 0); g.font = '900 150px "Arial Black", Impact, Arial, sans-serif'; if (g.letterSpacing !== undefined) g.letterSpacing = '0px'; g.fillText('S', 0, 8); g.restore();
   const d = g.getImageData(0, 0, 1024, 256).data, out = new Uint8Array(1024 * 256 * 4); out.set(d);
   const t = texFromData(1024, 256, 'rgba8unorm', out, 4, { mips: 6 }); genMips(t, 'rgba8unorm', 1, 6); return t;
 }
@@ -2722,9 +2727,9 @@ function carUpdate(dt) {
   if (D.first) { for (let i = 0; i < 80; i++) u[80 + i] = u[i]; D.first = false; }
   // sujeira acumulada
   if (hasP && !Game.paused) { const P = Physics, sp = Math.abs(P.speed); let du = 0, mu = 0;
-    for (let w = 0; w < 4; w++) if (P.contact[w] > 0.5) { const s = P.surf[w]; if (P.wet[w] > 0.35 || s === SURF_AGUA) mu += (0.004 + P.slip[w] * 0.02) * sp; else if (s !== SURF_MADEIRA && s !== SURF_GRAMA) du += 0.0011 * sp; }
+    for (let w = 0; w < 4; w++) if (P.contact[w] > 0.5) { const s = P.surf[w]; if (P.wet[w] > 0.35 || s === SURF_AGUA) mu += (0.004 + P.slip[w] * 0.02) * sp; else if (s !== SURF_MADEIRA && s !== SURF_GRAMA) du += 0.0005 * sp; }
     D.dust = Math.min(1, D.dust + du * dt * 0.25); D.mud = Math.min(1, D.mud + mu * dt * 0.25); D.brake += ((P.brakeLight ? 1 : 0) - D.brake) * Math.min(1, dt * 30); D.rev = P.reverse ? 1 : 0;
-    R.fb[180] = P.pos[0]; R.fb[181] = P.pos[1]; R.fb[182] = P.pos[2]; R.fb[183] = sp; }
+    R.fb[180] = P.pos[0]; R.fb[181] = P.pos[1]; R.fb[182] = P.pos[2]; R.fb[183] = sp; R.fb[185] = D.body[8]; R.fb[186] = D.body[10]; }
   else if (D.pose) { R.fb[180] = D.pose[0]; R.fb[181] = D.pose[1]; R.fb[182] = D.pose[2]; }
   u[160] = D.dust; u[161] = D.mud; u[162] = D.brake; u[163] = D.rev || 0;
 }
@@ -2890,17 +2895,17 @@ function particlesUpdate(dt) {
         if (dx * dx + dz * dz < 9 && dx * dx + dz * dz > 0.0004) { S.rut[k] = S.lastC[w * 3]; S.rut[k + 1] = S.lastC[w * 3 + 2]; S.rut[k + 2] = cx; S.rut[k + 3] = cz; S.rut[k + 4] = 0.135; S.rut[k + 5] = clamp(0.55 + wet * 0.45 + slip * 0.3, 0, 1); S.rutN++; } }
       S.lastC[w * 3] = cx; S.lastC[w * 3 + 1] = cy; S.lastC[w * 3 + 2] = cz; S.lastOk[w] = 1;
     } else S.lastOk[w] = 0;
-    const bx = fx * dirS, bz = fz * dirS, act = sp * 0.06 + slip * 1.2;
+    const bx = fx * dirS, bz = fz * dirS, act = sp * 0.05 + Math.min(slip, 0.6) * 0.5;
     if (surf === SURF_AGUA || P.water[w] > 0.04) {
       const nsp = Math.min(6, (sp * 0.55 + slip * 3) | 0);
       for (let k = 0; k < nsp; k++) { const u = prand(), v = prand(), out = (0.6 + u * 2.6) * side * (0.25 + sp * 0.11);
         emit(2, cx + (v - 0.5) * 0.4, cy + 0.12, cz + (u - 0.5) * 0.4, lx * out + bx * sp * (0.15 + v * 0.3) + P.vel[0] * 0.55, 1.2 + prand() * (1.6 + sp * 0.28), lz * out + bz * sp * (0.15 + v * 0.3) + P.vel[2] * 0.55, 0.05 + prand() * 0.10, 0.25, 0.5 + prand() * 0.45, 2.3, 2.2, 2.1, 0.55, 0.8); }
-      if (sp > 2 && prand() < 0.6) emit(3, cx, cy + 0.3, cz, lx * side * 1.2 + P.vel[0] * 0.5, 1.4 + prand(), lz * side * 1.2 + P.vel[2] * 0.5, 0.35, 1.6, 0.9 + prand() * 0.5, 1.9, 1.75, 1.6, 0.22, 1.2);
+      if (sp > 2 && prand() < 0.6) emit(3, cx, cy + 0.3, cz, lx * side * 1.2 + P.vel[0] * 0.5, 1.4 + prand(), lz * side * 1.2 + P.vel[2] * 0.5, 0.25, 0.9, 0.7 + prand() * 0.4, 1.5, 1.4, 1.3, 0.12, 1.2);
     } else if (wet > 0.35) {
       if (prand() < act * 1.6) for (let k = 0; k < 2; k++) emit(1, cx, cy + 0.08, cz, bx * sp * (0.2 + prand() * 0.35) + lx * side * (prand() - 0.3) * 2 + P.vel[0] * 0.3, 0.8 + prand() * (1.5 + sp * 0.2 + slip * 3), bz * sp * (0.2 + prand() * 0.35) + lz * side * (prand() - 0.3) * 2 + P.vel[2] * 0.3, 0.025 + prand() * 0.05, 0, 0.5 + prand() * 0.5, 0.09, 0.055, 0.032, 1, 0.3);
     } else if (surf !== SURF_MADEIRA) {
       const du = (surf === SURF_GRAMA ? 0.2 : surf === SURF_PEDRA ? 0.55 : 1) * (1 - wet);
-      if (sp > 2.5 && prand() < act * du * 1.1 * (w >= 2 ? 1 : 0.45)) emit(0, cx + (prand() - 0.5) * 0.25, cy + 0.15, cz + (prand() - 0.5) * 0.25, bx * sp * 0.12 + P.vel[0] * 0.22 + (prand() - 0.5) * 0.8, 0.35 + prand() * 0.7, bz * sp * 0.12 + P.vel[2] * 0.22 + (prand() - 0.5) * 0.8, 0.22 + prand() * 0.18, 0.9 + sp * 0.05, 1.3 + prand() * 1.3, 1.15, 0.80, 0.52, 0.075 + Math.min(0.10, slip * 0.15), 0.9);
+      if (sp > 2.5 && prand() < act * du * 1.1 * (w >= 2 ? 1 : 0.45)) emit(0, cx + (prand() - 0.5) * 0.25, cy + 0.15, cz + (prand() - 0.5) * 0.25, bx * sp * 0.12 + P.vel[0] * 0.22 + (prand() - 0.5) * 0.8, 0.35 + prand() * 0.7, bz * sp * 0.12 + P.vel[2] * 0.22 + (prand() - 0.5) * 0.8, 0.16 + prand() * 0.14, 0.32 + sp * 0.02, 1.0 + prand() * 1.0, 0.95, 0.62, 0.40, 0.08 + Math.min(0.05, slip * 0.08), 0.9);
       if ((surf === SURF_CASCALHO || surf === SURF_PEDRA) && prand() < slip * 0.9 + sp * 0.004) emit(1, cx, cy + 0.05, cz, bx * sp * 0.4 + (prand() - 0.5) * 2, 0.8 + prand() * 2, bz * sp * 0.4 + (prand() - 0.5) * 2, 0.02 + prand() * 0.025, 0, 0.6, 0.30, 0.26, 0.22, 1, 0.2);
     }
   }
@@ -2914,7 +2919,7 @@ function cameraUpdate(dt) {
   if (App.freeCam || typeof Physics === 'undefined') return;
   const P = Physics, px = P.pos[0], py = P.pos[1], pz = P.pos[2], mode = Game.cam, q = P.quat;
   const fx = 2 * (q[0] * q[2] + q[3] * q[1]), fz = 1 - 2 * (q[0] * q[0] + q[1] * q[1]), yaw = Math.atan2(fx, fz);
-  const snap = !S.camInit || S.camPrev !== mode; S.camPrev = mode; S.camInit = true; R.camMode = mode;
+  const snap = !S.camInit || S.camPrev !== mode; S.camPrev = mode; S.camInit = true; R.camMode = mode; if (snap) R.cut = 2;
   if (mode === 0) {
     let dy = yaw - S.camYaw; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI;
     S.camYaw += snap ? dy : dy * (1 - Math.exp(-dt * 4.2));
@@ -2925,14 +2930,14 @@ function cameraUpdate(dt) {
     const kt = snap ? 1 : 1 - Math.exp(-dt * 14); S.camT[0] += (px - S.camT[0]) * kt; S.camT[1] += (py + 1.25 - S.camT[1]) * kt; S.camT[2] += (pz - S.camT[2]) * kt;
     R.setCamera(S.camE[0], S.camE[1], S.camE[2], S.camT[0], S.camT[1], S.camT[2], 0.98 + Math.min(0.14, sp * 0.005));
   } else if (mode === 1) {
-    _carLocal(0, 1.36, 0.42); const ex = px + _cq[0], ey = py + _cq[1], ez = pz + _cq[2]; _carLocal(0, 1.05, 9);
+    _carLocal(0, 1.315, 0.86); const ex = px + _cq[0], ey = py + _cq[1], ez = pz + _cq[2]; _carLocal(0, 1.05, 9);
     const tx = px + _cq[0], ty = py + _cq[1], tz = pz + _cq[2]; _carLocal(0, 1, 0);
     R.setCamera(ex, ey, ez, tx, ty, tz, 1.12); m4look(R.view, 0, ex, ey, ez, tx, ty, tz, _cq[0] * 0.6, 0.8 + _cq[1] * 0.2, _cq[2] * 0.6);
     S.camYaw = yaw;
   } else {
     const F = S.fixCams, n = F.length / 4; let best = S.fixI, bd = 1e9;
     if (best >= 0) { const dx = F[best * 4] - px, dz = F[best * 4 + 2] - pz; bd = dx * dx + dz * dz; }
-    if (best < 0 || bd > 58 * 58 || snap) { best = 0; bd = 1e9; const T = World.trk, sA = Game.trackS + 20;
+    if (best < 0 || bd > 58 * 58 || snap) { R.cut = 2; best = 0; bd = 1e9; const T = World.trk, sA = Game.trackS + 20;
       for (let i = 0; i < n; i++) { let ds = F[i * 4 + 3] - sA; if (ds > T.L / 2) ds -= T.L; if (ds < -T.L / 2) ds += T.L; const d = Math.abs(ds); if (d < bd) { bd = d; best = i; } } S.fixI = best; }
     const d = Math.hypot(F[best * 4] - px, F[best * 4 + 2] - pz);
     const kt = snap ? 1 : 1 - Math.exp(-dt * 10); S.camT[0] += (px - S.camT[0]) * kt; S.camT[1] += (py + 0.8 - S.camT[1]) * kt; S.camT[2] += (pz - S.camT[2]) * kt;
@@ -2940,7 +2945,10 @@ function cameraUpdate(dt) {
     S.camYaw = yaw;
   }
 }
-function sceneUpdate(dt) { particlesUpdate(dt); if (typeof carUpdate !== 'undefined') carUpdate(dt); cameraUpdate(dt); if (typeof hudUpdate !== 'undefined') hudUpdate(dt); }
+function sceneUpdate(dt) {
+  // limite do mundo: quem se afasta demais da trilha é devolvido a ela, bem antes de enxergar o fim do cenário
+  if (typeof Physics !== 'undefined' && (Math.hypot(Physics.pos[0], Physics.pos[2]) > 300 || Physics.pos[1] < 5)) Game.resetToTrack();
+  particlesUpdate(dt); if (typeof carUpdate !== 'undefined') carUpdate(dt); cameraUpdate(dt); if (typeof hudUpdate !== 'undefined') hudUpdate(dt); }
 
 // ---- hud.js ----
 // hud.js — interface desenhada na GPU: atlas de glifos gerado com canvas 2D na carga; por quadro só aritmética inteira
@@ -2953,7 +2961,7 @@ struct HV { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
   var o: HV; let c = vec2f(f32((0x2Cu >> vi) & 1u), f32((0x1Au >> vi) & 1u)); let p = r.xy + c * r.zw;
   o.pos = vec4f(p.x / 960.0 - 1.0, 1.0 - p.y / 540.0, 0.0, 1.0); o.uv = mix(uvr.xy, uvr.zw, c); o.col = col; return o;
 }
-@fragment fn fs(v: HV) -> @location(0) vec4f { let a = textureSampleLevel(t, s, v.uv, 0.0).r; return vec4f(v.col.rgb, v.col.a * a); }
+@fragment fn fs(v: HV) -> @location(0) vec4f { let a = textureSample(t, s, v.uv).r; return vec4f(v.col.rgb, v.col.a * a); }
 `;
 function hudInit() {
   const dev = GPU.dev, AW = 1024, AH = 512, c = document.createElement('canvas'); c.width = AW; c.height = AH; const g = c.getContext('2d');
@@ -2969,13 +2977,13 @@ function hudInit() {
     const tw = Math.ceil(g.measureText(w).width) + 6; if (wx + tw > AW - 30) { wx = 4; wy += 50; }
     g.fillText(w, wx + 2, wy); Hud.words[w] = [wx / AW, (wy - 34) / AH, (wx + tw) / AW, (wy + 10) / AH, tw, 44]; wx += tw + 10; }
   const d = g.getImageData(0, 0, AW, AH).data, out = new Uint8Array(AW * AH * 4); out.set(d);
-  Hud.tex = texFromData(AW, AH, 'rgba8unorm', out, 4);
+  Hud.tex = texFromData(AW, AH, 'rgba8unorm', out, 4, { mips: 4 }); genMips(Hud.tex, 'rgba8unorm', 1, 4);
   const l = mkBGL(['t', 's']); Hud.bg = mkBG(l, [Hud.tex.createView(), R.sClamp]);
   Hud.pipe = mkPipe({ label: 'hud', code: WG_HUD, layouts: [l], targets: [{ format: GPU.fmt, blend: { color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha' }, alpha: { srcFactor: 'one', dstFactor: 'one' } } }],
     buffers: [{ arrayStride: 48, stepMode: 'instance', attributes: [{ shaderLocation: 0, offset: 0, format: 'float32x4' }, { shaderLocation: 1, offset: 16, format: 'float32x4' }, { shaderLocation: 2, offset: 32, format: 'float32x4' }] }] });
   Hud.inst = new Float32Array(Hud.MAX * 12); Hud.buf = dev.createBuffer({ size: Hud.MAX * 48, usage: 0x20 | 8 });
   Hud.pauseEl = document.getElementById('pause');
-  R.hudDraw = hudDraw;
+  R.hudDraw = hudDraw; Hud.off = QS.has('nohud');
 }
 function _hq(x, y, w, h, uv, r, g, b, a) { if (Hud.n >= Hud.MAX) return; const o = Hud.n++ * 12, f = Hud.inst; f[o] = x; f[o + 1] = y; f[o + 2] = w; f[o + 3] = h; f[o + 4] = uv[0]; f[o + 5] = uv[1]; f[o + 6] = uv[2]; f[o + 7] = uv[3]; f[o + 8] = r; f[o + 9] = g; f[o + 10] = b; f[o + 11] = a; }
 function _hword(name, x, y, sc, r, g, b, a) { const w = Hud.words[name]; _hq(x, y, w[4] * sc, w[5] * sc, w, r, g, b, a); return w[4] * sc; }
@@ -2987,7 +2995,7 @@ function _htime(ms, x, y, sc, r, g, b, a) { // m:ss.mmm
   x = _hnum(m % 10, 1, x, y, sc, r, g, b, a); x += _hch(58, x, y, sc, r, g, b, a); x = _hnum(s, 2, x, y, sc, r, g, b, a); x += _hch(46, x, y, sc, r, g, b, a); return _hnum(mm, 3, x, y, sc * 0.78, r, g, b, a);
 }
 function hudUpdate(dt) {
-  Hud.n = 0; if (typeof Game === 'undefined' || QS.has('nohud')) return;
+  Hud.n = 0; if (typeof Game === 'undefined' || Hud.off) return;
   const G = Game, S0 = Hud.solid;
   if (G.paused !== Hud.lastPause) { Hud.lastPause = G.paused; if (Hud.pauseEl) Hud.pauseEl.style.display = G.paused ? 'flex' : 'none'; }
   // painel de tempos (alto à esquerda)
@@ -3019,16 +3027,19 @@ async function boot() {
   worldInit();
   if (typeof Game !== 'undefined') { Game.init(); if (TEST) Game.fixedDt = true; }
   if (!NORENDER) { await gpuInit(cv); renderInit(); if (typeof sceneInit !== 'undefined') sceneInit(); }
+  if (!NORENDER && typeof sceneUpdate !== 'undefined') sceneUpdate(0);
   App.ready = true; document.getElementById('load').style.display = 'none';
   if (!TEST) requestAnimationFrame(tick);
 }
 function frame(dt) {
-  R.dt = dt; R.ptime = R.time; R.time += dt;
-  if (typeof Game !== 'undefined') Game.update(dt);
-  if (typeof sceneUpdate !== 'undefined') sceneUpdate(dt);
+  R.dt = dt; R.ptime = R.time;
+  const hasG = typeof Game !== 'undefined';
+  if (hasG) Game.update(dt);
+  if (hasG && Game.paused && !NORENDER) { CarD.u.copyWithin(80, 0, 80); hudUpdate(0); } // pausado: mundo congelado, sem rastro de movimento
+  else { R.time += dt; if (typeof sceneUpdate !== 'undefined' && !NORENDER) sceneUpdate(dt); }
   if (!NORENDER) renderFrame();
 }
-function tick(now) { if (App.perfMode) { requestAnimationFrame(tick); App.last = now; return; } const dt = clamp((now - App.last) / 1000, 1 / 240, 1 / 20); App.last = now; frame(App.last === now && App.t === 0 ? 1 / 60 : dt); App.t += dt; requestAnimationFrame(tick); }
+function tick(now) { if (App.perfMode) { requestAnimationFrame(tick); App.last = now; return; } const dt = App.last === 0 ? 1 / 60 : clamp((now - App.last) / 1000, 1 / 240, 1 / 20); App.last = now; frame(dt); App.t += dt; requestAnimationFrame(tick); }
 window.__t = {
   ready: boot().catch((e) => { App.err = e; console.error(e.stack || e); document.getElementById('load').textContent = 'Erro: ' + e.message; throw e; }),
   World, R, GPU, App, get S() { return S; },
@@ -3037,7 +3048,7 @@ window.__t = {
   frames(n) { for (let i = 0; i < n; i++) frame(1 / 60); },
   sim(n) { for (let i = 0; i < n; i++) { R.dt = 1 / 60; R.ptime = R.time; R.time += 1 / 60; Game.update(1 / 60); sceneUpdate(1 / 60); sceneSimOnly(); } },
   get CarD() { return CarD; },
-  still(n) { for (let i = 0; i < n; i++) { CarD.u.copyWithin(80, 0, 80); R.ptime = R.time; R.dt = 1 / 60; if (typeof hudUpdate !== 'undefined') hudUpdate(0); renderFrame(); } },
+  still(n) { carUpdate(0); for (let i = 0; i < n; i++) { CarD.u.copyWithin(80, 0, 80); R.ptime = R.time; R.dt = 1 / 60; if (typeof hudUpdate !== 'undefined') hudUpdate(0); renderFrame(); } },
   cam(ex, ey, ez, tx, ty, tz, fov) { App.freeCam = true; R.setCamera(ex, ey, ez, tx, ty, tz, fov || 1.0); },
   // leitura do quadro renderizado fora da tela (modo de teste): 'png' -> dataURL, 'raw' -> base64 RGBA
   async grab(kind) {

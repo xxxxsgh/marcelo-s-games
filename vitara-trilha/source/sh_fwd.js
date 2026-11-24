@@ -14,21 +14,21 @@ struct WV { @builtin(position) pos: vec4f, @location(0) wp: vec3f, @location(1) 
   let q = vec2f(dot(v.wp.xz, flow), dot(v.wp.xz, side));
   let n1 = textureSample(noiseT, sRep, q * vec2f(0.21, 0.45) - vec2f(t * 0.22, 0.0)).xy; let n2 = textureSample(noiseT, sRep, q * vec2f(0.55, 0.9) - vec2f(t * 0.41, t * 0.03) + 0.4).yz; let n3 = textureSample(noiseT, sRep, q * vec2f(1.7, 2.3) - vec2f(t * 0.7, 0.0)).zx;
   let dv = sat(thick * abs(V.y) * 1.0 + thick * 0.2);
-  let amp = 0.10 + 0.10 * (1.0 - smoothstep(0.0, 0.25, dv)) + F.car.w * 0.0;
+  let amp = 0.045 + 0.05 * (1.0 - smoothstep(0.0, 0.25, dv));
   let nl = (n1 - 0.5) * 1.0 + (n2 - 0.5) * 0.7 + (n3 - 0.5) * 0.35; let nw = flow * nl.x + side * nl.y; let N = normalize(vec3f(nw.x * amp, 1.0, nw.y * amp));
   var ruv = uv + N.xz * vec2f(0.035, -0.035) * sat(thick * 3.0) / max(zw * 0.15, 1.0);
   let zr = linDepth(textureLoad(depthT, clamp(vec2i(ruv * F.res.xy), vec2i(0), vec2i(F.res.xy) - 1), 0)); if (zr < zw) { ruv = uv; }
   var refr = textureSampleLevel(sceneT, sClamp, ruv, 0.0).rgb; let depthW = max(zr - zw, thick) * (0.35 + 0.65 * abs(V.y));
   let n0 = ign(v.pos.xy, F.misc.x); let sh = shadowAt(v.wp, vec3f(0.0, 1.0, 0.0), zw, n0, 4); let sc = F.sunCol.rgb;
   let amb = textureSampleLevel(envT, sPano, vec2f(0.5, 0.05), 7.0).rgb;
-  refr = refr * exp(-depthW * vec3f(2.6, 1.5, 1.3)) + vec3f(0.16, 0.115, 0.065) * (sc * sh * 0.06 + amb * 0.5) * (1.0 - exp(-depthW * 3.0));
+  refr = refr * exp(-depthW * vec3f(1.6, 0.9, 0.8)) + vec3f(0.16, 0.115, 0.065) * (sc * sh * 0.06 + amb * 0.5) * (1.0 - exp(-depthW * 3.0));
   let nv = sat(dot(N, V)); let Fr = 0.02 + 0.98 * pow(1.0 - nv, 5.0); let R = reflect(-V, N);
-  var refl = textureSampleLevel(envT, sPano, dirToPano(normalize(vec3f(R.x, abs(R.y) + 0.02, R.z))), 1.0).rgb;
+  var refl = textureSampleLevel(envT, sPano, dirToPano(normalize(vec3f(R.x, abs(R.y) + 0.02, R.z))), 1.5).rgb * 0.75;
   let H = normalize(F.sun.xyz + V); let sp = pow(sat(dot(N, H)), 900.0) * 60.0 * sh;
   var col = mix(refr, refl, Fr) + sc * sp * Fr;
   let foamN = textureSample(noiseT, sRep, q * vec2f(1.1, 1.6) - vec2f(t * 0.5, 0.0)).w * 0.6 + n3.x * 0.6;
-  let foam = smoothstep(0.075, 0.0, depthW) * smoothstep(0.35, 0.8, foamN) * 0.8 + smoothstep(0.80, 0.98, foamN * (0.6 + 0.6 * n2.x)) * 0.22;
-  col = mix(col, (sc * sh * 0.22 + amb * 1.1) * 0.8, sat(foam));
+  let foam = smoothstep(0.05, 0.0, depthW) * smoothstep(0.45, 0.85, foamN) * 0.55 + smoothstep(0.88, 1.0, foamN * (0.6 + 0.6 * n2.x)) * 0.10;
+  col = mix(col, (sc * sh * 0.10 + amb * 0.7) * 0.8, sat(foam));
   return vec4f(col, smoothstep(0.0, 0.025, thick));
 }
 `;
@@ -56,7 +56,7 @@ struct QV { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
 }
 @fragment fn fs(v: QV) -> @location(0) vec4f {
   let r = length(v.uv); if (r > 1.0) { discard; }
-  let zs = linDepth(textureLoad(depthT, vec2i(v.pos.xy), 0)); let soft = sat((zs - v.pos.w) / 0.35 + 0.15) * sat((v.pos.w - 0.25) / 0.9);
+  let zs = linDepth(textureLoad(depthT, vec2i(v.pos.xy), 0)); let soft = sat((zs - v.pos.w) / 0.35 + 0.15) * sat((v.pos.w - 0.4) / 2.2);
   let ca = cos(v.sd * 6.28); let sa = sin(v.sd * 6.28); let ruv = vec2f(v.uv.x * ca - v.uv.y * sa, v.uv.x * sa + v.uv.y * ca);
   let n = textureSampleLevel(noiseT, sRep, ruv * 0.21 + v.sd * 3.0, 0.0);
   var a = smoothstep(1.0, 0.25, r + (n.x - 0.5) * 0.7) * (0.55 + 0.6 * n.y);

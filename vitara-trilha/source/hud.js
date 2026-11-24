@@ -8,7 +8,7 @@ struct HV { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
   var o: HV; let c = vec2f(f32((0x2Cu >> vi) & 1u), f32((0x1Au >> vi) & 1u)); let p = r.xy + c * r.zw;
   o.pos = vec4f(p.x / 960.0 - 1.0, 1.0 - p.y / 540.0, 0.0, 1.0); o.uv = mix(uvr.xy, uvr.zw, c); o.col = col; return o;
 }
-@fragment fn fs(v: HV) -> @location(0) vec4f { let a = textureSampleLevel(t, s, v.uv, 0.0).r; return vec4f(v.col.rgb, v.col.a * a); }
+@fragment fn fs(v: HV) -> @location(0) vec4f { let a = textureSample(t, s, v.uv).r; return vec4f(v.col.rgb, v.col.a * a); }
 `;
 function hudInit() {
   const dev = GPU.dev, AW = 1024, AH = 512, c = document.createElement('canvas'); c.width = AW; c.height = AH; const g = c.getContext('2d');
@@ -24,13 +24,13 @@ function hudInit() {
     const tw = Math.ceil(g.measureText(w).width) + 6; if (wx + tw > AW - 30) { wx = 4; wy += 50; }
     g.fillText(w, wx + 2, wy); Hud.words[w] = [wx / AW, (wy - 34) / AH, (wx + tw) / AW, (wy + 10) / AH, tw, 44]; wx += tw + 10; }
   const d = g.getImageData(0, 0, AW, AH).data, out = new Uint8Array(AW * AH * 4); out.set(d);
-  Hud.tex = texFromData(AW, AH, 'rgba8unorm', out, 4);
+  Hud.tex = texFromData(AW, AH, 'rgba8unorm', out, 4, { mips: 4 }); genMips(Hud.tex, 'rgba8unorm', 1, 4);
   const l = mkBGL(['t', 's']); Hud.bg = mkBG(l, [Hud.tex.createView(), R.sClamp]);
   Hud.pipe = mkPipe({ label: 'hud', code: WG_HUD, layouts: [l], targets: [{ format: GPU.fmt, blend: { color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha' }, alpha: { srcFactor: 'one', dstFactor: 'one' } } }],
     buffers: [{ arrayStride: 48, stepMode: 'instance', attributes: [{ shaderLocation: 0, offset: 0, format: 'float32x4' }, { shaderLocation: 1, offset: 16, format: 'float32x4' }, { shaderLocation: 2, offset: 32, format: 'float32x4' }] }] });
   Hud.inst = new Float32Array(Hud.MAX * 12); Hud.buf = dev.createBuffer({ size: Hud.MAX * 48, usage: 0x20 | 8 });
   Hud.pauseEl = document.getElementById('pause');
-  R.hudDraw = hudDraw;
+  R.hudDraw = hudDraw; Hud.off = QS.has('nohud');
 }
 function _hq(x, y, w, h, uv, r, g, b, a) { if (Hud.n >= Hud.MAX) return; const o = Hud.n++ * 12, f = Hud.inst; f[o] = x; f[o + 1] = y; f[o + 2] = w; f[o + 3] = h; f[o + 4] = uv[0]; f[o + 5] = uv[1]; f[o + 6] = uv[2]; f[o + 7] = uv[3]; f[o + 8] = r; f[o + 9] = g; f[o + 10] = b; f[o + 11] = a; }
 function _hword(name, x, y, sc, r, g, b, a) { const w = Hud.words[name]; _hq(x, y, w[4] * sc, w[5] * sc, w, r, g, b, a); return w[4] * sc; }
@@ -42,7 +42,7 @@ function _htime(ms, x, y, sc, r, g, b, a) { // m:ss.mmm
   x = _hnum(m % 10, 1, x, y, sc, r, g, b, a); x += _hch(58, x, y, sc, r, g, b, a); x = _hnum(s, 2, x, y, sc, r, g, b, a); x += _hch(46, x, y, sc, r, g, b, a); return _hnum(mm, 3, x, y, sc * 0.78, r, g, b, a);
 }
 function hudUpdate(dt) {
-  Hud.n = 0; if (typeof Game === 'undefined' || QS.has('nohud')) return;
+  Hud.n = 0; if (typeof Game === 'undefined' || Hud.off) return;
   const G = Game, S0 = Hud.solid;
   if (G.paused !== Hud.lastPause) { Hud.lastPause = G.paused; if (Hud.pauseEl) Hud.pauseEl.style.display = G.paused ? 'flex' : 'none'; }
   // painel de tempos (alto à esquerda)

@@ -1,5 +1,6 @@
 // render.js — recursos de GPU e o quadro. Nada aqui aloca por quadro: descritores, arrays e grupos são criados na carga.
 const R = {
+  cut: 0,
   dbg: 0,
   fb: new Float32Array(192), sfb: [new Float32Array(192), new Float32Array(192), new Float32Array(192)],
   view: new Float32Array(16), proj: new Float32Array(16), projJ: new Float32Array(16), vpNJ: new Float32Array(16), vp: new Float32Array(16), pvp: new Float32Array(16), ivp: new Float32Array(16),
@@ -107,7 +108,7 @@ function renderInit() {
   R.aoT = mk(hw, hh, 'r8unorm', 'ao'); R.fogT = mk(hw, hh, 'rgba16float', 'fog');
   R.shadow = mkTex(R.SH, R.SH, 'depth32float', TU | RA, { layers: 3, label: 'sombra' });
   R.bloom = []; for (let i = 0, w = hw, h = hh; i < 6; i++, w = Math.max(1, w >> 1), h = Math.max(1, h >> 1)) R.bloom.push(mk(w, h, 'rgba16float', 'bloom' + i));
-  R.skyT = mkTex(2048, 1024, 'rgba16float', TU | RA, { mips: 11, label: 'ceu' }); R.envT = mkTex(512, 256, 'rgba16float', TU | RA, { mips: 9, label: 'amb' });
+  R.skyT = mkTex(2048, 1024, 'rgba16float', TU | RA, { mips: 11, label: 'ceu' }); R.envT = mkTex(1024, 512, 'rgba16float', TU | RA, { mips: 10, label: 'amb' });
   const V = (t) => t.createView();
   R.vDepth = V(R.depth); R.vHdr = V(R.hdr); R.vHist = R.hist.map(V); R.vShadowL = [0, 1, 2].map((i) => R.shadow.createView({ dimension: '2d', baseArrayLayer: i, arrayLayerCount: 1 })); R.vShadow = R.shadow.createView({ dimension: '2d-array' });
   // ---- pipelines ----
@@ -130,7 +131,7 @@ function renderInit() {
       let enc = dev.createCommandEncoder(); let ps = enc.beginRenderPass({ colorAttachments: [{ view: R.skyT.createView({ baseMipLevel: 0, mipLevelCount: 1 }), loadOp: 'clear', storeOp: 'store' }] });
       ps.setPipeline(pS); ps.setBindGroup(0, R.bg0); ps.draw(3); ps.end(); dev.queue.submit([enc.finish()]); genMips(R.skyT, 'rgba16float', 1, 11);
       enc = dev.createCommandEncoder(); ps = enc.beginRenderPass({ colorAttachments: [{ view: R.envT.createView({ baseMipLevel: 0, mipLevelCount: 1 }), loadOp: 'clear', storeOp: 'store' }] });
-      ps.setPipeline(pE); ps.setBindGroup(0, R.bg0); ps.setBindGroup(1, mkBG(le, [R.skyT.createView()])); ps.draw(3); ps.end(); dev.queue.submit([enc.finish()]); genMips(R.envT, 'rgba16float', 1, 9);
+      ps.setPipeline(pE); ps.setBindGroup(0, R.bg0); ps.setBindGroup(1, mkBG(le, [R.skyT.createView()])); ps.draw(3); ps.end(); dev.queue.submit([enc.finish()]); genMips(R.envT, 'rgba16float', 1, 10);
     }; }
   // passadas de tela cheia
   const lAO = mkBGL(['td', 't']); R.pAO = mkPipe({ label: 'ao', code: WG_AO, layouts: [R.L0, lAO], targets: [{ format: 'r8unorm' }] }); R.bgAO = mkBG(lAO, [R.vDepth, V(R.gN)]);
@@ -198,7 +199,8 @@ function renderUniforms() {
   R.projJ[8] = _jx[j] * 2 / W; R.projJ[9] = _jy[j] * 2 / H;
   for (let i = 0; i < 16; i++) R.pvp[i] = R.vpNJ[i];
   m4mul(R.vpNJ, 0, R.proj, 0, R.view, 0); m4mul(R.vp, 0, R.projJ, 0, R.view, 0); m4inv(R.ivp, 0, R.vp, 0);
-  if (R.frame === 0) for (let i = 0; i < 16; i++) R.pvp[i] = R.vpNJ[i];
+  if (R.frame === 0 || R.cut > 0) { for (let i = 0; i < 16; i++) R.pvp[i] = R.vpNJ[i]; if (typeof CarD !== 'undefined') CarD.u.copyWithin(80, 0, 80); }
+  f[187] = R.cut > 0 ? 1 : 0; if (R.cut > 0) R.cut--;
   f.set(R.vp, 0); f.set(R.pvp, 16); f.set(R.vpNJ, 32); f.set(R.ivp, 48); f.set(R.view, 64); f.set(R.projJ, 80);
   _cascade(0, R.near, R.splits[0]); if (R.frame < 2 || !(R.frame & 1)) _cascade(1, R.splits[0] * 0.9, R.splits[1]); if (R.frame < 2 || (R.frame & 1)) _cascade(2, R.splits[1] * 0.9, R.splits[2]);
   f[144] = R.eye[0]; f[145] = R.eye[1]; f[146] = R.eye[2]; f[147] = R.time;

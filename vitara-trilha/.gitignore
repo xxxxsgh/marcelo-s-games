@@ -9,3 +9,9 @@ trabalho/dv1.png
 trabalho/mapa.png
 trabalho/sim.cjs
 trabalho/dbg*.cjs
+# pacotes do crítico: os PNG originais são grandes demais; versiona-se a cópia em JPEG (critico/rodadaN/jpg)
+trabalho/critico/rodada*/poses/
+trabalho/critico/rodada*/volta/
+trabalho/critico/rodada*/rajada*/
+trabalho/*.log
+trabalho/video_partes/

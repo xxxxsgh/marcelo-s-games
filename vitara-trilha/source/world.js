@@ -371,6 +371,7 @@ World.onBridge = function (x, z) {
 World.waterAt = function (x, z) {
   if (!World.streamQ(x, z)) return -1e9; const q = World.stq; if (q.d > q.w + 3) return -1e9; return q.bed + 0.30;
 };
+const _SF_GRIP = [1.00, 0.88, 0.62, 0.70, 0.78, 0.95, 0.92], _SF_DRAG = [0.015, 0.03, 0.10, 0.16, 0.07, 0.012, 0.035], _SF_RUMBLE = [0.05, 0.30, 0.08, 0.55, 0.10, 0.18, 0.40], _SF_DUST = [1.0, 0.8, 0.0, 0.0, 0.15, 0.1, 0.5];
 // piso em (x,z): preenche World.sf e devolve o tipo
 World.surfaceAt = function (x, z) {
   const W = World, sf = W.sf, M = W.mask; let type = SURF_GRAMA;
@@ -387,10 +388,7 @@ World.surfaceAt = function (x, z) {
   }
   sf.type = type;
   //            terra  casc  lama  água  grama mad   pedra
-  sf.grip = [1.00, 0.88, 0.62, 0.70, 0.78, 0.95, 0.92][type];
-  sf.drag = [0.015, 0.03, 0.10, 0.16, 0.07, 0.012, 0.035][type];
-  sf.rumble = [0.05, 0.30, 0.08, 0.55, 0.10, 0.18, 0.40][type];
-  sf.dust = [1.0, 0.8, 0.0, 0.0, 0.15, 0.1, 0.5][type] * (1 - sf.wet);
+  sf.grip = _SF_GRIP[type]; sf.drag = _SF_DRAG[type]; sf.rumble = _SF_RUMBLE[type]; sf.dust = _SF_DUST[type] * (1 - sf.wet);
   return type;
 };
 // pose sobre a trilha no comprimento s (out: x,y,z,yaw) — yaw tal que a frente (+Z local) aponta no sentido da volta

@@ -7,16 +7,19 @@ async function boot() {
   worldInit();
   if (typeof Game !== 'undefined') { Game.init(); if (TEST) Game.fixedDt = true; }
   if (!NORENDER) { await gpuInit(cv); renderInit(); if (typeof sceneInit !== 'undefined') sceneInit(); }
+  if (!NORENDER && typeof sceneUpdate !== 'undefined') sceneUpdate(0);
   App.ready = true; document.getElementById('load').style.display = 'none';
   if (!TEST) requestAnimationFrame(tick);
 }
 function frame(dt) {
-  R.dt = dt; R.ptime = R.time; R.time += dt;
-  if (typeof Game !== 'undefined') Game.update(dt);
-  if (typeof sceneUpdate !== 'undefined') sceneUpdate(dt);
+  R.dt = dt; R.ptime = R.time;
+  const hasG = typeof Game !== 'undefined';
+  if (hasG) Game.update(dt);
+  if (hasG && Game.paused && !NORENDER) { CarD.u.copyWithin(80, 0, 80); hudUpdate(0); } // pausado: mundo congelado, sem rastro de movimento
+  else { R.time += dt; if (typeof sceneUpdate !== 'undefined' && !NORENDER) sceneUpdate(dt); }
   if (!NORENDER) renderFrame();
 }
-function tick(now) { if (App.perfMode) { requestAnimationFrame(tick); App.last = now; return; } const dt = clamp((now - App.last) / 1000, 1 / 240, 1 / 20); App.last = now; frame(App.last === now && App.t === 0 ? 1 / 60 : dt); App.t += dt; requestAnimationFrame(tick); }
+function tick(now) { if (App.perfMode) { requestAnimationFrame(tick); App.last = now; return; } const dt = App.last === 0 ? 1 / 60 : clamp((now - App.last) / 1000, 1 / 240, 1 / 20); App.last = now; frame(dt); App.t += dt; requestAnimationFrame(tick); }
 window.__t = {
   ready: boot().catch((e) => { App.err = e; console.error(e.stack || e); document.getElementById('load').textContent = 'Erro: ' + e.message; throw e; }),
   World, R, GPU, App, get S() { return S; },
@@ -25,7 +28,7 @@ window.__t = {
   frames(n) { for (let i = 0; i < n; i++) frame(1 / 60); },
   sim(n) { for (let i = 0; i < n; i++) { R.dt = 1 / 60; R.ptime = R.time; R.time += 1 / 60; Game.update(1 / 60); sceneUpdate(1 / 60); sceneSimOnly(); } },
   get CarD() { return CarD; },
-  still(n) { for (let i = 0; i < n; i++) { CarD.u.copyWithin(80, 0, 80); R.ptime = R.time; R.dt = 1 / 60; if (typeof hudUpdate !== 'undefined') hudUpdate(0); renderFrame(); } },
+  still(n) { carUpdate(0); for (let i = 0; i < n; i++) { CarD.u.copyWithin(80, 0, 80); R.ptime = R.time; R.dt = 1 / 60; if (typeof hudUpdate !== 'undefined') hudUpdate(0); renderFrame(); } },
   cam(ex, ey, ez, tx, ty, tz, fov) { App.freeCam = true; R.setCamera(ex, ey, ez, tx, ty, tz, fov || 1.0); },
   // leitura do quadro renderizado fora da tela (modo de teste): 'png' -> dataURL, 'raw' -> base64 RGBA
   async grab(kind) {

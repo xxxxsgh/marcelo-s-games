@@ -1,4 +1,4 @@
-Teste de controles — trabalho/stub.html — tudo certo
+Teste de controles — index.html — tudo certo
 PASS  gamepad detectado sem recarregar                padConnected 0 -> 1, índice 0
 PASS  RT  acelerador (proporcional)                   RT=0.5 -> 0.5; RT=1 por 2,5 s -> 36 km/h
 PASS  LT  freio em movimento + luz de freio           36 -> 21 km/h em 0,45 s, brakeLight=1
