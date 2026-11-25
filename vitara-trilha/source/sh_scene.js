@@ -64,12 +64,12 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   // --- sulcos dinâmicos dos pneus ---
   let ruv = (xz + 150.0) / 300.0;
   if (max(abs(xz.x), abs(xz.y)) < 149.0 && dist < 120.0) {
-    let o = 1.3 / 4096.0; let c0 = textureSampleLevel(rutT, sClamp, ruv, 0.0).r;
+    let o = 2.2 / 4096.0; let c0 = textureSampleLevel(rutT, sClamp, ruv, 0.0).r;
     if (c0 > 0.002) {
       let dx = textureSampleLevel(rutT, sClamp, ruv + vec2f(o, 0.0), 0.0).r - textureSampleLevel(rutT, sClamp, ruv - vec2f(o, 0.0), 0.0).r;
       let dz = textureSampleLevel(rutT, sClamp, ruv + vec2f(0.0, o), 0.0).r - textureSampleLevel(rutT, sClamp, ruv - vec2f(0.0, o), 0.0).r;
       let soft = 0.35 + 0.65 * max(mk.r, 0.45 * (1.0 - hard) * track) + (1.0 - track) * 0.3;
-      let tread = 0.75 + 0.25 * sin(dot(xz, vec2f(ftz, -ftx) * 900.0) );
+      let tread = 1.0;
       alb *= 1.0 - c0 * (0.42 * soft + 0.08) * tread; rough = mix(rough, mix(0.5, 0.22, mk.r), c0 * 0.6 * soft); bend += vec2f(dx, dz) * (1.3 * soft); ao *= 1.0 - c0 * 0.25 * soft;
     }
   }

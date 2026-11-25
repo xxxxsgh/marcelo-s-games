@@ -45,7 +45,7 @@ struct LV { @builtin(position) pos: vec4f, @location(0) a: f32, @location(1) wp:
 }
 @fragment fn fs(v: LV) -> @location(0) vec4f {
   let V = normalize(F.cam.xyz - v.wp); let g = pow(sat(dot(normalize(F.sun.xyz + V), vec3f(0.0, 1.0, 0.0)) ), 12.0);
-  let c = vec3f(0.085, 0.075, 0.07) * (F.sunCol.rgb * 0.16 + 0.35) + F.sunCol.rgb * g * 0.10; return vec4f(c, v.a * 0.92);
+  let c = vec3f(0.085, 0.075, 0.07) * (F.sunCol.rgb * 0.10 + 0.25) + F.sunCol.rgb * g * 0.01; return vec4f(c, v.a * 0.92);
 }
 `;
 const WG_PART = WG_COMMON + WG_FWD_BIND + /* wgsl */`

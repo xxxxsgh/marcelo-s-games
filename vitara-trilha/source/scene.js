@@ -54,7 +54,7 @@ function sceneInit() {
   S.pRut = mkPipe({ label: 'sulcos', code: WG_RUT, layouts: [], targets: [{ format: 'r8unorm', blend: { color: { operation: 'max', srcFactor: 'one', dstFactor: 'one' }, alpha: { operation: 'max', srcFactor: 'one', dstFactor: 'one' } } }], buffers: ib2 });
   S.rutB = dev.createBuffer({ size: 4 * 32, usage: 0x20 | 8 }); S.dRut = { colorAttachments: [{ view: R.rutT.createView(), loadOp: 'clear', storeOp: 'store', clearValue: [0, 0, 0, 0] }] };
   // ---- câmeras fixas à beira da trilha ----
-  { const T = W.trk, a = []; for (let s = 22; s < T.L; s += 52) { const i = Math.round(s / T.ds) % T.n, sd = T.curv[i] > 0 ? -1 : 1, o = (T.hw[i] + 4.5) * sd, x = T.x[i] + T.tz[i] * o, z = T.z[i] - T.tx[i] * o; a.push(x, Math.max(W.heightRaw(x, z), W.waterAt(x, z)) + 1.5, z, s); }
+  { const T = W.trk, a = []; for (let s = 22; s < T.L; s += 52) { const i = Math.round(s / T.ds) % T.n, sd = T.curv[i] > 0 ? -1 : 1, o = (T.hw[i] + 4.5) * sd, x = T.x[i] + T.tz[i] * o, z = T.z[i] - T.tx[i] * o; a.push(x, Math.max(W.heightRaw(x, z), W.waterAt(x, z)) + 2.5, z, s); }
     S.fixCams = new Float32Array(a); }
   R.gDraw.push(sceneG); R.sDraw.push(sceneShadow); const fe = (p) => sceneFwdEarly(p); fe.early = true; R.fDraw.push(fe); R.fDraw.push(sceneFwd);
   if (typeof carInit !== 'undefined') carInit();
@@ -146,15 +146,15 @@ function particlesUpdate(dt) {
     // sulco: segmento do último ponto de contato até o atual
     if (surf !== SURF_MADEIRA && surf !== SURF_AGUA && sp > 0.3) {
       if (S.lastOk[w] && S.rutN < 4) { const k = S.rutN * 8, dx = cx - S.lastC[w * 3], dz = cz - S.lastC[w * 3 + 2];
-        if (dx * dx + dz * dz < 9 && dx * dx + dz * dz > 0.0004) { S.rut[k] = S.lastC[w * 3]; S.rut[k + 1] = S.lastC[w * 3 + 2]; S.rut[k + 2] = cx; S.rut[k + 3] = cz; S.rut[k + 4] = 0.135; S.rut[k + 5] = clamp(0.55 + wet * 0.45 + slip * 0.3, 0, 1); S.rutN++; } }
+        if (dx * dx + dz * dz < 9 && dx * dx + dz * dz > 0.0004) { S.rut[k] = S.lastC[w * 3]; S.rut[k + 1] = S.lastC[w * 3 + 2]; S.rut[k + 2] = cx; S.rut[k + 3] = cz; S.rut[k + 4] = 0.17; S.rut[k + 5] = clamp(0.55 + wet * 0.45 + slip * 0.3, 0, 1); S.rutN++; } }
       S.lastC[w * 3] = cx; S.lastC[w * 3 + 1] = cy; S.lastC[w * 3 + 2] = cz; S.lastOk[w] = 1;
     } else S.lastOk[w] = 0;
     const bx = fx * dirS, bz = fz * dirS, act = sp * 0.05 + Math.min(slip, 0.6) * 0.5;
     if (surf === SURF_AGUA || P.water[w] > 0.04) {
-      const nsp = Math.min(6, (sp * 0.55 + slip * 3) | 0);
+      const nsp = Math.min(10, (sp * 0.9 + slip * 3) | 0);
       for (let k = 0; k < nsp; k++) { const u = prand(), v = prand(), out = (0.6 + u * 2.6) * side * (0.25 + sp * 0.11);
-        emit(2, cx + (v - 0.5) * 0.4, cy + 0.12, cz + (u - 0.5) * 0.4, lx * out + bx * sp * (0.15 + v * 0.3) + P.vel[0] * 0.55, 1.2 + prand() * (1.6 + sp * 0.28), lz * out + bz * sp * (0.15 + v * 0.3) + P.vel[2] * 0.55, 0.05 + prand() * 0.10, 0.25, 0.5 + prand() * 0.45, 2.3, 2.2, 2.1, 0.55, 0.8); }
-      if (sp > 2 && prand() < 0.6) emit(3, cx, cy + 0.3, cz, lx * side * 1.2 + P.vel[0] * 0.5, 1.4 + prand(), lz * side * 1.2 + P.vel[2] * 0.5, 0.25, 0.9, 0.7 + prand() * 0.4, 1.5, 1.4, 1.3, 0.12, 1.2);
+        emit(2, cx + (v - 0.5) * 0.4, cy + 0.12, cz + (u - 0.5) * 0.4, lx * out + bx * sp * (0.15 + v * 0.3) + P.vel[0] * 0.55, 1.2 + prand() * (1.6 + sp * 0.28), lz * out + bz * sp * (0.15 + v * 0.3) + P.vel[2] * 0.55, 0.07 + prand() * 0.13, 0.3, 0.55 + prand() * 0.5, 2.3, 2.2, 2.1, 0.8, 0.8); }
+      if (sp > 2) emit(3, cx, cy + 0.3, cz, lx * side * 1.2 + P.vel[0] * 0.5, 1.4 + prand(), lz * side * 1.2 + P.vel[2] * 0.5, 0.3, 1.1, 0.7 + prand() * 0.4, 1.6, 1.5, 1.4, 0.2, 1.2);
     } else if (wet > 0.35) {
       if (prand() < act * 1.6) for (let k = 0; k < 2; k++) emit(1, cx, cy + 0.08, cz, bx * sp * (0.2 + prand() * 0.35) + lx * side * (prand() - 0.3) * 2 + P.vel[0] * 0.3, 0.8 + prand() * (1.5 + sp * 0.2 + slip * 3), bz * sp * (0.2 + prand() * 0.35) + lz * side * (prand() - 0.3) * 2 + P.vel[2] * 0.3, 0.025 + prand() * 0.05, 0, 0.5 + prand() * 0.5, 0.09, 0.055, 0.032, 1, 0.3);
     } else if (surf !== SURF_MADEIRA) {
@@ -177,14 +177,14 @@ function cameraUpdate(dt) {
   if (mode === 0) {
     let dy = yaw - S.camYaw; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI;
     S.camYaw += snap ? dy : dy * (1 - Math.exp(-dt * 4.2));
-    const a = S.camYaw + Game.camYaw, sp = Math.abs(P.speed), dist = 6.0 + sp * 0.03, pit = 0.19 + Game.camPitch * 0.6, ch = Math.cos(pit);
+    const a = S.camYaw + Game.camYaw, sp = Math.abs(P.speed), dist = 6.2 + sp * 0.03, pit = 0.12 + Game.camPitch * 0.6, ch = Math.cos(pit);
     let ex = px - Math.sin(a) * dist * ch, ez = pz - Math.cos(a) * dist * ch, ey = py + 1.15 + Math.sin(pit) * dist;
     const g = Math.max(World.heightRaw(ex, ez), World.waterAt(ex, ez)) + 0.55; if (ey < g) ey = g;
     const k = snap ? 1 : 1 - Math.exp(-dt * 9); S.camE[0] += (ex - S.camE[0]) * k; S.camE[1] += (ey - S.camE[1]) * (snap ? 1 : 1 - Math.exp(-dt * 5)); S.camE[2] += (ez - S.camE[2]) * k;
-    const kt = snap ? 1 : 1 - Math.exp(-dt * 14); S.camT[0] += (px - S.camT[0]) * kt; S.camT[1] += (py + 1.25 - S.camT[1]) * kt; S.camT[2] += (pz - S.camT[2]) * kt;
+    const kt = snap ? 1 : 1 - Math.exp(-dt * 14); S.camT[0] += (px - S.camT[0]) * kt; S.camT[1] += (py + 1.0 - S.camT[1]) * kt; S.camT[2] += (pz - S.camT[2]) * kt;
     R.setCamera(S.camE[0], S.camE[1], S.camE[2], S.camT[0], S.camT[1], S.camT[2], 0.98 + Math.min(0.14, sp * 0.005));
   } else if (mode === 1) {
-    _carLocal(0, 1.40, 0.80); const ex = px + _cq[0], ey = py + _cq[1], ez = pz + _cq[2]; _carLocal(0, 1.30, 9);
+    _carLocal(0, 1.44, 0.78); const ex = px + _cq[0], ey = py + _cq[1], ez = pz + _cq[2]; _carLocal(0, 1.50, 9);
     const tx = px + _cq[0], ty = py + _cq[1], tz = pz + _cq[2]; _carLocal(0, 1, 0);
     R.setCamera(ex, ey, ez, tx, ty, tz, 1.12); m4look(R.view, 0, ex, ey, ez, tx, ty, tz, _cq[0] * 0.6, 0.8 + _cq[1] * 0.2, _cq[2] * 0.6);
     S.camYaw = yaw;

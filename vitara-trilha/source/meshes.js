@@ -153,7 +153,6 @@ function makeStructures() {
       const dg = [ga[0] * 0.93, 0.36, ga[2] * 0.93]; m.box(cx, y + 0.8, cz, dg, [-dg[0] * 0.36, 0.93, -dg[2] * 0.36], gn, gl * 0.98, 0.04, 0.028, wood(), 6, 0.75);
     }
     m.box(G.x, W.heightRaw(G.x, G.z) + 4.05, G.z, az, Y, ax, G.hw + 0.5, 0.13, 0.13, [0.72, 0.68, 0.62], 6, 0.25);
-    m.box(G.x, W.heightRaw(G.x, G.z) + 3.52, G.z, az, Y, ax, 1.5, 0.32, 0.03, [0.85, 0.8, 0.7], 6, 0.5);
   }
   // --- mirante ---
   { const L = W.lookout, i = L.i, ax = [T.tx[i], 0, T.tz[i]], az = [L.fx, 0, L.fz], hx = 3.3, hz = 2.4, y = L.y;

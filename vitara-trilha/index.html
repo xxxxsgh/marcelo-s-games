@@ -1420,12 +1420,12 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   // --- sulcos dinâmicos dos pneus ---
   let ruv = (xz + 150.0) / 300.0;
   if (max(abs(xz.x), abs(xz.y)) < 149.0 && dist < 120.0) {
-    let o = 1.3 / 4096.0; let c0 = textureSampleLevel(rutT, sClamp, ruv, 0.0).r;
+    let o = 2.2 / 4096.0; let c0 = textureSampleLevel(rutT, sClamp, ruv, 0.0).r;
     if (c0 > 0.002) {
       let dx = textureSampleLevel(rutT, sClamp, ruv + vec2f(o, 0.0), 0.0).r - textureSampleLevel(rutT, sClamp, ruv - vec2f(o, 0.0), 0.0).r;
       let dz = textureSampleLevel(rutT, sClamp, ruv + vec2f(0.0, o), 0.0).r - textureSampleLevel(rutT, sClamp, ruv - vec2f(0.0, o), 0.0).r;
       let soft = 0.35 + 0.65 * max(mk.r, 0.45 * (1.0 - hard) * track) + (1.0 - track) * 0.3;
-      let tread = 0.75 + 0.25 * sin(dot(xz, vec2f(ftz, -ftx) * 900.0) );
+      let tread = 1.0;
       alb *= 1.0 - c0 * (0.42 * soft + 0.08) * tread; rough = mix(rough, mix(0.5, 0.22, mk.r), c0 * 0.6 * soft); bend += vec2f(dx, dz) * (1.3 * soft); ao *= 1.0 - c0 * 0.25 * soft;
     }
   }
@@ -1674,7 +1674,7 @@ fn ssr(P: vec3f, R: vec3f, n0: f32) -> vec4f {
   // especular de ambiente + SSR
   let R = reflect(-V, N); let so = sat(pow(nv + ao, exp2(-16.0 * rough - 1.0)) - 1.0 + ao);
   var env = envAt(R, rough) * mix(1.0, sat(1.0 + R.y * 4.0) * 0.6 + 0.4, 0.5);
-  var cenv = envAt(R, 0.0);
+  var cenv = envAt(R, 0.10);
   let smoothK = max(coat, 1.0 - smoothstep(0.12, 0.36, rough));
   if (smoothK > 0.01 && vz < 150.0) { let h = ssr(wp + N * 0.01 * (1.0 + vz * 0.1), R, n1); cenv = mix(cenv, h.rgb, h.a * select(1.0, 0.55, coat > 0.5)); if (coat < 0.5 || rough < 0.2) { env = mix(env, h.rgb, h.a * (1.0 - smoothstep(0.12, 0.36, rough))); } }
   col += env * envBRDF(f0, rough, nv) * so * (1.0 - coat * 0.0);
@@ -1703,7 +1703,7 @@ fn dens(p: vec3f) -> f32 { return 0.00026 * exp(-max(p.y - 19.0, 0.0) / 220.0) +
     let f0 = f32(k) / NS; let f1 = f32(k + 1) / NS; let t0 = nearEnd * f0 * f0; let t1 = nearEnd * f1 * f1; let t = mix(t0, t1, n0); let p = cam + rd * t;
     let nz = textureSampleLevel(noise3T, sRep, p * vec3f(0.021, 0.05, 0.021) + vec3f(F.cam.w * 0.012, 0.0, F.cam.w * 0.007), 0.0).x;
     let de = dens(p) * (0.55 + 1.0 * nz); let s = shadowAt(p, F.sun.xyz, t, fract(n0 + f0 * 7.0), 2);
-    let a = 1.0 - exp(-de * (t1 - t0)); acc += T * a * (sc * s * min(hg, 0.38) * 3.6 + ambC * 10.0); T *= 1.0 - a;
+    let a = 1.0 - exp(-de * (t1 - t0)); acc += T * a * (sc * s * min(hg, 0.38) * 3.2 + ambC * 7.0); T *= 1.0 - a;
   }
   if (dist > 170.0) { // trecho analítico
     let y0 = cam.y + rd.y * 170.0 - 19.0; let ry = rd.y; let len = dist - 170.0;
@@ -1878,7 +1878,7 @@ struct LV { @builtin(position) pos: vec4f, @location(0) a: f32, @location(1) wp:
 }
 @fragment fn fs(v: LV) -> @location(0) vec4f {
   let V = normalize(F.cam.xyz - v.wp); let g = pow(sat(dot(normalize(F.sun.xyz + V), vec3f(0.0, 1.0, 0.0)) ), 12.0);
-  let c = vec3f(0.085, 0.075, 0.07) * (F.sunCol.rgb * 0.16 + 0.35) + F.sunCol.rgb * g * 0.10; return vec4f(c, v.a * 0.92);
+  let c = vec3f(0.085, 0.075, 0.07) * (F.sunCol.rgb * 0.10 + 0.25) + F.sunCol.rgb * g * 0.01; return vec4f(c, v.a * 0.92);
 }
 `;
 const WG_PART = WG_COMMON + WG_FWD_BIND + /* wgsl */`
@@ -1952,7 +1952,7 @@ fn classify(p: vec3f, n: vec3f) -> i32 {
     if (d < 0.0) { if (d > -0.022) { return 4; } return 2; }
     if (y < 0.46) { return 8; }
     if (y > 0.53 && y < 0.565 && ax > 0.62 && ax < 0.76) { return 13; }
-    if (p.x > -0.50 && p.x < -0.10 && y > 0.565 && y < 0.695) { return 10; }
+    if (p.x > 0.29 && p.x < 0.69 && y > 0.565 && y < 0.695) { return 10; }
   }
   if (n.z > 0.35 && z > 1.80) { // frente
     let dg = max(ax - (0.335 + 0.07 * sat((y - 0.735) / 0.215)), max(0.735 - y, y - 0.950));
@@ -1994,7 +1994,6 @@ fn shade(v: CV, ff: bool) -> Surf {
     if (!ff) { s.alb = vec3f(0.055, 0.055, 0.06); s.rough = 0.85; s.ao = 0.7; if (c == 11) { s.alb = vec3f(0.02); } return s; }
     if (c == 0) {
       s.alb = paint * (0.97 + 0.06 * fl); s.metal = 0.72; s.rough = 0.36 + 0.02 * flk; s.coat = 1.0; s.mat = 2.0;
-      if (n.y > 0.5 && p.z > 1.0) { let dcr = (ax - (0.40 + (p.z - 1.0) * 0.03)) / 0.022; s.bx = sign(p.x) * dcr * exp(-dcr * dcr) * 0.5; }
       let g = grooves(p, n); s.alb = mix(s.alb, vec3f(0.01), g); s.coat *= 1.0 - g; s.ao = 1.0 - g * 0.6;
       // emblema GRAND VITARA na tampa
       if (n.z < -0.5 && p.z < -1.9) { let e = dec(vec2f((0.69 - p.x) / 0.36, (1.0 - p.y) / 0.055), vec4f(0.5, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.9), e); s.metal = mix(s.metal, 1.0, e); s.rough = mix(s.rough, 0.12, e); }
@@ -2018,20 +2017,20 @@ fn shade(v: CV, ff: bool) -> Surf {
       s.alb = mix(vec3f(0.06), vec3f(0.008), mesh); s.rough = 0.45; s.ao = 0.45 + 0.4 * (1.0 - mesh);
       let by = abs(fract((p.y - 0.735) / 0.0717) - 0.5); let bar = (1.0 - smoothstep(0.30, 0.36, by)) * 0.0; let slat = 1.0 - smoothstep(0.28, 0.34, by); let em = dec(vec2f((p.x + 0.085) / 0.17, (0.927 - p.y) / 0.17), vec4f(0.5, 0.5, 0.125, 0.5)); let disc = 0.0;
       s.alb = mix(s.alb, vec3f(0.11, 0.11, 0.115), slat); s.ao = mix(s.ao, 0.9, slat);
-      s.alb = mix(s.alb, vec3f(0.86), max(bar, em)); s.metal = max(bar, em); s.rough = mix(s.rough, 0.10, max(bar, em)); s.ao = mix(s.ao, 1.0, max(bar, em));
+      s.alb = mix(s.alb, vec3f(0.80, 0.81, 0.82), max(bar, em)); s.metal = max(bar, em) * 0.35; s.rough = mix(s.rough, 0.30, max(bar, em)); s.ao = mix(s.ao, 1.0, max(bar, em));
       if (disc > 0.0 && em < 0.5) { s.alb = mix(s.alb, vec3f(0.02), disc * (1.0 - bar)); }
     } else if (c == 8) { s.alb = vec3f(0.030, 0.031, 0.033) * (0.8 + 0.4 * fl); s.rough = 0.58;
       if (n.z > 0.35 && p.y > 0.385 && p.y < 0.515 && ax < 0.53) { s.alb *= 0.4 + 0.6 * step(0.5, fract(p.y * 46.0)); s.ao = 0.6; } }
     else if (c == 9) { s.alb = vec3f(0.88); s.metal = 1.0; s.rough = 0.09; }
     else if (c == 10) { // placa genérica
-      var u = vec2f(0.0); if (p.z < 0.0) { u = vec2f((-0.10 - p.x) / 0.40, (0.695 - p.y) / 0.13); } else { u = vec2f((p.x + 0.205) / 0.41, (0.678 - p.y) / 0.13); }
+      var u = vec2f(0.0); if (p.z < 0.0) { u = vec2f((0.69 - p.x) / 0.40, (0.695 - p.y) / 0.13); } else { u = vec2f((p.x + 0.205) / 0.41, (0.678 - p.y) / 0.13); }
       let tx = dec(vec2f(u.x, (u.y - 0.2) / 0.78), vec4f(0.0, 0.5, 0.5, 0.5)); s.alb = mix(vec3f(0.72, 0.72, 0.70), vec3f(0.03), tx); if (u.y < 0.17) { s.alb = vec3f(0.03, 0.10, 0.42); }
       let ed = min(min(u.x, 1.0 - u.x) * 3.1, min(u.y, 1.0 - u.y)); if (ed < 0.05) { s.alb = vec3f(0.03); } s.rough = 0.35;
     } else if (c == 11) { s.alb = vec3f(0.018); s.rough = 0.9; s.ao = 0.5; }
     else if (c == 12) { let d = length(vec2f(ax - 0.675, p.y - 0.465)); s.alb = mix(vec3f(0.75, 0.78, 0.8), vec3f(0.03), smoothstep(0.045, 0.052, d)); s.metal = 1.0 - smoothstep(0.045, 0.052, d); s.rough = 0.12; s.coat = 1.0; s.mat = 2.0; }
     else if (c == 13) { s.alb = vec3f(0.45, 0.01, 0.01) * (0.7 + 0.3 * sin(ax * 500.0)); s.rough = 0.25; s.coat = 1.0; s.mat = 2.0; }
   } else if (k == 11 || k == 18) {
-    s.alb = paint; s.metal = 0.35; s.rough = 0.5; s.coat = 0.5; s.mat = 2.0; s.coat = 1.0; s.mat = 2.0;
+    s.alb = paint * 1.15; s.metal = 0.25; s.rough = 0.55; s.coat = 0.15; s.mat = 2.0; s.coat = 1.0; s.mat = 2.0;
     if (k == 18) { let rr = length(vec2f(p.x + 0.08, p.y - 0.955));
       if (rr > 0.345 && abs(n.z) > 0.5) { s.alb *= 0.8; }
       { let e = dec(vec2f(0.5 - (p.x + 0.08) / 0.44, 0.5 - (p.y - 0.955) / 0.11), vec4f(0.0, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.16, 0.16, 0.17), e); s.metal = mix(s.metal, 0.2, e); s.rough = mix(s.rough, 0.3, e); } }
@@ -2064,7 +2063,7 @@ fn shade(v: CV, ff: bool) -> Surf {
     if (k == 15 || k == 14) { dust = sat(max(C.p.x * 3.0, C.p.y * 2.0) * (0.5 + nB.x)) * 0.45; }
     let splN = smoothstep(0.62 - 0.30 * low - 0.25 * smoothstep(0.8, 0.0, da), 0.72, nB.z * 0.6 + nB.x * 0.4 + (nA.y - 0.5) * 0.3);
     let mud = sat(C.p.y * 1.6 * dirtable) * splN * smoothstep(1.5, 0.5, p.y) * step(C.p.y, 2.0);
-    s.alb = mix(s.alb, vec3f(0.27, 0.175, 0.115) * (0.8 + 0.4 * nB.x), dust * 0.85); s.rough = mix(s.rough, 0.9, dust); s.coat *= 1.0 - dust; s.metal *= 1.0 - dust * 0.9;
+    s.alb = mix(s.alb, vec3f(0.19, 0.115, 0.07) * (0.85 + 0.3 * nB.x), dust * 0.85); s.rough = mix(s.rough, 0.9, dust); s.coat *= 1.0 - dust; s.metal *= 1.0 - dust * 0.9;
     s.alb = mix(s.alb, vec3f(0.13, 0.08, 0.05) * (0.7 + 0.6 * nB.y), mud); s.rough = mix(s.rough, 0.45, mud); s.coat *= 1.0 - mud; s.metal *= 1.0 - mud;
     if (s.mat > 2.5) { s.emis *= 1.0 - 0.6 * max(dust, mud); } else if (s.coat < 0.05) { s.mat = 0.0; }
   }
@@ -2511,7 +2510,6 @@ function makeStructures() {
       const dg = [ga[0] * 0.93, 0.36, ga[2] * 0.93]; m.box(cx, y + 0.8, cz, dg, [-dg[0] * 0.36, 0.93, -dg[2] * 0.36], gn, gl * 0.98, 0.04, 0.028, wood(), 6, 0.75);
     }
     m.box(G.x, W.heightRaw(G.x, G.z) + 4.05, G.z, az, Y, ax, G.hw + 0.5, 0.13, 0.13, [0.72, 0.68, 0.62], 6, 0.25);
-    m.box(G.x, W.heightRaw(G.x, G.z) + 3.52, G.z, az, Y, ax, 1.5, 0.32, 0.03, [0.85, 0.8, 0.7], 6, 0.5);
   }
   // --- mirante ---
   { const L = W.lookout, i = L.i, ax = [T.tx[i], 0, T.tz[i]], az = [L.fx, 0, L.fz], hx = 3.3, hz = 2.4, y = L.y;
@@ -2653,7 +2651,7 @@ function makeCarParts() {
     for (let i = 0; i < pts.length - 1; i++) tubeK(pts[i], pts[i + 1], 0.021, 0.021, 8, 12, [0.05, 0.05, 0.055, 1]);
     for (const z of [-0.12, -1.60]) boxK([x, 1.655, z], [0.02, 0.03, 0.06], 12, [0.05, 0.05, 0.055]); }
   // antena no fim do teto
-  tubeK([0.0, 1.66, -1.78], [0.0, 1.69, -1.80], 0.03, 0.016, 8, 12, [0.05, 0.05, 0.055, 1]); tubeK([0.0, 1.685, -1.80], [0.0, 1.95, -2.03], 0.013, 0.011, 6, 12, [0.05, 0.05, 0.055, 1]);
+  tubeK([0.0, 1.66, -1.78], [0.0, 1.69, -1.80], 0.03, 0.016, 8, 12, [0.05, 0.05, 0.055, 1]); tubeK([0.0, 1.685, -1.80], [0.0, 1.95, -2.03], 0.009, 0.008, 6, 12, [0.05, 0.05, 0.055, 1]);
   // retrovisores
   for (const sd of [1, -1]) { const c = [0.985 * sd, 1.105, 0.70];
     const n0 = m.n, prof = []; for (let k = 0; k <= 8; k++) { const t = k / 8; prof.push([lerp(-0.055, 0.075, t), 0.085 * Math.sqrt(Math.max(0, 1 - Math.pow(t * 0.92, 2.6))) + 0.0]); }
@@ -2802,7 +2800,7 @@ function sceneInit() {
   S.pRut = mkPipe({ label: 'sulcos', code: WG_RUT, layouts: [], targets: [{ format: 'r8unorm', blend: { color: { operation: 'max', srcFactor: 'one', dstFactor: 'one' }, alpha: { operation: 'max', srcFactor: 'one', dstFactor: 'one' } } }], buffers: ib2 });
   S.rutB = dev.createBuffer({ size: 4 * 32, usage: 0x20 | 8 }); S.dRut = { colorAttachments: [{ view: R.rutT.createView(), loadOp: 'clear', storeOp: 'store', clearValue: [0, 0, 0, 0] }] };
   // ---- câmeras fixas à beira da trilha ----
-  { const T = W.trk, a = []; for (let s = 22; s < T.L; s += 52) { const i = Math.round(s / T.ds) % T.n, sd = T.curv[i] > 0 ? -1 : 1, o = (T.hw[i] + 4.5) * sd, x = T.x[i] + T.tz[i] * o, z = T.z[i] - T.tx[i] * o; a.push(x, Math.max(W.heightRaw(x, z), W.waterAt(x, z)) + 1.5, z, s); }
+  { const T = W.trk, a = []; for (let s = 22; s < T.L; s += 52) { const i = Math.round(s / T.ds) % T.n, sd = T.curv[i] > 0 ? -1 : 1, o = (T.hw[i] + 4.5) * sd, x = T.x[i] + T.tz[i] * o, z = T.z[i] - T.tx[i] * o; a.push(x, Math.max(W.heightRaw(x, z), W.waterAt(x, z)) + 2.5, z, s); }
     S.fixCams = new Float32Array(a); }
   R.gDraw.push(sceneG); R.sDraw.push(sceneShadow); const fe = (p) => sceneFwdEarly(p); fe.early = true; R.fDraw.push(fe); R.fDraw.push(sceneFwd);
   if (typeof carInit !== 'undefined') carInit();
@@ -2894,15 +2892,15 @@ function particlesUpdate(dt) {
     // sulco: segmento do último ponto de contato até o atual
     if (surf !== SURF_MADEIRA && surf !== SURF_AGUA && sp > 0.3) {
       if (S.lastOk[w] && S.rutN < 4) { const k = S.rutN * 8, dx = cx - S.lastC[w * 3], dz = cz - S.lastC[w * 3 + 2];
-        if (dx * dx + dz * dz < 9 && dx * dx + dz * dz > 0.0004) { S.rut[k] = S.lastC[w * 3]; S.rut[k + 1] = S.lastC[w * 3 + 2]; S.rut[k + 2] = cx; S.rut[k + 3] = cz; S.rut[k + 4] = 0.135; S.rut[k + 5] = clamp(0.55 + wet * 0.45 + slip * 0.3, 0, 1); S.rutN++; } }
+        if (dx * dx + dz * dz < 9 && dx * dx + dz * dz > 0.0004) { S.rut[k] = S.lastC[w * 3]; S.rut[k + 1] = S.lastC[w * 3 + 2]; S.rut[k + 2] = cx; S.rut[k + 3] = cz; S.rut[k + 4] = 0.17; S.rut[k + 5] = clamp(0.55 + wet * 0.45 + slip * 0.3, 0, 1); S.rutN++; } }
       S.lastC[w * 3] = cx; S.lastC[w * 3 + 1] = cy; S.lastC[w * 3 + 2] = cz; S.lastOk[w] = 1;
     } else S.lastOk[w] = 0;
     const bx = fx * dirS, bz = fz * dirS, act = sp * 0.05 + Math.min(slip, 0.6) * 0.5;
     if (surf === SURF_AGUA || P.water[w] > 0.04) {
-      const nsp = Math.min(6, (sp * 0.55 + slip * 3) | 0);
+      const nsp = Math.min(10, (sp * 0.9 + slip * 3) | 0);
       for (let k = 0; k < nsp; k++) { const u = prand(), v = prand(), out = (0.6 + u * 2.6) * side * (0.25 + sp * 0.11);
-        emit(2, cx + (v - 0.5) * 0.4, cy + 0.12, cz + (u - 0.5) * 0.4, lx * out + bx * sp * (0.15 + v * 0.3) + P.vel[0] * 0.55, 1.2 + prand() * (1.6 + sp * 0.28), lz * out + bz * sp * (0.15 + v * 0.3) + P.vel[2] * 0.55, 0.05 + prand() * 0.10, 0.25, 0.5 + prand() * 0.45, 2.3, 2.2, 2.1, 0.55, 0.8); }
-      if (sp > 2 && prand() < 0.6) emit(3, cx, cy + 0.3, cz, lx * side * 1.2 + P.vel[0] * 0.5, 1.4 + prand(), lz * side * 1.2 + P.vel[2] * 0.5, 0.25, 0.9, 0.7 + prand() * 0.4, 1.5, 1.4, 1.3, 0.12, 1.2);
+        emit(2, cx + (v - 0.5) * 0.4, cy + 0.12, cz + (u - 0.5) * 0.4, lx * out + bx * sp * (0.15 + v * 0.3) + P.vel[0] * 0.55, 1.2 + prand() * (1.6 + sp * 0.28), lz * out + bz * sp * (0.15 + v * 0.3) + P.vel[2] * 0.55, 0.07 + prand() * 0.13, 0.3, 0.55 + prand() * 0.5, 2.3, 2.2, 2.1, 0.8, 0.8); }
+      if (sp > 2) emit(3, cx, cy + 0.3, cz, lx * side * 1.2 + P.vel[0] * 0.5, 1.4 + prand(), lz * side * 1.2 + P.vel[2] * 0.5, 0.3, 1.1, 0.7 + prand() * 0.4, 1.6, 1.5, 1.4, 0.2, 1.2);
     } else if (wet > 0.35) {
       if (prand() < act * 1.6) for (let k = 0; k < 2; k++) emit(1, cx, cy + 0.08, cz, bx * sp * (0.2 + prand() * 0.35) + lx * side * (prand() - 0.3) * 2 + P.vel[0] * 0.3, 0.8 + prand() * (1.5 + sp * 0.2 + slip * 3), bz * sp * (0.2 + prand() * 0.35) + lz * side * (prand() - 0.3) * 2 + P.vel[2] * 0.3, 0.025 + prand() * 0.05, 0, 0.5 + prand() * 0.5, 0.09, 0.055, 0.032, 1, 0.3);
     } else if (surf !== SURF_MADEIRA) {
@@ -2925,14 +2923,14 @@ function cameraUpdate(dt) {
   if (mode === 0) {
     let dy = yaw - S.camYaw; while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI;
     S.camYaw += snap ? dy : dy * (1 - Math.exp(-dt * 4.2));
-    const a = S.camYaw + Game.camYaw, sp = Math.abs(P.speed), dist = 6.0 + sp * 0.03, pit = 0.19 + Game.camPitch * 0.6, ch = Math.cos(pit);
+    const a = S.camYaw + Game.camYaw, sp = Math.abs(P.speed), dist = 6.2 + sp * 0.03, pit = 0.12 + Game.camPitch * 0.6, ch = Math.cos(pit);
     let ex = px - Math.sin(a) * dist * ch, ez = pz - Math.cos(a) * dist * ch, ey = py + 1.15 + Math.sin(pit) * dist;
     const g = Math.max(World.heightRaw(ex, ez), World.waterAt(ex, ez)) + 0.55; if (ey < g) ey = g;
     const k = snap ? 1 : 1 - Math.exp(-dt * 9); S.camE[0] += (ex - S.camE[0]) * k; S.camE[1] += (ey - S.camE[1]) * (snap ? 1 : 1 - Math.exp(-dt * 5)); S.camE[2] += (ez - S.camE[2]) * k;
-    const kt = snap ? 1 : 1 - Math.exp(-dt * 14); S.camT[0] += (px - S.camT[0]) * kt; S.camT[1] += (py + 1.25 - S.camT[1]) * kt; S.camT[2] += (pz - S.camT[2]) * kt;
+    const kt = snap ? 1 : 1 - Math.exp(-dt * 14); S.camT[0] += (px - S.camT[0]) * kt; S.camT[1] += (py + 1.0 - S.camT[1]) * kt; S.camT[2] += (pz - S.camT[2]) * kt;
     R.setCamera(S.camE[0], S.camE[1], S.camE[2], S.camT[0], S.camT[1], S.camT[2], 0.98 + Math.min(0.14, sp * 0.005));
   } else if (mode === 1) {
-    _carLocal(0, 1.40, 0.80); const ex = px + _cq[0], ey = py + _cq[1], ez = pz + _cq[2]; _carLocal(0, 1.30, 9);
+    _carLocal(0, 1.44, 0.78); const ex = px + _cq[0], ey = py + _cq[1], ez = pz + _cq[2]; _carLocal(0, 1.50, 9);
     const tx = px + _cq[0], ty = py + _cq[1], tz = pz + _cq[2]; _carLocal(0, 1, 0);
     R.setCamera(ex, ey, ez, tx, ty, tz, 1.12); m4look(R.view, 0, ex, ey, ez, tx, ty, tz, _cq[0] * 0.6, 0.8 + _cq[1] * 0.2, _cq[2] * 0.6);
     S.camYaw = yaw;
@@ -3012,8 +3010,8 @@ function hudUpdate(dt) {
   let x = 1640; if (kmh < 100) x += 52; if (kmh < 10) x += 52; _hnum(kmh, kmh >= 100 ? 3 : kmh >= 10 ? 2 : 1, x, 942, 1.0, 1, 1, 1, 1); _hword('KM/H', 1800, 1004, 0.62, 1, 1, 1, 0.75);
   if (typeof Physics !== 'undefined' && Physics.reverse) _hword('RÉ', 1800, 956, 0.7, 1, 0.4, 0.3, 1);
   // mensagens
-  if (G.msg > 0 && G.msgT > 0) { const nm = G.msg === 1 ? 'CHECKPOINT' : G.msg === 2 ? 'VOLTA COMPLETA' : G.msg === 3 ? 'NOVO RECORDE' : G.msg === 4 ? 'DE VOLTA À TRILHA' : 'FORA DA TRILHA', w = Hud.words[nm], sc = 1.25, a = Math.min(1, G.msgT * 3);
-    _hq(960 - w[4] * sc / 2 - 24, 96, w[4] * sc + 48, 70, S0, 0.02, 0.025, 0.03, 0.45 * a); _hword(nm, 960 - w[4] * sc / 2, 104, sc, 1, G.msg === 5 ? 0.45 : 0.85, G.msg === 3 ? 0.3 : G.msg === 5 ? 0.3 : 0.6, a);
+  if (G.msg > 0 && G.msgT > 0) { const nm = G.msg === 1 ? 'CHECKPOINT' : (G.msg === 2 || (G.msg === 3 && G.laps <= 1)) ? 'VOLTA COMPLETA' : G.msg === 3 ? 'NOVO RECORDE' : G.msg === 4 ? 'DE VOLTA À TRILHA' : 'FORA DA TRILHA', w = Hud.words[nm], sc = 1.25, a = Math.min(1, G.msgT * 3);
+    _hq(960 - w[4] * sc / 2 - 24, 96, w[4] * sc + 48, 70, S0, 0.02, 0.025, 0.03, 0.62 * a); _hword(nm, 960 - w[4] * sc / 2, 104, sc, 1, G.msg === 5 ? 0.45 : 0.85, G.msg === 3 ? 0.3 : G.msg === 5 ? 0.3 : 0.6, a);
     if (G.msg === 2 || G.msg === 3) _htime(G.lastMs, 960 - 120, 172, 0.5, 1, 1, 1, a); }
   else if (!G.lapActive && G.laps === 0) { const w = Hud.words.LARGADA; _hword('LARGADA', 960 - w[4] * 0.5, 104, 1.0, 1, 1, 1, 0.8); }
 }

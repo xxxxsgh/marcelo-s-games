@@ -57,8 +57,8 @@ function hudUpdate(dt) {
   let x = 1640; if (kmh < 100) x += 52; if (kmh < 10) x += 52; _hnum(kmh, kmh >= 100 ? 3 : kmh >= 10 ? 2 : 1, x, 942, 1.0, 1, 1, 1, 1); _hword('KM/H', 1800, 1004, 0.62, 1, 1, 1, 0.75);
   if (typeof Physics !== 'undefined' && Physics.reverse) _hword('RÉ', 1800, 956, 0.7, 1, 0.4, 0.3, 1);
   // mensagens
-  if (G.msg > 0 && G.msgT > 0) { const nm = G.msg === 1 ? 'CHECKPOINT' : G.msg === 2 ? 'VOLTA COMPLETA' : G.msg === 3 ? 'NOVO RECORDE' : G.msg === 4 ? 'DE VOLTA À TRILHA' : 'FORA DA TRILHA', w = Hud.words[nm], sc = 1.25, a = Math.min(1, G.msgT * 3);
-    _hq(960 - w[4] * sc / 2 - 24, 96, w[4] * sc + 48, 70, S0, 0.02, 0.025, 0.03, 0.45 * a); _hword(nm, 960 - w[4] * sc / 2, 104, sc, 1, G.msg === 5 ? 0.45 : 0.85, G.msg === 3 ? 0.3 : G.msg === 5 ? 0.3 : 0.6, a);
+  if (G.msg > 0 && G.msgT > 0) { const nm = G.msg === 1 ? 'CHECKPOINT' : (G.msg === 2 || (G.msg === 3 && G.laps <= 1)) ? 'VOLTA COMPLETA' : G.msg === 3 ? 'NOVO RECORDE' : G.msg === 4 ? 'DE VOLTA À TRILHA' : 'FORA DA TRILHA', w = Hud.words[nm], sc = 1.25, a = Math.min(1, G.msgT * 3);
+    _hq(960 - w[4] * sc / 2 - 24, 96, w[4] * sc + 48, 70, S0, 0.02, 0.025, 0.03, 0.62 * a); _hword(nm, 960 - w[4] * sc / 2, 104, sc, 1, G.msg === 5 ? 0.45 : 0.85, G.msg === 3 ? 0.3 : G.msg === 5 ? 0.3 : 0.6, a);
     if (G.msg === 2 || G.msg === 3) _htime(G.lastMs, 960 - 120, 172, 0.5, 1, 1, 1, a); }
   else if (!G.lapActive && G.laps === 0) { const w = Hud.words.LARGADA; _hword('LARGADA', 960 - w[4] * 0.5, 104, 1.0, 1, 1, 1, 0.8); }
 }

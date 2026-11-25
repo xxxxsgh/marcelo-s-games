@@ -42,7 +42,7 @@ fn classify(p: vec3f, n: vec3f) -> i32 {
     if (d < 0.0) { if (d > -0.022) { return 4; } return 2; }
     if (y < 0.46) { return 8; }
     if (y > 0.53 && y < 0.565 && ax > 0.62 && ax < 0.76) { return 13; }
-    if (p.x > -0.50 && p.x < -0.10 && y > 0.565 && y < 0.695) { return 10; }
+    if (p.x > 0.29 && p.x < 0.69 && y > 0.565 && y < 0.695) { return 10; }
   }
   if (n.z > 0.35 && z > 1.80) { // frente
     let dg = max(ax - (0.335 + 0.07 * sat((y - 0.735) / 0.215)), max(0.735 - y, y - 0.950));
@@ -84,7 +84,6 @@ fn shade(v: CV, ff: bool) -> Surf {
     if (!ff) { s.alb = vec3f(0.055, 0.055, 0.06); s.rough = 0.85; s.ao = 0.7; if (c == 11) { s.alb = vec3f(0.02); } return s; }
     if (c == 0) {
       s.alb = paint * (0.97 + 0.06 * fl); s.metal = 0.72; s.rough = 0.36 + 0.02 * flk; s.coat = 1.0; s.mat = 2.0;
-      if (n.y > 0.5 && p.z > 1.0) { let dcr = (ax - (0.40 + (p.z - 1.0) * 0.03)) / 0.022; s.bx = sign(p.x) * dcr * exp(-dcr * dcr) * 0.5; }
       let g = grooves(p, n); s.alb = mix(s.alb, vec3f(0.01), g); s.coat *= 1.0 - g; s.ao = 1.0 - g * 0.6;
       // emblema GRAND VITARA na tampa
       if (n.z < -0.5 && p.z < -1.9) { let e = dec(vec2f((0.69 - p.x) / 0.36, (1.0 - p.y) / 0.055), vec4f(0.5, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.9), e); s.metal = mix(s.metal, 1.0, e); s.rough = mix(s.rough, 0.12, e); }
@@ -114,7 +113,7 @@ fn shade(v: CV, ff: bool) -> Surf {
       if (n.z > 0.35 && p.y > 0.385 && p.y < 0.515 && ax < 0.53) { s.alb *= 0.4 + 0.6 * step(0.5, fract(p.y * 46.0)); s.ao = 0.6; } }
     else if (c == 9) { s.alb = vec3f(0.88); s.metal = 1.0; s.rough = 0.09; }
     else if (c == 10) { // placa genérica
-      var u = vec2f(0.0); if (p.z < 0.0) { u = vec2f((-0.10 - p.x) / 0.40, (0.695 - p.y) / 0.13); } else { u = vec2f((p.x + 0.205) / 0.41, (0.678 - p.y) / 0.13); }
+      var u = vec2f(0.0); if (p.z < 0.0) { u = vec2f((0.69 - p.x) / 0.40, (0.695 - p.y) / 0.13); } else { u = vec2f((p.x + 0.205) / 0.41, (0.678 - p.y) / 0.13); }
       let tx = dec(vec2f(u.x, (u.y - 0.2) / 0.78), vec4f(0.0, 0.5, 0.5, 0.5)); s.alb = mix(vec3f(0.72, 0.72, 0.70), vec3f(0.03), tx); if (u.y < 0.17) { s.alb = vec3f(0.03, 0.10, 0.42); }
       let ed = min(min(u.x, 1.0 - u.x) * 3.1, min(u.y, 1.0 - u.y)); if (ed < 0.05) { s.alb = vec3f(0.03); } s.rough = 0.35;
     } else if (c == 11) { s.alb = vec3f(0.018); s.rough = 0.9; s.ao = 0.5; }
@@ -154,7 +153,7 @@ fn shade(v: CV, ff: bool) -> Surf {
     if (k == 15 || k == 14) { dust = sat(max(C.p.x * 3.0, C.p.y * 2.0) * (0.5 + nB.x)) * 0.45; }
     let splN = smoothstep(0.62 - 0.30 * low - 0.25 * smoothstep(0.8, 0.0, da), 0.72, nB.z * 0.6 + nB.x * 0.4 + (nA.y - 0.5) * 0.3);
     let mud = sat(C.p.y * 1.6 * dirtable) * splN * smoothstep(1.5, 0.5, p.y) * step(C.p.y, 2.0);
-    s.alb = mix(s.alb, vec3f(0.27, 0.175, 0.115) * (0.8 + 0.4 * nB.x), dust * 0.85); s.rough = mix(s.rough, 0.9, dust); s.coat *= 1.0 - dust; s.metal *= 1.0 - dust * 0.9;
+    s.alb = mix(s.alb, vec3f(0.19, 0.115, 0.07) * (0.85 + 0.3 * nB.x), dust * 0.85); s.rough = mix(s.rough, 0.9, dust); s.coat *= 1.0 - dust; s.metal *= 1.0 - dust * 0.9;
     s.alb = mix(s.alb, vec3f(0.13, 0.08, 0.05) * (0.7 + 0.6 * nB.y), mud); s.rough = mix(s.rough, 0.45, mud); s.coat *= 1.0 - mud; s.metal *= 1.0 - mud;
     if (s.mat > 2.5) { s.emis *= 1.0 - 0.6 * max(dust, mud); } else if (s.coat < 0.05) { s.mat = 0.0; }
   }
