@@ -108,7 +108,7 @@ fn shade(v: CV, ff: bool) -> Surf {
       s.alb = mix(vec3f(0.06), vec3f(0.008), mesh); s.rough = 0.45; s.ao = 0.45 + 0.4 * (1.0 - mesh);
       let by = abs(fract((p.y - 0.735) / 0.0717) - 0.5); let bar = (1.0 - smoothstep(0.30, 0.36, by)) * 0.0; let slat = 1.0 - smoothstep(0.28, 0.34, by); let em = dec(vec2f((p.x + 0.085) / 0.17, (0.927 - p.y) / 0.17), vec4f(0.5, 0.5, 0.125, 0.5)); let disc = 0.0;
       s.alb = mix(s.alb, vec3f(0.11, 0.11, 0.115), slat); s.ao = mix(s.ao, 0.9, slat);
-      s.alb = mix(s.alb, vec3f(0.86), max(bar, em)); s.metal = max(bar, em); s.rough = mix(s.rough, 0.10, max(bar, em)); s.ao = mix(s.ao, 1.0, max(bar, em));
+      s.alb = mix(s.alb, vec3f(0.80, 0.81, 0.82), max(bar, em)); s.metal = max(bar, em) * 0.35; s.rough = mix(s.rough, 0.30, max(bar, em)); s.ao = mix(s.ao, 1.0, max(bar, em));
       if (disc > 0.0 && em < 0.5) { s.alb = mix(s.alb, vec3f(0.02), disc * (1.0 - bar)); }
     } else if (c == 8) { s.alb = vec3f(0.030, 0.031, 0.033) * (0.8 + 0.4 * fl); s.rough = 0.58;
       if (n.z > 0.35 && p.y > 0.385 && p.y < 0.515 && ax < 0.53) { s.alb *= 0.4 + 0.6 * step(0.5, fract(p.y * 46.0)); s.ao = 0.6; } }
@@ -121,7 +121,7 @@ fn shade(v: CV, ff: bool) -> Surf {
     else if (c == 12) { let d = length(vec2f(ax - 0.675, p.y - 0.465)); s.alb = mix(vec3f(0.75, 0.78, 0.8), vec3f(0.03), smoothstep(0.045, 0.052, d)); s.metal = 1.0 - smoothstep(0.045, 0.052, d); s.rough = 0.12; s.coat = 1.0; s.mat = 2.0; }
     else if (c == 13) { s.alb = vec3f(0.45, 0.01, 0.01) * (0.7 + 0.3 * sin(ax * 500.0)); s.rough = 0.25; s.coat = 1.0; s.mat = 2.0; }
   } else if (k == 11 || k == 18) {
-    s.alb = paint; s.metal = 0.35; s.rough = 0.5; s.coat = 0.5; s.mat = 2.0; s.coat = 1.0; s.mat = 2.0;
+    s.alb = paint * 1.15; s.metal = 0.25; s.rough = 0.55; s.coat = 0.15; s.mat = 2.0; s.coat = 1.0; s.mat = 2.0;
     if (k == 18) { let rr = length(vec2f(p.x + 0.08, p.y - 0.955));
       if (rr > 0.345 && abs(n.z) > 0.5) { s.alb *= 0.8; }
       { let e = dec(vec2f(0.5 - (p.x + 0.08) / 0.44, 0.5 - (p.y - 0.955) / 0.11), vec4f(0.0, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.16, 0.16, 0.17), e); s.metal = mix(s.metal, 0.2, e); s.rough = mix(s.rough, 0.3, e); } }
