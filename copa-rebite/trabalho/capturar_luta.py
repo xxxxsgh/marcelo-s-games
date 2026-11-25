@@ -5,6 +5,7 @@ import sys, os, subprocess, time
 from cr import *
 modo, W, H = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
 # resolucao interna de render (padrao = a da tela). Ex.: INTERNA=1280x720 quando so ha renderizacao por software
+CRIT = os.environ.get('CRITICO', '')
 IW, IH = [int(v) for v in os.environ.get('INTERNA', f'{W}x{H}').split('x')]
 Q = RAIZ / 'trabalho' / 'quadros'; os.makedirs(Q, exist_ok=True)
 def pagina(pw):
@@ -23,6 +24,8 @@ with sync_playwright() as pw:
                 f = seg * 300 + k + 1
                 r = pg.evaluate(f"CR.goto({f}, {8 if k == 0 else 0})")
                 pg.screenshot(path=str(d / f'{k:04d}.png'))
+                if CRIT and (f % 30 == 0 or any(r0 <= f < r0 + 8 for r0 in (900, 1900, 2900))):   # copia para o pacote do critico
+                    import shutil; r = [r0 for r0 in (900, 1900, 2900) if r0 <= f < r0 + 8]; nome = f'rajada{(900, 1900, 2900).index(r[0]) + 1}_q{f - r[0] + 1}_t{f / 60:06.3f}s.png' if r else f'luta_t{f / 60:05.1f}s.png'; shutil.copy(str(d / f'{k:04d}.png'), os.path.join(CRIT, nome))
                 if k % 50 == 49: print(f'seg {seg} quadro {k + 1}/300  {(time.time() - t0) / (k + 1):.1f} s/quadro  {r}', flush=True)
             b.close()
             subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-framerate', '60', '-i', str(d / '%04d.png'), '-c:v', 'libx264', '-preset', 'slow', '-crf', '15', '-pix_fmt', 'yuv420p', '-r', '60', str(out)], check=True)
