@@ -118,7 +118,7 @@ function makeRock(seed, sub) {
   let Fc = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]];
   for (let s = 0; s < sub; s++) { const mid = new Map(), nf = []; const M = (a, b) => { const k = a < b ? a * 100000 + b : b * 100000 + a; let i = mid.get(k); if (i === undefined) { const p = [V[a][0] + V[b][0], V[a][1] + V[b][1], V[a][2] + V[b][2]], l = Math.hypot(p[0], p[1], p[2]); V.push([p[0] / l, p[1] / l, p[2] / l]); i = V.length - 1; mid.set(k, i); } return i; };
     for (const f of Fc) { const a = M(f[0], f[1]), b = M(f[1], f[2]), c = M(f[2], f[0]); nf.push([f[0], a, c], [f[1], b, a], [f[2], c, b], [a, b, c]); } Fc = nf; }
-  const ox = r() * 50, oy = r() * 50, planes = []; for (let i = 0; i < 7; i++) { const d = _rndDir(r); planes.push([d[0], d[1], d[2], 0.62 + r() * 0.3]); }
+  const ox = r() * 50, oy = r() * 50, planes = []; for (let i = 0; i < 3; i++) { const d = _rndDir(r); planes.push([d[0], d[1], d[2], 0.78 + r() * 0.2]); }
   const P = V.map((v) => { let rad = 1 + fbm2(v[0] * 1.3 + ox, v[1] * 1.3 + v[2] * 0.9 + oy, 3) * 0.5 + noise2(v[0] * 4 + ox, v[2] * 4 + v[1] * 3) * 0.06;
     for (const p of planes) { const d = v[0] * p[0] + v[1] * p[1] + v[2] * p[2]; if (d * rad > p[3]) rad = p[3] / d; } return [v[0] * rad, v[1] * rad * 0.72, v[2] * rad]; });
   const Nn = P.map(() => [0, 0, 0]);

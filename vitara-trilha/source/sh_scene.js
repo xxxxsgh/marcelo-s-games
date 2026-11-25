@@ -189,7 +189,8 @@ const BT = array<f32, 7>(0.0, 0.0, 0.36, 0.36, 0.70, 0.70, 1.0);
 const BS = array<f32, 7>(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 0.0);
 @vertex fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> GV {
   var o: GV; o.pos = vec4f(0.0, 0.0, -1.0, 1.0); o.n = vec3f(0.0, 1.0, 0.0); o.col = vec3f(0.0); o.ao = 1.0; o.cur = o.pos; o.prv = o.pos;
-  let b = blades[ii]; let hgt = b.p.w; if (hgt <= 0.0) { return o; }
+  let b = blades[ii]; var hgt = b.p.w; if (hgt <= 0.0) { return o; }
+  hgt *= smoothstep(0.5, 1.8, distance(b.p.xyz, F.cam.xyz)); // lâminas coladas na câmera encolhem
   let ring = b.c.w >= 2.0; let h2x = b.c.w - select(0.0, 2.0, ring); let tall = b.q.z; let dry = b.q.w; let base = b.p.xyz;
   let d = distance(base.xz, F.cam.xz); let t = BT[vi]; let sd = BS[vi]; let a = b.q.x; let dir = vec2f(cos(a), sin(a)); let perp = vec2f(-dir.y, dir.x);
   let wdt = select(0.010, 0.015, ring) * (1.0 + tall * 0.5) * (1.0 - t * t * t * 0.96) * (1.0 + d * 0.035);
@@ -197,9 +198,9 @@ const BS = array<f32, 7>(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 0.0);
   let loc = vec3f(perp.x * sd * wdt + dir.x * bend, hgt * t * (1.0 - 0.12 * t), perp.y * sd * wdt + dir.y * bend);
   let ww = t * t * (0.10 + hgt * 0.42); let wp = base + loc + windOff(base, ww, b.q.y, F.cam.w) * vec3f(1.0, 0.25, 1.0); let pw = base + loc + windOff(base, ww, b.q.y, F.sun.w) * vec3f(1.0, 0.25, 1.0);
   let dc = wp.xz - F.car.xz; let push = (1.0 - smoothstep(0.9, 1.7, length(dc))) * t; let wpp = wp + vec3f(normalize(dc + 1e-4).x, -0.6, normalize(dc + 1e-4).y) * push * hgt * 0.7;
-  var c0 = mix(vec3f(0.040, 0.080, 0.016), vec3f(0.070, 0.105, 0.024), h2x); var c1 = mix(vec3f(0.105, 0.175, 0.035), vec3f(0.17, 0.20, 0.05), b.q.y);
+  var c0 = mix(vec3f(0.055, 0.105, 0.022), vec3f(0.085, 0.125, 0.030), h2x); var c1 = mix(vec3f(0.105, 0.175, 0.035), vec3f(0.17, 0.20, 0.05), b.q.y);
   c1 = mix(c1, vec3f(0.36, 0.30, 0.13), dry * 0.55 + tall * 0.25 * t); c0 = mix(c0, vec3f(0.12, 0.10, 0.04), dry * 0.4);
-  o.col = mix(c0, c1, t) * (0.7 + 0.6 * b.c.z) * (0.8 + 0.4 * fract(h2x * 13.7)); o.ao = mix(0.30, 1.0, t);
+  o.col = mix(c0, c1, t) * (0.7 + 0.6 * b.c.z) * (0.8 + 0.4 * fract(h2x * 13.7)); o.ao = mix(0.45, 1.0, t);
   let nrm = vec3f(b.c.x, sqrt(max(1.0 - b.c.x * b.c.x - b.c.y * b.c.y, 0.0)), b.c.y); o.n = normalize(nrm + vec3f(dir.x, 0.0, dir.y) * 0.35 * t);
   o.pos = F.vp * vec4f(wpp, 1.0); o.cur = F.vpNJ * vec4f(wpp, 1.0); o.prv = F.pvp * vec4f(pw + (wpp - wp), 1.0); return o;
 }

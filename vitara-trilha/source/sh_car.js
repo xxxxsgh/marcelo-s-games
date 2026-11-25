@@ -18,7 +18,7 @@ fn classify(p: vec3f, n: vec3f) -> i32 {
   if ((n.y < -0.55 && y < 0.56) || (da < 0.45 && ax < 0.80 && y < 0.83)) { return 11; }
   let anx = abs(n.x);
   // lanterna traseira: sobe pela coluna e dobra a esquina
-  if (y > 0.86 && y < 1.38 && z < -1.90 && ax > 0.715 && ax < 0.865 && n.z < -0.3) { return 6; }
+  if (y > 0.86 && y < 1.38 && z < -1.925 && ax > 0.715 && ax < 0.875) { return 6; }
   // farol: dobra a esquina dianteira
   let hlTop = 1.005 - 0.03 * smoothstep(0.45, 0.9, ax); let hlBot = 0.80 + 0.03 * smoothstep(0.7, 0.4, ax);
   if (z > 1.74 && y > hlBot && y < hlTop && ax > 0.405 && (n.z > 0.2 || z > 1.76)) { return 5; }

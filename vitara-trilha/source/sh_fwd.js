@@ -23,7 +23,7 @@ struct WV { @builtin(position) pos: vec4f, @location(0) wp: vec3f, @location(1) 
   let amb = textureSampleLevel(envT, sPano, vec2f(0.5, 0.05), 7.0).rgb;
   refr = refr * exp(-depthW * vec3f(1.6, 0.9, 0.8)) + vec3f(0.16, 0.115, 0.065) * (sc * sh * 0.06 + amb * 0.5) * (1.0 - exp(-depthW * 3.0));
   let nv = sat(dot(N, V)); let Fr = 0.02 + 0.98 * pow(1.0 - nv, 5.0); let R = reflect(-V, N);
-  var refl = textureSampleLevel(envT, sPano, dirToPano(normalize(vec3f(R.x, abs(R.y) + 0.02, R.z))), 1.5).rgb * 0.75;
+  var refl = textureSampleLevel(envT, sPano, dirToPano(normalize(vec3f(R.x, abs(R.y) + 0.02, R.z))), 2.0).rgb * 0.5;
   let H = normalize(F.sun.xyz + V); let sp = pow(sat(dot(N, H)), 900.0) * 60.0 * sh;
   var col = mix(refr, refl, Fr) + sc * sp * Fr;
   let foamN = textureSample(noiseT, sRep, q * vec2f(1.1, 1.6) - vec2f(t * 0.5, 0.0)).w * 0.6 + n3.x * 0.6;

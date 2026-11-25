@@ -24,7 +24,7 @@ function sceneInit() {
   S.cap = Math.max(...perType); S.sarr = []; S.sbuf = [];
   for (let k = 0; k < 24; k++) { S.sarr.push(new Float32Array(S.cap * 8)); S.sbuf.push(dev.createBuffer({ size: S.cap * 32, usage: 0x20 | 8 })); }
   // ---- pedras (estáticas) ----
-  S.rockM = [makeRock(1, 2), makeRock(2, 2), makeRock(3, 2), makeRock(4, 1), makeRock(5, 1), makeRock(6, 1)]; S.rockB = []; S.rockN = [];
+  S.rockM = [makeRock(1, 3), makeRock(2, 3), makeRock(3, 3), makeRock(4, 1), makeRock(5, 1), makeRock(6, 1)]; S.rockB = []; S.rockN = [];
   for (let g = 0; g < 6; g++) { const a = []; for (let i = 0; i < W.nRocks; i++) { const o = i * 8, big = W.rocks[o + 3] > 0.32; if ((big ? 0 : 3) + W.rocks[o + 5] !== g) continue; a.push(W.rocks[o], W.rocks[o + 1], W.rocks[o + 2], W.rocks[o + 3], W.rocks[o + 4], W.rocks[o + 6], W.rocks[o + 7], 0); }
     S.rockN.push(a.length / 8); S.rockB.push(mkBuf(new Float32Array(a.length ? a : [0, 0, 0, 0, 0, 0, 1, 0]), 0x20)); }
   S.structM = makeStructures(); S.identB = mkBuf(new Float32Array([0, 0, 0, 1, 0, 0, 1, 0]), 0x20);
