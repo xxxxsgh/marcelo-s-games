@@ -65,9 +65,9 @@ fn leafAt(p: vec2f, c: vec2f, ang: f32, len: f32, wid: f32) -> vec2f { // (másc
   } else if (L == 4u) { // chão de capim
     let n1 = pfbm(uv * 4.0, vec2f(4.0), 4); let n2 = pfbm(uv * 32.0, vec2f(32.0), 3); let fib = pvn(vec2f(uv.x * 220.0 + n1 * 6.0, uv.y * 55.0), vec2f(220.0, 55.0));
     let fib2 = pvn(vec2f(uv.x * 60.0, uv.y * 200.0 + n1 * 5.0), vec2f(60.0, 200.0));
-    alb = mix(vec3f(0.050, 0.095, 0.020), vec3f(0.12, 0.185, 0.045), sat(0.5 + n1 + n2 * 0.5));
+    alb = mix(vec3f(0.060, 0.11, 0.024), vec3f(0.13, 0.20, 0.048), sat(0.5 + n1 + n2 * 0.5));
     alb = mix(alb, vec3f(0.20, 0.19, 0.07), smoothstep(0.1, 0.55, pfbm(uv * 9.0 + 3.0, vec2f(9.0), 3)) * 0.4);
-    let soil = smoothstep(0.30, 0.50, pfbm(uv * 6.0 + 13.0, vec2f(6.0), 4)); alb = mix(alb, vec3f(0.17, 0.115, 0.07), soil * 0.6);
+    let soil = smoothstep(0.36, 0.56, pfbm(uv * 6.0 + 13.0, vec2f(6.0), 4)); alb = mix(alb, vec3f(0.15, 0.12, 0.06), soil * 0.35);
     alb *= 0.8 + (fib + fib2) * 0.18; h = 0.5 + n2 * 0.25 + (fib + fib2) * 0.14 - soil * 0.15; rough = 0.9;
   } else if (L == 5u) { // casca
     let wr = pwor(vec2f(uv.x * 9.0, uv.y * 3.0) + pfbm(uv * vec2f(6.0, 3.0), vec2f(6.0, 3.0), 3) * 0.5, vec2f(9.0, 3.0));

@@ -107,8 +107,10 @@ function makeCarParts() {
   const tubeK = (a, b, r0, r1, sd, kind, col) => { m.tube(a, b, r0, r1, sd, col || [1, 1, 1, 1], 0, kind, 0, 0, 1); };
   // estepe: capa rígida na cor do carro, deslocada para a direita (-X), na tampa traseira
   { const c = [-0.08, 0.955, -2.335]; // eixo Z; perfil (z, r) do fundo (junto à tampa) até a face traseira
-    _revolve(m, [[0.262, 0.33], [0.235, 0.372], [0.06, 0.378], [0.022, 0.368], [0.004, 0.345], [0.0, 0.30], [0.0, 0.0]], 64, 2, c, 18, [1, 1, 1], true);
+    _revolve(m, [[0.262, 0.30], [0.235, 0.332], [0.06, 0.338], [0.022, 0.328], [0.006, 0.305], [0.0, 0.27], [0.012, 0.255], [0.012, 0.24], [0.0, 0.225], [0.0, 0.0]], 64, 2, c, 18, [1, 1, 1], true);
     boxK([c[0], c[1], c[2] + 0.27], [0.09, 0.09, 0.03], 12, [0.2, 0.2, 0.2]); }
+  // lanternas traseiras: blocos verticais nas colunas (tipo 19)
+  for (const sd of [1, -1]) boxK([0.742 * sd, 1.125, -2.02], [0.066, 0.265, 0.05], 19, [1, 1, 1]);
   // longarinas de teto (pretas) com pés
   for (const sd of [1, -1]) { const x = 0.565 * sd, pts = [[x, 1.612, 0.03], [x, 1.668, -0.04], [x, 1.685, -0.16], [x, 1.692, -0.85], [x, 1.685, -1.55], [x, 1.672, -1.70], [x, 1.612, -1.78]];
     for (let i = 0; i < pts.length - 1; i++) tubeK(pts[i], pts[i + 1], 0.021, 0.021, 8, 12, [0.05, 0.05, 0.055, 1]);
@@ -157,7 +159,8 @@ function _decals() { // atlas de letreiros gerado com canvas 2D (nenhum arquivo)
   g.font = 'italic 800 50px Arial, sans-serif'; if (g.letterSpacing !== undefined) g.letterSpacing = '3px'; g.fillText('GRAND VITARA', 768, 66);
   g.font = '800 92px "Arial Narrow", Arial, sans-serif'; if (g.letterSpacing !== undefined) g.letterSpacing = '8px'; g.fillText('TRL 4X4', 256, 196);
   // emblema: "S" anguloso estilizado
-  g.save(); g.translate(576, 192); g.transform(1, 0, -0.18, 1, 0, 0); g.font = '900 150px "Arial Black", Impact, Arial, sans-serif'; if (g.letterSpacing !== undefined) g.letterSpacing = '0px'; g.fillText('S', 0, 8); g.restore();
+  g.save(); g.translate(576, 192); g.beginPath(); // emblema em 'S' anguloso: duas cunhas encaixadas
+  for (const q of [[[-40, -20], [0, -56], [40, -28], [22, -14], [0, -30], [-12, -20], [40, 16], [40, 22], [-40, -14]], [[40, 20], [0, 56], [-40, 28], [-22, 14], [0, 30], [12, 20], [-40, -16], [-40, -22], [40, 14]]]) { g.moveTo(q[0][0], q[0][1]); for (const v of q) g.lineTo(v[0], v[1]); g.closePath(); } g.fill(); g.restore();
   const d = g.getImageData(0, 0, 1024, 256).data, out = new Uint8Array(1024 * 256 * 4); out.set(d);
   const t = texFromData(1024, 256, 'rgba8unorm', out, 4, { mips: 6 }); genMips(t, 'rgba8unorm', 1, 6); return t;
 }

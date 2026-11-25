@@ -83,7 +83,7 @@ function renderInit() {
     const toH = (v) => { f32[0] = v; const x = u32[0], s = (x >> 16) & 0x8000; let e = ((x >> 23) & 0xff) - 112, m = (x >> 12) & 0x7ff; if (e <= 0) return s; if (e >= 31) return s | 0x7bff; return s | (e << 10) | (m >> 1); };
     for (let i = 0; i < hf.length; i++) hf[i] = toH(Wd.field[i]);
     R.fieldT = texFromData(FLD_N, FLD_N, 'rgba16float', hf, 8); }
-  R.rutT = mkTex(4096, 4096, 'r8unorm', TU | RA, { label: 'sulcos' });
+  R.rutT = mkTex(8192, 8192, 'r8unorm', TU | RA, { label: 'sulcos' });
   // ---- materiais procedurais ----
   const ML = 10, MS = 1024, MM = 11;
   { const ta = mkTex(MS, MS, 'rgba16float', TU | RA, { layers: ML }), tb = mkTex(MS, MS, 'rgba16float', TU | RA, { layers: ML });

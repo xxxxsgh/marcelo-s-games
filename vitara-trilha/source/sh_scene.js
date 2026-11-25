@@ -35,20 +35,20 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   let nN = textureSample(nrmNearT, sClamp, uvn).xyz * 2.0 - 1.0;
   var N = normalize(mix(v.nf, nN, inNear));
   let nzA = textureSample(noiseT, sRep, xz / 37.0); let nzB = textureSample(noiseT, sRep, xz / 3.1);
-  let at = abs(fl.x) + (1.0 - inNear) * 60.0; let far = 0.0; gDetail = dist < 55.0; gBlur = 1.0 + smoothstep(8.0, 50.0, dist) * 1.3;
+  let at = abs(fl.x) + (1.0 - inNear) * 60.0; let far = 0.0; gDetail = dist < 55.0; gBlur = 1.0 + smoothstep(15.0, 60.0, dist) * 0.8;
   let slope = 1.0 - N.y;
   // --- pesos ---
   let track = 1.0 - smoothstep(2.45, 4.1, at + (nzB.x - 0.5) * 1.6 + (nzA.z - 0.5) * 0.8);
   let hard = max(mk.r, max(mk.g, mk.a));
   var wDirt = track; let wMud = mk.r; let wGrav = max(mk.g, mk.a * 0.9); let wRock = max(mk.a * smoothstep(0.42, 0.62, nzB.y * 0.6 + nzA.z * 0.5), smoothstep(0.30, 0.48, slope + (nzB.y - 0.5) * 0.15));
-  let strip = (1.0 - smoothstep(0.05, 0.60, at + (nzB.z - 0.5) * 0.9)) * (1.0 - hard) * track * 0.4 * smoothstep(0.3, 0.55, nzA.z + nzB.x * 0.3);
+  let strip = (1.0 - smoothstep(0.05, 0.60, at + (nzB.z - 0.5) * 0.9)) * (1.0 - hard) * track * 0.0;
   let bed = smoothstep(0.9, -0.5, fl.w + (nzB.x - 0.5) * 0.8) * inNear;
   let litter = smoothstep(0.56, 0.72, nzA.y + (nzB.y - 0.5) * 0.25) * (1.0 - track);
   // --- camadas ---
   var m = smp2(4, xz, 0.42, gx, gy, far);
   if (litter > 0.01) { m = hblend(m, smp2(9, xz, 0.55, gx, gy, far), litter); }
   if (wDirt > 0.01) { var d = smp2(0, xz, 0.40, gx, gy, far); if (strip > 0.01) { d = hblend(d, m, strip); } m = hblend(m, d, wDirt); }
-  if (wGrav > 0.01 || bed > 0.01) { var gv = smp2(1, xz, 0.62, gx, gy, far); gv.a = vec4f(gv.a.rgb * 0.78, gv.a.w); m = hblend(m, gv, max(wGrav, bed)); }
+  if (wGrav > 0.01 || bed > 0.01) { var gv = smp2(1, xz, 1.05, gx, gy, far); gv.a = vec4f(gv.a.rgb * 0.78, gv.a.w); m = hblend(m, gv, max(wGrav, bed)); }
   if (wMud > 0.01) { m = hblend(m, smp2(2, xz, 0.33, gx, gy, far), wMud); }
   if (wRock > 0.01) { m = hblend(m, smp2(3, xz, 0.37, gx, gy, far), wRock); }
   var alb = m.a.rgb; var rough = m.n.z; var ao = m.n.w; var nt = (m.n.xy * 2.0 - 1.0);
@@ -64,7 +64,7 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   // --- sulcos dinâmicos dos pneus ---
   let ruv = (xz + 150.0) / 300.0;
   if (max(abs(xz.x), abs(xz.y)) < 149.0 && dist < 120.0) {
-    let o = 2.2 / 4096.0; let c0 = textureSampleLevel(rutT, sClamp, ruv, 0.0).r;
+    let o = 2.5 / 8192.0; let c0 = textureSampleLevel(rutT, sClamp, ruv, 0.0).r;
     if (c0 > 0.002) {
       let dx = textureSampleLevel(rutT, sClamp, ruv + vec2f(o, 0.0), 0.0).r - textureSampleLevel(rutT, sClamp, ruv - vec2f(o, 0.0), 0.0).r;
       let dz = textureSampleLevel(rutT, sClamp, ruv + vec2f(0.0, o), 0.0).r - textureSampleLevel(rutT, sClamp, ruv - vec2f(0.0, o), 0.0).r;
@@ -83,7 +83,7 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   var Nw = normalize(T * (nt.x * det + bend.x) + B * (nt.y * det + bend.y) + N * 1.0);
   if (pud > 0.0) {
     let rp = (textureSampleLevel(noiseT, sRep, xz * 1.7 + F.cam.w * vec2f(0.05, 0.03), 1.0).xy + textureSampleLevel(noiseT, sRep, xz * 3.1 - F.cam.w * vec2f(0.04, 0.06), 1.0).yz - 1.0) * 0.012 * F.wind.z;
-    alb = mix(alb, vec3f(0.045, 0.034, 0.024), pud * 0.9); rough = mix(rough, 0.035, pud); Nw = normalize(mix(Nw, vec3f(rp.x, 1.0, rp.y), pud)); ao = mix(ao, 1.0, pud);
+    alb = mix(alb, vec3f(0.045, 0.034, 0.024), pud * 0.9); rough = mix(rough, 0.09, pud); Nw = normalize(mix(Nw, vec3f(rp.x, 1.0, rp.y), pud)); ao = mix(ao, 1.0, pud);
   }
   // --- copa da mata ao longe ---
   let can = smoothstep(385.0, 445.0, r);
@@ -167,7 +167,7 @@ struct Ind { vc: u32, ic: atomic<u32>, fv: u32, fi: u32 };
     let uv = nearUV(xz); let fl = textureSampleLevel(fieldT, sClamp, uv, 0.0); let mk = textureSampleLevel(maskT, sClamp, uv, 0.0);
     let nz = textureSampleLevel(noiseT, sRep, xz / 3.1, 0.0); let nA = textureSampleLevel(noiseT, sRep, xz / 37.0, 0.0);
     let at = abs(fl.x); let track = 1.0 - smoothstep(2.45, 4.1, at + (nz.x - 0.5) * 1.6 + (nA.z - 0.5) * 0.8); let hard = max(mk.r, max(mk.g, mk.a));
-    let strip = (1.0 - smoothstep(0.05, 0.60, at + (nz.z - 0.5) * 0.9)) * (1.0 - hard) * track * smoothstep(0.3, 0.55, nA.z + nz.x * 0.3);
+    let strip = (1.0 - smoothstep(0.05, 0.60, at + (nz.z - 0.5) * 0.9)) * (1.0 - hard) * track * 0.0;
     var dens = max((1.0 - track) * (1.0 - smoothstep(0.56, 0.72, nA.y + (nz.y - 0.5) * 0.25) * 0.7), strip * 0.8) * smoothstep(0.5, 1.6, fl.w) * (1.0 - mk.b);
     let nrm = textureSampleLevel(nrmNearT, sClamp, uv, 0.0).xyz * 2.0 - 1.0; dens *= smoothstep(0.62, 0.8, nrm.y);
     if (h2.x <= dens) {
@@ -193,12 +193,12 @@ const BS = array<f32, 7>(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0, 0.0);
   hgt *= smoothstep(0.5, 1.8, distance(b.p.xyz, F.cam.xyz)); // lâminas coladas na câmera encolhem
   let ring = b.c.w >= 2.0; let h2x = b.c.w - select(0.0, 2.0, ring); let tall = b.q.z; let dry = b.q.w; let base = b.p.xyz;
   let d = distance(base.xz, F.cam.xz); let t = BT[vi]; let sd = BS[vi]; let a = b.q.x; let dir = vec2f(cos(a), sin(a)); let perp = vec2f(-dir.y, dir.x);
-  let wdt = select(0.010, 0.015, ring) * (1.0 + tall * 0.5) * (1.0 - t * t * t * 0.96) * (1.0 + d * 0.035);
+  let wdt = select(0.008, 0.012, ring) * (1.0 + tall * 0.5) * (1.0 - t * t * t * 0.96) * (1.0 + d * 0.035);
   let bend = (0.18 + fract(h2x * 7.7) * 0.45) * hgt * t * t;
   let loc = vec3f(perp.x * sd * wdt + dir.x * bend, hgt * t * (1.0 - 0.12 * t), perp.y * sd * wdt + dir.y * bend);
   let ww = t * t * (0.10 + hgt * 0.42); let wp = base + loc + windOff(base, ww, b.q.y, F.cam.w) * vec3f(1.0, 0.25, 1.0); let pw = base + loc + windOff(base, ww, b.q.y, F.sun.w) * vec3f(1.0, 0.25, 1.0);
   let dc = wp.xz - F.car.xz; let push = (1.0 - smoothstep(0.9, 1.7, length(dc))) * t; let wpp = wp + vec3f(normalize(dc + 1e-4).x, -0.6, normalize(dc + 1e-4).y) * push * hgt * 0.7;
-  var c0 = mix(vec3f(0.055, 0.105, 0.022), vec3f(0.085, 0.125, 0.030), h2x); var c1 = mix(vec3f(0.105, 0.175, 0.035), vec3f(0.17, 0.20, 0.05), b.q.y);
+  var c0 = mix(vec3f(0.065, 0.12, 0.026), vec3f(0.095, 0.14, 0.034), h2x); var c1 = mix(vec3f(0.13, 0.21, 0.045), vec3f(0.20, 0.24, 0.06), b.q.y);
   c1 = mix(c1, vec3f(0.36, 0.30, 0.13), dry * 0.55 + tall * 0.25 * t); c0 = mix(c0, vec3f(0.12, 0.10, 0.04), dry * 0.4);
   o.col = mix(c0, c1, t) * (0.7 + 0.6 * b.c.z) * (0.8 + 0.4 * fract(h2x * 13.7)); o.ao = mix(0.45, 1.0, t);
   let nrm = vec3f(b.c.x, sqrt(max(1.0 - b.c.x * b.c.x - b.c.y * b.c.y, 0.0)), b.c.y); o.n = normalize(nrm + vec3f(dir.x, 0.0, dir.y) * 0.35 * t);

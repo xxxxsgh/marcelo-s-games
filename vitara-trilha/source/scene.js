@@ -151,9 +151,9 @@ function particlesUpdate(dt) {
     } else S.lastOk[w] = 0;
     const bx = fx * dirS, bz = fz * dirS, act = sp * 0.05 + Math.min(slip, 0.6) * 0.5;
     if (surf === SURF_AGUA || P.water[w] > 0.04) {
-      const nsp = Math.min(10, (sp * 0.9 + slip * 3) | 0);
+      const nsp = Math.min(14, (sp * 1.3 + slip * 3) | 0);
       for (let k = 0; k < nsp; k++) { const u = prand(), v = prand(), out = (0.6 + u * 2.6) * side * (0.25 + sp * 0.11);
-        emit(2, cx + (v - 0.5) * 0.4, cy + 0.12, cz + (u - 0.5) * 0.4, lx * out + bx * sp * (0.15 + v * 0.3) + P.vel[0] * 0.55, 1.2 + prand() * (1.6 + sp * 0.28), lz * out + bz * sp * (0.15 + v * 0.3) + P.vel[2] * 0.55, 0.07 + prand() * 0.13, 0.3, 0.55 + prand() * 0.5, 2.3, 2.2, 2.1, 0.8, 0.8); }
+        emit(2, cx + (v - 0.5) * 0.4, cy + 0.12, cz + (u - 0.5) * 0.4, lx * out + bx * sp * (0.15 + v * 0.3) + P.vel[0] * 0.55, 1.2 + prand() * (1.6 + sp * 0.28), lz * out + bz * sp * (0.15 + v * 0.3) + P.vel[2] * 0.55, 0.05 + prand() * 0.09, 0.35, 0.55 + prand() * 0.5, 1.5, 1.45, 1.4, 0.5, 0.8); }
       if (sp > 2) emit(3, cx, cy + 0.3, cz, lx * side * 1.2 + P.vel[0] * 0.5, 1.4 + prand(), lz * side * 1.2 + P.vel[2] * 0.5, 0.3, 1.1, 0.7 + prand() * 0.4, 1.6, 1.5, 1.4, 0.2, 1.2);
     } else if (wet > 0.35) {
       if (prand() < act * 1.6) for (let k = 0; k < 2; k++) emit(1, cx, cy + 0.08, cz, bx * sp * (0.2 + prand() * 0.35) + lx * side * (prand() - 0.3) * 2 + P.vel[0] * 0.3, 0.8 + prand() * (1.5 + sp * 0.2 + slip * 3), bz * sp * (0.2 + prand() * 0.35) + lz * side * (prand() - 0.3) * 2 + P.vel[2] * 0.3, 0.025 + prand() * 0.05, 0, 0.5 + prand() * 0.5, 0.09, 0.055, 0.032, 1, 0.3);

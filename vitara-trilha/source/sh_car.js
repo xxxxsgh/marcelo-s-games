@@ -18,7 +18,7 @@ fn classify(p: vec3f, n: vec3f) -> i32 {
   if ((n.y < -0.55 && y < 0.56) || (da < 0.45 && ax < 0.80 && y < 0.83)) { return 11; }
   let anx = abs(n.x);
   // lanterna traseira: sobe pela coluna e dobra a esquina
-  if (y > 0.86 && y < 1.38 && z < -1.925 && ax > 0.715 && ax < 0.875) { return 6; }
+  if (y > 0.85 && y < 1.40 && z < -1.925 && ax > 0.665 && ax < 0.82) { return 8; }
   // farol: dobra a esquina dianteira
   let hlTop = 1.005 - 0.03 * smoothstep(0.45, 0.9, ax); let hlBot = 0.80 + 0.03 * smoothstep(0.7, 0.4, ax);
   if (z > 1.74 && y > hlBot && y < hlTop && ax > 0.405 && (n.z > 0.2 || z > 1.76)) { return 5; }
@@ -75,7 +75,7 @@ struct Surf { alb: vec3f, rough: f32, metal: f32, coat: f32, emis: f32, mat: f32
 fn dec(uv: vec2f, r: vec4f) -> f32 { if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return 0.0; } return textureSampleLevel(decT, sClamp, r.xy + uv * r.zw, 0.0).r; }
 fn shade(v: CV, ff: bool) -> Surf {
   var s: Surf; s.alb = vec3f(0.5); s.rough = 0.5; s.metal = 0.0; s.coat = 0.0; s.emis = 0.0; s.mat = 0.0; s.ao = 1.0; s.glass = 0.0; s.bx = 0.0;
-  let k = i32(v.kind + 0.5); let p = v.op; let n = normalize(v.on); let paint = vec3f(0.46, 0.47, 0.485);
+  let k = i32(v.kind + 0.5); let p = v.op; let n = normalize(v.on); let paint = vec3f(0.37, 0.38, 0.395);
   let fl = textureSampleLevel(noiseT, sRep, (p.zy + p.xx * 0.7) * 23.0, 0.0).w; let flk = textureSampleLevel(noiseT, sRep, (p.zy + p.xx) * 61.0, 0.0).w;
   var dirtable = 1.0;
   if (k == 10) {
@@ -83,7 +83,7 @@ fn shade(v: CV, ff: bool) -> Surf {
     if (c == 1 || c == 2) { s.glass = f32(c); return s; }
     if (!ff) { s.alb = vec3f(0.055, 0.055, 0.06); s.rough = 0.85; s.ao = 0.7; if (c == 11) { s.alb = vec3f(0.02); } return s; }
     if (c == 0) {
-      s.alb = paint * (0.97 + 0.06 * fl); s.metal = 0.72; s.rough = 0.36 + 0.02 * flk; s.coat = 1.0; s.mat = 2.0;
+      s.alb = paint * (0.97 + 0.06 * fl); s.metal = 0.60; s.rough = 0.44 + 0.02 * flk; s.coat = 0.6; s.mat = 2.0;
       let g = grooves(p, n); s.alb = mix(s.alb, vec3f(0.01), g); s.coat *= 1.0 - g; s.ao = 1.0 - g * 0.6;
       // emblema GRAND VITARA na tampa
       if (n.z < -0.5 && p.z < -1.9) { let e = dec(vec2f((0.69 - p.x) / 0.36, (1.0 - p.y) / 0.055), vec4f(0.5, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.9), e); s.metal = mix(s.metal, 1.0, e); s.rough = mix(s.rough, 0.12, e); }
@@ -92,7 +92,7 @@ fn shade(v: CV, ff: bool) -> Surf {
     else if (c == 5) { // farol: refletor cromado, projetor e lente
       let q = vec2f(ax, p.y); let d1 = length((q - vec2f(0.63, 0.905)) * vec2f(0.8, 1.0)); let d2 = 1.0;
       s.alb = vec3f(0.80, 0.82, 0.84) * (0.75 + 0.25 * sin(ax * 260.0)); s.metal = 1.0; s.rough = 0.16; s.coat = 1.0; s.mat = 2.0;
-      let ring = smoothstep(0.094, 0.088, d1) * smoothstep(0.074, 0.080, d1) + 0.0 * d2;
+      let ring = 0.0 * d2;
       s.alb = mix(s.alb, vec3f(0.03), ring); let lens = smoothstep(0.074, 0.066, d1) * (0.6 + 0.4 * smoothstep(0.03, 0.02, d1)); let hb = min(min(p.y - (0.80 + 0.03 * smoothstep(0.7, 0.4, ax)), 1.005 - 0.03 * smoothstep(0.45, 0.9, ax) - p.y), ax - 0.405); s.alb = mix(vec3f(0.02), s.alb, smoothstep(0.008, 0.016, hb)); s.metal *= smoothstep(0.008, 0.016, hb); s.alb = mix(s.alb, vec3f(0.55, 0.60, 0.66), lens); s.rough = mix(s.rough, 0.05, lens);
       if (ax > 0.83) { s.alb = vec3f(0.85, 0.42, 0.06) * (0.7 + 0.3 * sin(p.y * 300.0)); s.metal = 0.5; }
       dirtable = 0.6;
@@ -122,8 +122,14 @@ fn shade(v: CV, ff: bool) -> Surf {
   } else if (k == 11 || k == 18) {
     s.alb = paint * 1.15; s.metal = 0.25; s.rough = 0.55; s.coat = 0.15; s.mat = 2.0; s.coat = 1.0; s.mat = 2.0;
     if (k == 18) { let rr = length(vec2f(p.x + 0.08, p.y - 0.955));
-      if (rr > 0.345 && abs(n.z) > 0.5) { s.alb *= 0.8; }
-      { let e = dec(vec2f(0.5 - (p.x + 0.08) / 0.44, 0.5 - (p.y - 0.955) / 0.11), vec4f(0.0, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.16, 0.16, 0.17), e); s.metal = mix(s.metal, 0.2, e); s.rough = mix(s.rough, 0.3, e); } }
+      if (abs(n.z) < 0.5) { s.alb *= 0.75; }
+      { let e = dec(vec2f(0.5 - (p.x + 0.08) / 0.40, 0.5 - (p.y - 0.955) / 0.10), vec4f(0.0, 0.0, 0.5, 0.5)) * step(rr, 0.22); s.alb = mix(s.alb, vec3f(0.16, 0.16, 0.17), e); s.metal = mix(s.metal, 0.2, e); s.rough = mix(s.rough, 0.3, e); } }
+  } else if (k == 19) { // lanterna: vermelho em cima, faixa clara embaixo, refletores internos
+    let ly = p.y - 0.86; let rib = 0.8 + 0.2 * sin(p.y * 260.0); s.alb = vec3f(0.42, 0.008, 0.006) * rib; s.rough = 0.18; s.metal = 0.2; s.coat = 1.0; s.mat = 2.0; dirtable = 0.5;
+    let cr = min(abs(p.y - 1.27), abs(p.y - 1.13)); s.alb = mix(s.alb, vec3f(0.62, 0.02, 0.012), smoothstep(0.05, 0.04, cr) * 0.8);
+    if (ly < 0.14) { s.alb = vec3f(0.82, 0.82, 0.84) * rib; if (C.p.w > 0.5 && ly < 0.07) { s.mat = 3.0; s.emis = 0.4; s.alb = vec3f(1.0, 0.95, 0.85); } }
+    else if (C.p.z > 0.02 && ly > 0.19) { s.mat = 3.0; s.emis = C.p.z * (0.5 + 0.5 * smoothstep(0.06, 0.03, cr)); s.alb = vec3f(0.9, 0.006, 0.002); }
+    let ed = min(min(ly, 0.53 - ly), 0.066 - abs(abs(p.x) - 0.742)); if (ed < 0.008 && n.z < -0.5) { s.alb = vec3f(0.02); s.mat = 0.0; s.emis = 0.0; s.coat = 0.0; }
   } else if (k == 12) { s.alb = v.col.rgb; s.rough = 0.42; }
   else if (k == 13) { s.alb = v.col.rgb * (0.85 + 0.3 * fl); s.rough = 0.88; s.ao = 0.75; dirtable = 0.0; }
   else if (k == 14) { // liga leve: face dos raios clara, vãos escuros
@@ -150,7 +156,7 @@ fn shade(v: CV, ff: bool) -> Surf {
     let low = 1.0 - smoothstep(0.35, 1.25, p.y); let rear = smoothstep(0.6, -2.1, p.z) * 0.5 + 0.25; let da = min(abs(p.z - 1.32 + 0.35), abs(p.z + 1.32 + 0.35));
     let nA = textureSampleLevel(noiseT, sRep, p.zy * 0.35 + p.xx * 0.2, 0.0); let nB = textureSampleLevel(noiseT, sRep, p.zy * 1.6 + p.xx * 0.8, 1.0);
     var dust = sat(C.p.x * dirtable * (low * 1.5 + rear * 0.25 - 0.42 + (nA.x - 0.5) * 0.22)) * (0.8 + 0.2 * nB.y) * 0.8;
-    if (k == 15 || k == 14) { dust = sat(max(C.p.x * 3.0, C.p.y * 2.0) * (0.5 + nB.x)) * 0.45; }
+    if (k == 15 || k == 14) { dust = sat(max(C.p.x * 3.0, C.p.y * 2.0) * (0.5 + nB.x)) * select(0.3, 0.14, k == 14); }
     let splN = smoothstep(0.62 - 0.30 * low - 0.25 * smoothstep(0.8, 0.0, da), 0.72, nB.z * 0.6 + nB.x * 0.4 + (nA.y - 0.5) * 0.3);
     let mud = sat(C.p.y * 1.6 * dirtable) * splN * smoothstep(1.5, 0.5, p.y) * step(C.p.y, 2.0);
     s.alb = mix(s.alb, vec3f(0.19, 0.115, 0.07) * (0.85 + 0.3 * nB.x), dust * 0.85); s.rough = mix(s.rough, 0.9, dust); s.coat *= 1.0 - dust; s.metal *= 1.0 - dust * 0.9;

@@ -108,7 +108,7 @@ fn ssr(P: vec3f, R: vec3f, n0: f32) -> vec4f {
   // especular de ambiente + SSR
   let R = reflect(-V, N); let so = sat(pow(nv + ao, exp2(-16.0 * rough - 1.0)) - 1.0 + ao);
   var env = envAt(R, rough) * mix(1.0, sat(1.0 + R.y * 4.0) * 0.6 + 0.4, 0.5);
-  var cenv = envAt(R, 0.10);
+  var cenv = envAt(R, 0.22);
   let smoothK = max(coat, 1.0 - smoothstep(0.12, 0.36, rough));
   if (smoothK > 0.01 && vz < 150.0) { let h = ssr(wp + N * 0.01 * (1.0 + vz * 0.1), R, n1); cenv = mix(cenv, h.rgb, h.a * select(1.0, 0.55, coat > 0.5)); if (coat < 0.5 || rough < 0.2) { env = mix(env, h.rgb, h.a * (1.0 - smoothstep(0.12, 0.36, rough))); } }
   col += env * envBRDF(f0, rough, nv) * so * (1.0 - coat * 0.0);
@@ -207,7 +207,7 @@ const WG_MB = WG_COMMON + FS_TRI + /* wgsl */`
 @fragment fn fs(i: FsV) -> @location(0) vec4f {
   let px = vec2i(i.pos.xy); let res = vec2i(F.res.xy); let c0 = textureLoad(colT, px, 0).rgb;
   var mv = textureLoad(mvT, px, 0).xy * (0.20 / max(F.misc.y * 60.0, 0.25)); let l = length(mv * F.res.xy);
-  if (l < 1.2 || F.pad1.w > 0.5) { return vec4f(c0, 1.0); }
+  if (l < 1.2 || F.pad1.w > 0.5 || textureLoad(depthT, px, 0) <= 0.0) { return vec4f(c0, 1.0); }
   let mxl = 30.0; if (l > mxl) { mv *= mxl / l; }
   let d0 = linDepth(textureLoad(depthT, px, 0)); let n0 = ign(i.pos.xy, F.misc.x); var acc = c0; var ws = 1.0; let ml = min(l, mxl);
   for (var k = 0; k < 9; k++) {

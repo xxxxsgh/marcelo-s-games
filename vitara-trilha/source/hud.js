@@ -46,20 +46,20 @@ function hudUpdate(dt) {
   const G = Game, S0 = Hud.solid;
   if (G.paused !== Hud.lastPause) { Hud.lastPause = G.paused; if (Hud.pauseEl) Hud.pauseEl.style.display = G.paused ? 'flex' : 'none'; }
   // painel de tempos (alto à esquerda)
-  _hq(36, 30, 372, 150, S0, 0.02, 0.025, 0.03, 0.42); _hq(36, 30, 5, 150, S0, 1.0, 0.55, 0.12, 0.95);
+  _hq(36, 30, 372, 182, S0, 0.02, 0.025, 0.03, 0.6); _hq(36, 30, 5, 182, S0, 1.0, 0.55, 0.12, 0.95);
   _hword('VOLTA', 58, 42, 0.62, 1, 1, 1, 0.75); _htime(G.lapActive ? G.timeMs : 0, 56, 62, 0.72, 1, 1, 1, 1);
   _hword('MELHOR', 58, 134, 0.5, 1, 0.72, 0.35, 0.9); _htime(G.bestMs, 150, 126, 0.34, 1, 0.82, 0.55, 1);
   _hword('ANTERIOR', 58, 158, 0.42, 1, 1, 1, 0.55); _htime(G.lastMs, 150, 152, 0.27, 1, 1, 1, 0.75);
   // checkpoints (pontos)
   for (let i = 0; i < G.nCp; i++) { const done = G.lapActive && ((i < G.cp) || (G.cp === 0 && false)); _hq(58 + i * 26, 192, 18, 6, S0, done ? 1.0 : 1, done ? 0.55 : 1, done ? 0.12 : 1, done ? 1 : 0.35); }
   // velocímetro (baixo à direita)
-  const kmh = Math.min(999, Math.round(Math.abs(G.speedKmh))); _hq(1620, 936, 264, 112, S0, 0.02, 0.025, 0.03, 0.42); _hq(1879, 936, 5, 112, S0, 1.0, 0.55, 0.12, 0.95);
+  const kmh = Math.min(999, Math.round(Math.abs(G.speedKmh))); _hq(1620, 936, 264, 112, S0, 0.02, 0.025, 0.03, 0.6); _hq(1879, 936, 5, 112, S0, 1.0, 0.55, 0.12, 0.95);
   let x = 1640; if (kmh < 100) x += 52; if (kmh < 10) x += 52; _hnum(kmh, kmh >= 100 ? 3 : kmh >= 10 ? 2 : 1, x, 942, 1.0, 1, 1, 1, 1); _hword('KM/H', 1800, 1004, 0.62, 1, 1, 1, 0.75);
   if (typeof Physics !== 'undefined' && Physics.reverse) _hword('RÉ', 1800, 956, 0.7, 1, 0.4, 0.3, 1);
   // mensagens
   if (G.msg > 0 && G.msgT > 0) { const nm = G.msg === 1 ? 'CHECKPOINT' : (G.msg === 2 || (G.msg === 3 && G.laps <= 1)) ? 'VOLTA COMPLETA' : G.msg === 3 ? 'NOVO RECORDE' : G.msg === 4 ? 'DE VOLTA À TRILHA' : 'FORA DA TRILHA', w = Hud.words[nm], sc = 1.25, a = Math.min(1, G.msgT * 3);
     _hq(960 - w[4] * sc / 2 - 24, 96, w[4] * sc + 48, 70, S0, 0.02, 0.025, 0.03, 0.62 * a); _hword(nm, 960 - w[4] * sc / 2, 104, sc, 1, G.msg === 5 ? 0.45 : 0.85, G.msg === 3 ? 0.3 : G.msg === 5 ? 0.3 : 0.6, a);
     if (G.msg === 2 || G.msg === 3) _htime(G.lastMs, 960 - 120, 172, 0.5, 1, 1, 1, a); }
-  else if (!G.lapActive && G.laps === 0) { const w = Hud.words.LARGADA; _hword('LARGADA', 960 - w[4] * 0.5, 104, 1.0, 1, 1, 1, 0.8); }
+  else if (!G.lapActive && G.laps === 0) { const w = Hud.words.LARGADA; _hq(960 - w[4] * 0.5 - 22, 96, w[4] + 44, 60, S0, 0.02, 0.025, 0.03, 0.55); _hword('LARGADA', 960 - w[4] * 0.5, 104, 1.0, 1, 1, 1, 0.95); }
 }
 function hudDraw(p) { if (Hud.n === 0) return; GPU.dev.queue.writeBuffer(Hud.buf, 0, Hud.inst, 0, Hud.n * 12); p.setPipeline(Hud.pipe); p.setBindGroup(0, Hud.bg); p.setVertexBuffer(0, Hud.buf); p.draw(6, Hud.n); }
