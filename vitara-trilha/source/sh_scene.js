@@ -35,13 +35,13 @@ fn hblend(a: Mat, b: Mat, w: f32) -> Mat {
   let nN = textureSample(nrmNearT, sClamp, uvn).xyz * 2.0 - 1.0;
   var N = normalize(mix(v.nf, nN, inNear));
   let nzA = textureSample(noiseT, sRep, xz / 37.0); let nzB = textureSample(noiseT, sRep, xz / 3.1);
-  let at = abs(fl.x) + (1.0 - inNear) * 60.0; let far = 0.0; gDetail = dist < 55.0; gBlur = 1.0 + smoothstep(5.0, 40.0, dist) * 2.4;
+  let at = abs(fl.x) + (1.0 - inNear) * 60.0; let far = 0.0; gDetail = dist < 55.0; gBlur = 1.0 + smoothstep(8.0, 50.0, dist) * 1.3;
   let slope = 1.0 - N.y;
   // --- pesos ---
   let track = 1.0 - smoothstep(2.45, 4.1, at + (nzB.x - 0.5) * 1.6 + (nzA.z - 0.5) * 0.8);
   let hard = max(mk.r, max(mk.g, mk.a));
   var wDirt = track; let wMud = mk.r; let wGrav = max(mk.g, mk.a * 0.9); let wRock = max(mk.a * smoothstep(0.42, 0.62, nzB.y * 0.6 + nzA.z * 0.5), smoothstep(0.30, 0.48, slope + (nzB.y - 0.5) * 0.15));
-  let strip = (1.0 - smoothstep(0.05, 0.60, at + (nzB.z - 0.5) * 0.9)) * (1.0 - hard) * track * 0.7 * smoothstep(0.3, 0.55, nzA.z + nzB.x * 0.3);
+  let strip = (1.0 - smoothstep(0.05, 0.60, at + (nzB.z - 0.5) * 0.9)) * (1.0 - hard) * track * 0.4 * smoothstep(0.3, 0.55, nzA.z + nzB.x * 0.3);
   let bed = smoothstep(0.9, -0.5, fl.w + (nzB.x - 0.5) * 0.8) * inNear;
   let litter = smoothstep(0.56, 0.72, nzA.y + (nzB.y - 0.5) * 0.25) * (1.0 - track);
   // --- camadas ---

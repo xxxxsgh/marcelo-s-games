@@ -11,7 +11,7 @@ struct CV { @builtin(position) pos: vec4f, @location(0) wp: vec3f, @location(1) 
   o.pos = F.vp * w; o.cur = F.vpNJ * w; o.prv = F.pvp * (C.pm[ii] * vec4f(pos, 1.0)); return o;
 }
 @vertex fn vsShadow(@builtin(instance_index) ii: u32, @location(0) pos: vec3f) -> @builtin(position) vec4f { return F.vp * (C.m[ii] * vec4f(pos, 1.0)); }
-fn yBeltF(z: f32) -> f32 { return 1.035 - 0.012 * z; }
+fn yBeltF(z: f32) -> f32 { return 1.030 - 0.030 * z; }
 // classes: 0 pintura, 1 vidro dianteiro, 2 vidro traseiro (escurecido), 3 coluna preta brilhante, 4 borracha, 5 farol, 6 lanterna, 7 grade, 8 plástico escuro, 9 cromado, 10 placa, 11 fundo/caixa de roda, 12 farol de neblina, 13 refletor, 14 friso do emblema
 fn classify(p: vec3f, n: vec3f) -> i32 {
   let ax = abs(p.x); let y = p.y; let z = p.z; let da = min(abs(z - 1.32), abs(z + 1.32));
@@ -27,7 +27,7 @@ fn classify(p: vec3f, n: vec3f) -> i32 {
     let d = max(max(yBeltF(z) + 0.038 + 0.075 * smoothstep(-1.12, -1.5, z) - y, y - 1.512), max(z - zf, zr - z));
     if (d < 0.0) {
       if (d > -0.020) { return 4; }
-      if (abs(z + 0.165) < 0.062) { return 3; } if (abs(z + 1.045) < 0.075) { return 0; }
+      if (abs(z + 0.165) < 0.065 || abs(z + 1.045) < 0.060) { return 3; }
       return select(2, 1, z > -0.165);
     }
     if (d < 0.012) { return 4; }
@@ -41,8 +41,8 @@ fn classify(p: vec3f, n: vec3f) -> i32 {
     let d = max(max(1.085 - y, y - 1.505), ax - 0.635);
     if (d < 0.0) { if (d > -0.022) { return 4; } return 2; }
     if (y < 0.46) { return 8; }
-    if (y > 0.53 && y < 0.565 && ax > 0.60 && ax < 0.76) { return 13; }
-    if (p.x > 0.30 && p.x < 0.70 && y > 0.565 && y < 0.695) { return 10; }
+    if (y > 0.53 && y < 0.565 && ax > 0.62 && ax < 0.76) { return 13; }
+    if (p.x > -0.50 && p.x < -0.10 && y > 0.565 && y < 0.695) { return 10; }
   }
   if (n.z > 0.35 && z > 1.80) { // frente
     let dg = max(ax - (0.335 + 0.07 * sat((y - 0.735) / 0.215)), max(0.735 - y, y - 0.950));
@@ -75,7 +75,7 @@ struct Surf { alb: vec3f, rough: f32, metal: f32, coat: f32, emis: f32, mat: f32
 fn dec(uv: vec2f, r: vec4f) -> f32 { if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) { return 0.0; } return textureSampleLevel(decT, sClamp, r.xy + uv * r.zw, 0.0).r; }
 fn shade(v: CV, ff: bool) -> Surf {
   var s: Surf; s.alb = vec3f(0.5); s.rough = 0.5; s.metal = 0.0; s.coat = 0.0; s.emis = 0.0; s.mat = 0.0; s.ao = 1.0; s.glass = 0.0; s.bx = 0.0;
-  let k = i32(v.kind + 0.5); let p = v.op; let n = normalize(v.on); let paint = vec3f(0.62, 0.63, 0.645);
+  let k = i32(v.kind + 0.5); let p = v.op; let n = normalize(v.on); let paint = vec3f(0.46, 0.47, 0.485);
   let fl = textureSampleLevel(noiseT, sRep, (p.zy + p.xx * 0.7) * 23.0, 0.0).w; let flk = textureSampleLevel(noiseT, sRep, (p.zy + p.xx) * 61.0, 0.0).w;
   var dirtable = 1.0;
   if (k == 10) {
@@ -83,12 +83,12 @@ fn shade(v: CV, ff: bool) -> Surf {
     if (c == 1 || c == 2) { s.glass = f32(c); return s; }
     if (!ff) { s.alb = vec3f(0.055, 0.055, 0.06); s.rough = 0.85; s.ao = 0.7; if (c == 11) { s.alb = vec3f(0.02); } return s; }
     if (c == 0) {
-      s.alb = paint * (0.97 + 0.06 * fl); s.metal = 0.50; s.rough = 0.42 + 0.02 * flk; s.coat = 0.7; s.mat = 2.0;
+      s.alb = paint * (0.97 + 0.06 * fl); s.metal = 0.72; s.rough = 0.36 + 0.02 * flk; s.coat = 1.0; s.mat = 2.0;
       if (n.y > 0.5 && p.z > 1.0) { let dcr = (ax - (0.40 + (p.z - 1.0) * 0.03)) / 0.022; s.bx = sign(p.x) * dcr * exp(-dcr * dcr) * 0.5; }
       let g = grooves(p, n); s.alb = mix(s.alb, vec3f(0.01), g); s.coat *= 1.0 - g; s.ao = 1.0 - g * 0.6;
       // emblema GRAND VITARA na tampa
       if (n.z < -0.5 && p.z < -1.9) { let e = dec(vec2f((0.69 - p.x) / 0.36, (1.0 - p.y) / 0.055), vec4f(0.5, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.9), e); s.metal = mix(s.metal, 1.0, e); s.rough = mix(s.rough, 0.12, e); }
-    } else if (c == 3) { s.alb = vec3f(0.012); s.rough = 0.06; s.coat = 1.0; s.mat = 2.0; }
+    } else if (c == 3) { s.alb = vec3f(0.035); s.rough = 0.5; }
     else if (c == 4) { s.alb = vec3f(0.014); s.rough = 0.55; }
     else if (c == 5) { // farol: refletor cromado, projetor e lente
       let q = vec2f(ax, p.y); let d1 = length((q - vec2f(0.63, 0.905)) * vec2f(0.8, 1.0)); let d2 = 1.0;
@@ -101,7 +101,7 @@ fn shade(v: CV, ff: bool) -> Surf {
       let rib = 0.72 + 0.28 * sin(p.y * 330.0); s.alb = vec3f(0.36, 0.008, 0.008) * rib; s.rough = 0.22; s.metal = 0.25; s.coat = 1.0; s.mat = 2.0;
       let cr = min(abs(p.y - 1.215), abs(p.y - 1.065)); s.alb = mix(s.alb, vec3f(0.55, 0.02, 0.015), smoothstep(0.055, 0.045, cr) * 0.8);
       if (p.y < 0.945) { s.alb = vec3f(0.80, 0.80, 0.82) * (0.9 + 0.1 * rib); s.metal = 0.3; if (C.p.w > 0.5) { s.mat = 3.0; s.emis = 0.35; s.alb = vec3f(1.0, 0.95, 0.85); } }
-      else if (C.p.z > 0.02 && p.y > 0.99) { s.mat = 3.0; s.emis = C.p.z * (0.45 + 0.5 * smoothstep(0.06, 0.03, cr)); s.alb = vec3f(1.0, 0.012, 0.004); }
+      else if (C.p.z > 0.02 && p.y > 0.99) { s.mat = 3.0; s.emis = C.p.z * (0.45 + 0.5 * smoothstep(0.06, 0.03, cr)); s.alb = vec3f(0.9, 0.006, 0.002); }
       dirtable = 0.6;
     } else if (c == 7) { // grade: colmeia escura, barra cromada e emblema
       let hx = fract(vec2f(ax * 38.0, p.y * 44.0 + floor(ax * 38.0) * 0.5)); let mesh = smoothstep(0.10, 0.2, min(min(hx.x, 1.0 - hx.x), min(hx.y, 1.0 - hx.y)));
@@ -114,14 +114,14 @@ fn shade(v: CV, ff: bool) -> Surf {
       if (n.z > 0.35 && p.y > 0.385 && p.y < 0.515 && ax < 0.53) { s.alb *= 0.4 + 0.6 * step(0.5, fract(p.y * 46.0)); s.ao = 0.6; } }
     else if (c == 9) { s.alb = vec3f(0.88); s.metal = 1.0; s.rough = 0.09; }
     else if (c == 10) { // placa genérica
-      var u = vec2f(0.0); if (p.z < 0.0) { u = vec2f((0.70 - p.x) / 0.40, (0.695 - p.y) / 0.13); } else { u = vec2f((p.x + 0.205) / 0.41, (0.678 - p.y) / 0.13); }
+      var u = vec2f(0.0); if (p.z < 0.0) { u = vec2f((-0.10 - p.x) / 0.40, (0.695 - p.y) / 0.13); } else { u = vec2f((p.x + 0.205) / 0.41, (0.678 - p.y) / 0.13); }
       let tx = dec(vec2f(u.x, (u.y - 0.2) / 0.78), vec4f(0.0, 0.5, 0.5, 0.5)); s.alb = mix(vec3f(0.72, 0.72, 0.70), vec3f(0.03), tx); if (u.y < 0.17) { s.alb = vec3f(0.03, 0.10, 0.42); }
       let ed = min(min(u.x, 1.0 - u.x) * 3.1, min(u.y, 1.0 - u.y)); if (ed < 0.05) { s.alb = vec3f(0.03); } s.rough = 0.35;
     } else if (c == 11) { s.alb = vec3f(0.018); s.rough = 0.9; s.ao = 0.5; }
     else if (c == 12) { let d = length(vec2f(ax - 0.675, p.y - 0.465)); s.alb = mix(vec3f(0.75, 0.78, 0.8), vec3f(0.03), smoothstep(0.045, 0.052, d)); s.metal = 1.0 - smoothstep(0.045, 0.052, d); s.rough = 0.12; s.coat = 1.0; s.mat = 2.0; }
     else if (c == 13) { s.alb = vec3f(0.45, 0.01, 0.01) * (0.7 + 0.3 * sin(ax * 500.0)); s.rough = 0.25; s.coat = 1.0; s.mat = 2.0; }
   } else if (k == 11 || k == 18) {
-    s.alb = paint; s.metal = 0.45; s.rough = 0.45; s.coat = 0.6; s.mat = 2.0; s.coat = 1.0; s.mat = 2.0;
+    s.alb = paint; s.metal = 0.35; s.rough = 0.5; s.coat = 0.5; s.mat = 2.0; s.coat = 1.0; s.mat = 2.0;
     if (k == 18) { let rr = length(vec2f(p.x + 0.08, p.y - 0.955));
       if (rr > 0.345 && abs(n.z) > 0.5) { s.alb *= 0.8; }
       { let e = dec(vec2f(0.5 - (p.x + 0.08) / 0.44, 0.5 - (p.y - 0.955) / 0.11), vec4f(0.0, 0.0, 0.5, 0.5)); s.alb = mix(s.alb, vec3f(0.16, 0.16, 0.17), e); s.metal = mix(s.metal, 0.2, e); s.rough = mix(s.rough, 0.3, e); } }
@@ -131,7 +131,7 @@ fn shade(v: CV, ff: bool) -> Surf {
     let r = v.uv.x * 0.238; let a = v.uv.y; let kk = fract(a / 6.2832 * 5.0); let ad = abs(kk - 0.5) * 2.0 * (PI / 5.0) * r; let rn = v.uv.x; let sw = 0.030 + 0.016 * rn;
     let face = max(max(1.0 - smoothstep(sw, sw + 0.012, ad), 1.0 - smoothstep(0.052, 0.064, r)), smoothstep(0.186, 0.196, r));
     let twin = (1.0 - smoothstep(0.003, 0.007, ad)) * smoothstep(0.07, 0.09, r) * (1.0 - smoothstep(0.17, 0.19, r));
-    s.alb = mix(vec3f(0.02), vec3f(0.70, 0.705, 0.72), face * (1.0 - twin * 0.85)); s.metal = face * 0.45; s.rough = mix(0.7, 0.36, face); s.ao = mix(0.35, 1.0, face);
+    s.alb = mix(vec3f(0.02), vec3f(0.50, 0.505, 0.52), face * (1.0 - twin * 0.85)); s.metal = face * 0.6; s.rough = mix(0.7, 0.45, face); s.ao = mix(0.35, 1.0, face);
     let la = fract(a / 6.2832 * 5.0 + 0.5) - 0.5; let lug = length(vec2f(la * 2.0 * PI / 5.0 * r, r - 0.056)); s.alb = mix(s.alb, vec3f(0.25), smoothstep(0.011, 0.008, lug)); if (r < 0.03) { s.alb = vec3f(0.30, 0.30, 0.32); s.rough = 0.35; }
     dirtable = 0.9;
   } else if (k == 15) { // pneu: sulcos na banda, ombro em blocos, flanco liso
@@ -150,7 +150,7 @@ fn shade(v: CV, ff: bool) -> Surf {
   if (dirtable > 0.0) {
     let low = 1.0 - smoothstep(0.35, 1.25, p.y); let rear = smoothstep(0.6, -2.1, p.z) * 0.5 + 0.25; let da = min(abs(p.z - 1.32 + 0.35), abs(p.z + 1.32 + 0.35));
     let nA = textureSampleLevel(noiseT, sRep, p.zy * 0.35 + p.xx * 0.2, 0.0); let nB = textureSampleLevel(noiseT, sRep, p.zy * 1.6 + p.xx * 0.8, 1.0);
-    var dust = sat(C.p.x * dirtable * (low * 1.25 + rear * 0.3 - 0.30 + (nA.x - 0.5) * 0.6)) * (0.6 + 0.4 * nB.y) * 0.8;
+    var dust = sat(C.p.x * dirtable * (low * 1.5 + rear * 0.25 - 0.42 + (nA.x - 0.5) * 0.22)) * (0.8 + 0.2 * nB.y) * 0.8;
     if (k == 15 || k == 14) { dust = sat(max(C.p.x * 3.0, C.p.y * 2.0) * (0.5 + nB.x)) * 0.45; }
     let splN = smoothstep(0.62 - 0.30 * low - 0.25 * smoothstep(0.8, 0.0, da), 0.72, nB.z * 0.6 + nB.x * 0.4 + (nA.y - 0.5) * 0.3);
     let mud = sat(C.p.y * 1.6 * dirtable) * splN * smoothstep(1.5, 0.5, p.y) * step(C.p.y, 2.0);
@@ -173,7 +173,7 @@ fn shade(v: CV, ff: bool) -> Surf {
   let env = textureSampleLevel(envT, sPano, dirToPano(R), 0.5).rgb; let H = normalize(F.sun.xyz + V); let sp = pow(sat(dot(N, H)), 2500.0) * 150.0;
   let nB = textureSampleLevel(noiseT, sRep, v.op.zy * 4.5 + v.op.xx * 2.0, 0.0); let low = 1.0 - smoothstep(0.9, 1.6, v.op.y);
   let dust = sat(C.p.x * (low * 0.5 - 0.1 + (nB.x - 0.5) * 0.4)) * 0.4 + sat(C.p.y) * smoothstep(0.66, 0.74, nB.z * 0.6 + nB.x * 0.4) * low * 0.8;
-  let tintA = select(0.80, 0.10, c == 1); let tintC = select(vec3f(0.012, 0.014, 0.016), vec3f(0.03, 0.045, 0.04), c == 1);
+  let tintA = select(0.66, 0.10, c == 1); let tintC = select(vec3f(0.012, 0.014, 0.016), vec3f(0.03, 0.045, 0.04), c == 1);
   let dcol = vec3f(0.36, 0.265, 0.185) * (F.sunCol.rgb * 0.10 + 0.25);
   let a = 1.0 - (1.0 - Fr) * (1.0 - tintA) * (1.0 - dust);
   let col = (env + F.sunCol.rgb * sp) * Fr + (1.0 - Fr) * (tintC * tintA * 0.3 * (1.0 - dust) + dcol * dust);

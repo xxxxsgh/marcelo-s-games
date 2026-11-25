@@ -116,7 +116,7 @@ fn ssr(P: vec3f, R: vec3f, n0: f32) -> vec4f {
     let Fc = (0.04 + 0.96 * pow(1.0 - nv, 5.0)) * coat * 0.8; let ac = 0.0022;
     col = col * (1.0 - Fc) + cenv * Fc * mix(so, 1.0, 0.5) + sc * sh * nl * (ggxD(nh, 0.006) * smithV(nl, nv, 0.006)) * (0.04 + 0.96 * pow(1.0 - vh, 5.0)) * coat * (1.0 + ac);
   }
-  if (mat == 3) { col += alb * gm.b * 5.0; }
+  if (mat == 3) { col += alb * gm.b * 3.0; }
   return vec4f(col, 1.0);
 }
 `;
@@ -137,7 +137,7 @@ fn dens(p: vec3f) -> f32 { return 0.00026 * exp(-max(p.y - 19.0, 0.0) / 220.0) +
     let f0 = f32(k) / NS; let f1 = f32(k + 1) / NS; let t0 = nearEnd * f0 * f0; let t1 = nearEnd * f1 * f1; let t = mix(t0, t1, n0); let p = cam + rd * t;
     let nz = textureSampleLevel(noise3T, sRep, p * vec3f(0.021, 0.05, 0.021) + vec3f(F.cam.w * 0.012, 0.0, F.cam.w * 0.007), 0.0).x;
     let de = dens(p) * (0.55 + 1.0 * nz); let s = shadowAt(p, F.sun.xyz, t, fract(n0 + f0 * 7.0), 2);
-    let a = 1.0 - exp(-de * (t1 - t0)); acc += T * a * (sc * s * min(hg, 0.55) * 3.6 + ambC * 10.0); T *= 1.0 - a;
+    let a = 1.0 - exp(-de * (t1 - t0)); acc += T * a * (sc * s * min(hg, 0.38) * 3.6 + ambC * 10.0); T *= 1.0 - a;
   }
   if (dist > 170.0) { // trecho analítico
     let y0 = cam.y + rd.y * 170.0 - 19.0; let ry = rd.y; let len = dist - 170.0;
@@ -206,13 +206,13 @@ const WG_MB = WG_COMMON + FS_TRI + /* wgsl */`
 @group(1) @binding(2) var depthT: texture_depth_2d;
 @fragment fn fs(i: FsV) -> @location(0) vec4f {
   let px = vec2i(i.pos.xy); let res = vec2i(F.res.xy); let c0 = textureLoad(colT, px, 0).rgb;
-  var mv = textureLoad(mvT, px, 0).xy * (0.32 / max(F.misc.y * 60.0, 0.25)); let l = length(mv * F.res.xy);
+  var mv = textureLoad(mvT, px, 0).xy * (0.20 / max(F.misc.y * 60.0, 0.25)); let l = length(mv * F.res.xy);
   if (l < 1.2 || F.pad1.w > 0.5) { return vec4f(c0, 1.0); }
   let mxl = 30.0; if (l > mxl) { mv *= mxl / l; }
   let d0 = linDepth(textureLoad(depthT, px, 0)); let n0 = ign(i.pos.xy, F.misc.x); var acc = c0; var ws = 1.0; let ml = min(l, mxl);
   for (var k = 0; k < 9; k++) {
     let t = (f32(k) + n0) / 9.0 - 0.5; let uv = i.uv + mv * t; let q = clamp(vec2i(uv * F.res.xy), vec2i(0), res - 1);
-    let ms = length(textureLoad(mvT, q, 0).xy * F.res.xy) * (0.32 / max(F.misc.y * 60.0, 0.25)); let ds = linDepth(textureLoad(depthT, q, 0));
+    let ms = length(textureLoad(mvT, q, 0).xy * F.res.xy) * (0.20 / max(F.misc.y * 60.0, 0.25)); let ds = linDepth(textureLoad(depthT, q, 0));
     let w = max(sat(ms / (ml * 0.6)), sat((ds - d0) / (d0 * 0.05 + 0.2)) * 0.0) + 0.02;
     acc += textureSampleLevel(colT, sClamp, uv, 0.0).rgb * w; ws += w;
   }

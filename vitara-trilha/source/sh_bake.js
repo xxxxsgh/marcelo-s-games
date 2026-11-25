@@ -95,10 +95,10 @@ fn leafAt(p: vec2f, c: vec2f, ang: f32, len: f32, wid: f32) -> vec2f { // (másc
           col *= 0.8 + 0.4 * smoothstep(0.75, 1.0, lf.y); hb = lf.y; }
       }
     } else {
-      for (var k = 0; k < 13; k++) {
-        let fk = f32(k); let ang = (fk / 13.0) * 6.283 + hash11(fk) * 0.4; let dir = vec2f(cos(ang), sin(ang)); let len = 0.30 + 0.14 * hash11(fk * 3.1);
+      for (var k = 0; k < 26; k++) {
+        let fk = f32(k); let ang = (fk / 26.0) * 6.283 + hash11(fk) * 0.4; let dir = vec2f(cos(ang), sin(ang)); let len = 0.30 + 0.14 * hash11(fk * 3.1);
         let d = uv - vec2f(0.5); let al0 = dot(d, dir); let pe = d.x * dir.y - d.y * dir.x; let u = al0 / len;
-        if (u > 0.0 && u < 1.0) { let spk = 0.5 + 0.5 * sin(u * 70.0 + fk * 2.0); let w = 0.055 * (0.5 + 0.5 * sin(u * PI)) * (0.7 + 0.5 * spk) + 0.012;
+        if (u > 0.0 && u < 1.0) { let spk = 0.5 + 0.5 * sin(u * 70.0 + fk * 2.0); let w = 0.030 * (0.5 + 0.5 * sin(u * PI)) * (0.7 + 0.5 * spk) + 0.008;
           let e = smoothstep(w, w * 0.6, abs(pe)); if (e > best) { best = e; hb = 1.0 - abs(pe) / w; col = mix(vec3f(0.018, 0.05, 0.02), vec3f(0.06, 0.12, 0.035), u * (0.5 + 0.5 * spk)) * (0.7 + 0.5 * hb); } }
       }
       let cd = length(uv - 0.5); let core = smoothstep(0.16, 0.1, cd); if (core > best) { best = core; col = vec3f(0.03, 0.065, 0.02); hb = 1.0 - cd * 5.0; }

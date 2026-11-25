@@ -25,7 +25,8 @@ function sceneInit() {
   for (let k = 0; k < 24; k++) { S.sarr.push(new Float32Array(S.cap * 8)); S.sbuf.push(dev.createBuffer({ size: S.cap * 32, usage: 0x20 | 8 })); }
   // ---- pedras (estáticas) ----
   S.rockM = [makeRock(1, 3), makeRock(2, 3), makeRock(3, 3), makeRock(4, 1), makeRock(5, 1), makeRock(6, 1)]; S.rockB = []; S.rockN = [];
-  for (let g = 0; g < 6; g++) { const a = []; for (let i = 0; i < W.nRocks; i++) { const o = i * 8, big = W.rocks[o + 3] > 0.32; if ((big ? 0 : 3) + W.rocks[o + 5] !== g) continue; a.push(W.rocks[o], W.rocks[o + 1], W.rocks[o + 2], W.rocks[o + 3], W.rocks[o + 4], W.rocks[o + 6], W.rocks[o + 7], 0); }
+  for (let g = 0; g < 6; g++) { const a = []; for (let i = 0; i < W.nRocks; i++) { const o = i * 8, big = W.rocks[o + 3] > 0.32; if ((big ? 0 : 3) + W.rocks[o + 5] !== g) continue;
+      let nearPost = false; for (let q = 0; q < W.nPosts; q++) if (Math.hypot(W.posts[q * 8] - W.rocks[o], W.posts[q * 8 + 2] - W.rocks[o + 2]) < 0.7) { nearPost = true; break; } if (nearPost) continue; a.push(W.rocks[o], W.rocks[o + 1], W.rocks[o + 2], W.rocks[o + 3], W.rocks[o + 4], W.rocks[o + 6], W.rocks[o + 7], 0); }
     S.rockN.push(a.length / 8); S.rockB.push(mkBuf(new Float32Array(a.length ? a : [0, 0, 0, 0, 0, 0, 1, 0]), 0x20)); }
   S.structM = makeStructures(); S.identB = mkBuf(new Float32Array([0, 0, 0, 1, 0, 0, 1, 0]), 0x20);
   // ---- capim ----
@@ -183,7 +184,7 @@ function cameraUpdate(dt) {
     const kt = snap ? 1 : 1 - Math.exp(-dt * 14); S.camT[0] += (px - S.camT[0]) * kt; S.camT[1] += (py + 1.25 - S.camT[1]) * kt; S.camT[2] += (pz - S.camT[2]) * kt;
     R.setCamera(S.camE[0], S.camE[1], S.camE[2], S.camT[0], S.camT[1], S.camT[2], 0.98 + Math.min(0.14, sp * 0.005));
   } else if (mode === 1) {
-    _carLocal(0, 1.315, 0.86); const ex = px + _cq[0], ey = py + _cq[1], ez = pz + _cq[2]; _carLocal(0, 1.05, 9);
+    _carLocal(0, 1.40, 0.80); const ex = px + _cq[0], ey = py + _cq[1], ez = pz + _cq[2]; _carLocal(0, 1.30, 9);
     const tx = px + _cq[0], ty = py + _cq[1], tz = pz + _cq[2]; _carLocal(0, 1, 0);
     R.setCamera(ex, ey, ez, tx, ty, tz, 1.12); m4look(R.view, 0, ex, ey, ez, tx, ty, tz, _cq[0] * 0.6, 0.8 + _cq[1] * 0.2, _cq[2] * 0.6);
     S.camYaw = yaw;
