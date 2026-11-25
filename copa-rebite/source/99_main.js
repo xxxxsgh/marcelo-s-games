@@ -6,6 +6,9 @@ const CR = window.CR = { G, GAR, SIM, BG, R, IN, UI, FX, Atlas, MESH, DRAW, stat
   advance(n) { for (let i = 0; i < n; i++) G.tick(DT); },
   // avanca 1 quadro e desenha; devolve promise quando os pixels estao no canvas
   async frame(n) { for (let i = 0; i < (n || 1); i++) { G.tick(DT); R.tm[0] += DT; Atlas.flush(); R.frame(); } if (R.capture) await R.grab(); else await R.dev.queue.onSubmittedWorkDone(); return R.lastError || 'ok'; },
+  // captura deterministica da luta roteirizada: vai ate o quadro f (so para frente) e o desenha.
+  // quadros pulados nao passam pela GPU (so as marcas do piso); 'warm' quadros antes de f sao desenhados para o TAA convergir
+  async goto(f, warm) { warm = warm === undefined ? 8 : warm; if (G.sf > f) throw new Error('so para frente'); while (G.sf < f - warm - 1) { G.tick(DT); R.tm[0] += DT; R.flushMarks(); } if (G.sf < f - 1) R.reset = 1; while (G.sf < f) { G.tick(DT); R.tm[0] += DT; R.frameNo = G.sf; Atlas.flush(); R.frame(); } await R.grab(); return R.lastError || 'ok'; },
   // luta avulsa (roteirizada ou automatica): montagens e semente fixas
   duel(ba, bb, seed, dur, opts) { opts = opts || {}; G.round = opts.round || 'LUTA ROTEIRIZADA'; G.auto = !!opts.auto; G.curMatch = null; const ea = { nome: opts.na || 'Fagulha', b: ba, cor: CORES[opts.ca === undefined ? 0 : opts.ca], num: 7, estilo: opts.ea === undefined ? 0 : opts.ea, hp: null, v: 0, d: 0 }, eb = { nome: opts.nb || 'Vespa 9', b: bb, cor: CORES[opts.cb === undefined ? 2 : opts.cb], num: 9, estilo: opts.eb === undefined ? 2 : opts.eb, hp: null, v: 0, d: 0 };
     G.setupFight(0, 1, seed, dur, ea, eb); G.script = opts.script || null; G.rec = opts.rec ? new Int8Array(opts.rec * 3) : null; G.startFight(); },

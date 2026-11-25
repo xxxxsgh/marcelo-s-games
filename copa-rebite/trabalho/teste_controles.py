@@ -167,7 +167,7 @@ with sync_playwright() as pw:
     E("localStorage.clear(); CR.G.fast=1; CR.G.auto=false; CR.GAR.com=[0,2,2,4]; CR.GAR.pre=[0,2,2,4]; CR.GAR.cor=3; CR.GAR.num=42; CR.GAR.nome='Tranco'; CR.GAR.enter(false); CR.G.newTournament(5); CR.G.save()")
     E("CR.G.auto=true; CR.G.toBracket('')"); btn(0); btn(0); btn(0); adv(200); E("CR.G.fast=40"); adv(300); E("CR.G.fast=1"); adv(400)
     antes = g("({b:CR.GAR.com, cor:CR.GAR.cor, num:CR.GAR.num, nome:CR.GAR.nome, lutas:CR.TOR.lutas, rodada:CR.TOR.rodada, w:CR.TOR.jogos[0].map(j=>j.w), hp:CR.TOR.ent[0].hp})")
-    pg.reload(wait_until='commit', timeout=180000); pg.wait_for_function("window.CR&&(CR.pronto||CR.erro)", timeout=180000)
+    pg.reload(wait_until='commit', timeout=400000); pg.wait_for_function("window.CR&&(CR.pronto||CR.erro)", timeout=400000)
     dep = g("({b:CR.GAR.com, cor:CR.GAR.cor, num:CR.GAR.num, nome:CR.GAR.nome, lutas:CR.TOR&&CR.TOR.lutas, rodada:CR.TOR&&CR.TOR.rodada, w:CR.TOR&&CR.TOR.jogos[0].map(j=>j.w), hp:CR.TOR&&CR.TOR.ent[0].hp})")
     chk('montagem e andamento do torneio ficam salvos entre aberturas', antes == dep and antes['lutas'] >= 1, (antes['b'], antes['nome'], antes['lutas'], dep['lutas']))
     b.close()

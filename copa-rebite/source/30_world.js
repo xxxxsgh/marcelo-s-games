@@ -7,16 +7,16 @@ const FLAME = { x: -4.3, z: -4.3, r: 1.15, n: [[-4.9, -4.3], [-4.3, -4.3], [-3.7
 const START = [[-5, 0], [5, 0]];
 // refletores: p posicao, t alvo, c cor, I intensidade, a meio-angulo (graus), s sombra
 const ARENA_LIGHTS = [
-  { p: [5.6, 7.0, 5.6], t: [-1.6, 0, -1.6], c: [1, .93, .82], I: 1500, a: 30, s: 1 },
-  { p: [-5.6, 7.0, -5.6], t: [1.6, 0, 1.6], c: [.82, .9, 1], I: 1500, a: 30, s: 1 },
-  { p: [5.6, 7.0, -5.6], t: [-1.6, 0, 1.6], c: [1, .96, .9], I: 1150, a: 30, s: 1 },
-  { p: [-5.6, 7.0, 5.6], t: [1.6, 0, -1.6], c: [.9, .95, 1], I: 1150, a: 30, s: 1 },
-  { p: [-7.6, 6.2, 0], t: [-4.2, 0, 0], c: [1, .12, .06], I: 520, a: 24, s: 0 },
-  { p: [7.6, 6.2, 0], t: [4.2, 0, 0], c: [.08, .25, 1], I: 520, a: 24, s: 0 },
-  { p: [0, 7.3, 9.5], t: [0, 2, 15], c: [1, .8, .6], I: 420, a: 48, s: 0 },
-  { p: [0, 7.3, -9.5], t: [0, 2, -15], c: [1, .8, .6], I: 420, a: 48, s: 0 },
-  { p: [9.5, 7.3, 0], t: [15, 2, 0], c: [.7, .8, 1], I: 380, a: 48, s: 0 },
-  { p: [-9.0, 6.5, 0], t: [-11.5, .5, 0], c: [1, .9, .75], I: 260, a: 50, s: 0 },
+  { p: [5.6, 7.0, 5.6], t: [-.8, 0, -.8], c: [1, .93, .82], I: 900, a: 43, s: 1 },
+  { p: [-5.6, 7.0, -5.6], t: [.8, 0, .8], c: [.82, .9, 1], I: 900, a: 43, s: 1 },
+  { p: [5.6, 7.0, -5.6], t: [-.8, 0, .8], c: [1, .96, .9], I: 780, a: 43, s: 1 },
+  { p: [-5.6, 7.0, 5.6], t: [.8, 0, -.8], c: [.9, .95, 1], I: 780, a: 43, s: 1 },
+  { p: [-7.6, 6.2, 0], t: [-4.2, 0, 0], c: [1, .12, .06], I: 420, a: 26, s: 0 },
+  { p: [7.6, 6.2, 0], t: [4.2, 0, 0], c: [.08, .25, 1], I: 420, a: 26, s: 0 },
+  { p: [0, 7.3, 9.5], t: [0, 2, 15], c: [1, .8, .6], I: 60, a: 48, s: 0, vol: 0 },
+  { p: [0, 7.3, -9.5], t: [0, 2, -15], c: [1, .8, .6], I: 60, a: 48, s: 0, vol: 0 },
+  { p: [9.5, 7.3, 0], t: [15, 2, 0], c: [.7, .8, 1], I: 55, a: 48, s: 0, vol: 0 },
+  { p: [0, 7.4, .01], t: [0, 0, 0], c: [.9, .95, 1], I: 330, a: 62, s: 0, vol: 0 },
 ];
 const GAR_LIGHTS = [
   { p: [1.5, 3.1, 1.9], t: [0, .7, 0], c: [1, .9, .74], I: 150, a: 38, s: 1 },
@@ -49,18 +49,19 @@ function buildWorldMeshes(mb) {
     mb.set(MAT.DARK, .06, .06, .065, .4); tube([L.p[0], L.p[1] + .16 * s, L.p[2]], [L.p[0], L.p[1] + .4, L.p[2]], .02, 6);
   };
   const person = (x, y, z, face, seated, raise, shirt, hi) => {
-    const sk = [[.78, .57, .44], [.55, .38, .27], [.9, .72, .58], [.36, .24, .17]][Math.floor(rng.u() * 4)], sh = shirt || [[.6, .08, .08], [.1, .2, .55], [.75, .75, .72], [.08, .08, .1], [.85, .55, .1], [.15, .4, .2], [.4, .1, .45], [.25, .25, .28]][Math.floor(rng.u() * 8)], sc = rng.r(.92, 1.08), bv = hi ? .03 : 0, sg = hi ? 10 : 6, sr = hi ? 7 : 4;
-    mb.push().tr(x, y, z).ry(face).sc(sc);
+    const sk = [[.6, .44, .34], [.42, .29, .21], [.7, .56, .45], [.28, .19, .14]][Math.floor(rng.u() * 4)], pal = [[.2, .05, .05], [.05, .08, .2], [.28, .28, .27], [.04, .04, .05], [.3, .2, .06], [.07, .14, .08], [.14, .05, .16], [.1, .1, .12], [.2, .2, .22], [.04, .05, .09]], sh = shirt || pal[Math.floor(rng.u() * pal.length)], sc = rng.r(.9, 1.1), sg = hi ? 12 : 7, lean = rng.s1() * .18, tw = rng.s1() * .3;
+    mb.push().tr(x, y, z).ry(face + tw).sc(sc);
     const hip = seated ? .0 : .82;
-    mb.set(MAT.CLOTH, .07 + rng.u() * .1, .07 + rng.u() * .08, .1 + rng.u() * .12, 0);
-    if (seated) { mb.bx(.2, .06, 0, .42, .13, .34, bv); mb.bx(.4, -.16, 0, .12, .42, .32, bv); }
-    else for (const s of [-1, 1]) mb.bx(0, .41, s * .09, .15, .82, .14, bv);
-    mb.set(MAT.CLOTH, sh[0], sh[1], sh[2], 0); mb.bx(0, hip + .3, 0, .22, .56, .38, hi ? .07 : 0);
-    const lean = raise ? 2.6 + rng.u() * .5 : (seated ? .5 : .15);
-    for (const s of [-1, 1]) { mb.push().tr(0, hip + .52, s * .23).rz(lean).tr(0, -.27, 0).box(.1, .56, .1, bv); mb.set(MAT.SKIN, sk[0], sk[1], sk[2], 0); mb.tr(0, -.3, 0).box(.08, .1, .09, bv); mb.set(MAT.CLOTH, sh[0], sh[1], sh[2], 0); mb.pop(); }
-    mb.set(MAT.SKIN, sk[0], sk[1], sk[2], 0); mb.push().tr(0, hip + .72, 0).sphere(.105, sg, sr, 1.15); mb.pop(); if (hi) mb.bx(0, hip + .6, 0, .08, .08, .08, .02);
-    const hc = rng.u() * .25; mb.set(MAT.CLOTH, hc, hc * .8, hc * .6, 0); mb.push().tr(-.012, hip + .755, 0).sphere(.108, sg, Math.max(3, sr - 1), .95); mb.pop();
-    mb.pop();
+    mb.set(MAT.CLOTH, .05 + rng.u() * .07, .05 + rng.u() * .06, .07 + rng.u() * .08, 0);
+    if (seated) { for (const s of [-1, 1]) { mb.cy(.2, .07, s * .09, .075, .42, 6, 0, { bev: .02 }); mb.cy(.41, -.14, s * .09, .06, .42, 6, 1, { bev: .02 }); } }
+    else for (const s of [-1, 1]) mb.cy(0, .41, s * .09, .075, .82, 6, 1, { bev: .02 });
+    mb.push().tr(0, hip, 0).rz(-lean);
+    mb.set(MAT.CLOTH, sh[0], sh[1], sh[2], 0); mb.push().tr(0, .3, 0).sc(.62, 1, 1).cyl(.2, .56, sg, { r2: .17, bev: .06 }); mb.pop();
+    const up = raise ? 2.5 + rng.u() * .6 : (seated ? .35 + rng.u() * .5 : .1 + rng.u() * .2);
+    for (const s of [-1, 1]) { mb.push().tr(0, .53, s * .22).rx(s * -.12).rz(up * (raise && s > 0 && rng.u() < .4 ? .3 : 1)).tr(0, -.26, 0).cyl(.05, .54, 6, { bev: .02 }); mb.set(MAT.SKIN, sk[0], sk[1], sk[2], 0); mb.tr(0, -.3, 0).sphere(.05, 6, 4); mb.set(MAT.CLOTH, sh[0], sh[1], sh[2], 0); mb.pop(); }
+    mb.set(MAT.SKIN, sk[0], sk[1], sk[2], 0); mb.cy(0, .6, 0, .045, .1, 6, 1, { bev: 0 }); mb.push().tr(.01, .74, 0).rz(rng.s1() * .2).sphere(.1, sg, hi ? 8 : 5, 1.18); mb.pop();
+    const hc = rng.u() * .18; mb.set(MAT.CLOTH, hc, hc * .8, hc * .6, 0); mb.push().tr(-.014, .775, 0).sphere(.104, sg, hi ? 6 : 4, .9); mb.pop();
+    mb.pop(); mb.pop();
   };
   const banner = (cx, cy, cz, w, h, yaw, region) => { mb.push().tr(cx, cy, cz).ry(yaw); mb.mat = MAT.BANNER; const q = []; for (const [u, v] of [[0, 1], [1, 1], [1, 0], [0, 0]]) { mb.col = [u, v, 0]; q.push(mb.v((u - .5) * w, (.5 - v) * h, 0, 0, 0, 1, region)); } mb.quad(q[0], q[1], q[2], q[3]); mb.pop(); };
   const screen = (cx, cy, cz, w, h, yaw, region) => { mb.push().tr(cx, cy, cz).ry(yaw); mb.set(MAT.DARK, .03, .03, .035, .3); mb.bx(0, 0, -.08, w + .2, h + .2, .14, .02); mb.mat = MAT.SCREEN; const q = []; for (const [u, v] of [[0, 1], [1, 1], [1, 0], [0, 0]]) { mb.col = [u, v, 0]; q.push(mb.v((u - .5) * w, (.5 - v) * h, 0, 0, 0, 1, region)); } mb.quad(q[0], q[1], q[2], q[3]); mb.pop(); };
@@ -107,7 +108,7 @@ function buildWorldMeshes(mb) {
   for (const n of FLAME.n) { mb.set(MAT.STEEL, .35, .33, .3, .6); mb.cy(n[0], .012, n[1], .11, .024, 16, 1); mb.set(MAT.DARK, .02, .02, .02, .2); mb.cy(n[0], .022, n[1], .06, .01, 12, 1, { bev: 0 }); for (let i = 0; i < 6; i++) mb.bolt(n[0] + Math.cos(i / 6 * TAU) * .09, .024, n[1] + Math.sin(i / 6 * TAU) * .09, .01, 1, 1); }
   mb.push().tr(AHAM.x, 0, AHAM.z).ry(-PI * .75 + PI); mb.set(MAT.HAZ, 1, .8, 0, 0); mb.bx(0, .32, 0, .7, .64, .7, .02); mb.set(MAT.STEEL, .4, .4, .42, .5); for (const s of [-1, 1]) mb.bx(0, .62, s * .2, .3, .5, .05, .01); mb.set(MAT.DARK, .06, .06, .07, .5); mb.cy(0, AHAM.y + .1, 0, .07, .52, 12, 2); mb.pop();
   // sinalizadores das armadilhas e dos cantos
-  mb.set(MAT.EMIS, 1, .2, .05, 8); mb.bx(-AR + .1, .55, 0, .04, .08, 1.6, 0); mb.set(MAT.EMIS, .08, .3, 1, 8); mb.bx(AR - .1, .55, 0, .04, .08, 1.6, 0);
+  mb.set(MAT.DARK, .05, .05, .06, .4); mb.bx(-AR + .06, .6, 0, .1, .2, 1.9, .01); mb.bx(AR - .06, .6, 0, .1, .2, 1.9, .01); mb.set(MAT.EMIS, 1, .2, .05, 2.5); mb.bx(-AR + .115, .6, 0, .01, .06, 1.7, 0); mb.set(MAT.EMIS, .08, .3, 1, 2.5); mb.bx(AR - .115, .6, 0, .01, .06, 1.7, 0);
 
   // grade de trelica dos refletores + torres
   const RG = 8.6, RY = 7.6;
@@ -132,7 +133,7 @@ function buildWorldMeshes(mb) {
       mb.set(MAT.CONC, .1, .1, .11, .5); mb.bx(0, y / 2, z + .42, wid, y, .85, 0);
       mb.set(MAT.SEAT, .1 + (r % 2) * .03, .1, .12, 0); mb.bx(0, y + .2, z + .55, wid - .4, .06, .4, .02);
       const n = Math.floor(wid / .6);
-      for (let i = 0; i < n; i++) { if (rng.u() < .09) continue; const x = -wid / 2 + .5 + i * .6 + rng.s1() * .05; person(x, y + .23, z + .5 + rng.s1() * .04, PI / 2 + rng.s1() * .25, true, rng.u() < .22); }
+      for (let i = 0; i < n; i++) { if (rng.u() < .13) continue; const x = -wid / 2 + .5 + i * .6 + rng.s1() * .12, st = rng.u() < .12; person(x, y + (st ? -.18 : .23), z + .5 + rng.s1() * .08, PI / 2 + rng.s1() * .3, !st, rng.u() < .2); }
     }
     mb.set(MAT.DARK, .08, .08, .09, .4); for (let i = 0; i <= wid / 2; i++) { const x = -wid / 2 + i * 2; tube([x, .5, d0 - .05], [x, 1.5, d0 - .05], .025, 6); } tube([-wid / 2, 1.5, d0 - .05], [wid / 2, 1.5, d0 - .05], .03, 6); tube([-wid / 2, 1.05, d0 - .05], [wid / 2, 1.05, d0 - .05], .02, 6);
     mb.set(MAT.CONC, .08, .08, .09, .5); mb.bx(0, .25, d0 - .1, wid, .5, .2, 0);
@@ -209,7 +210,8 @@ function buildWorldMeshes(mb) {
     else { mb.set(MAT.PAINT2, .7, .08, .05, .3); mb.box(.2, .1, .04, .01); mb.set(MAT.STEEL, .6, .6, .62, .3); mb.tr(.14, 0, 0).rz(PI / 2).cyl(.012, .1, 6); }
     mb.pop(); };
   for (let i = 0; i < 7; i++) hang(-2.0 + i * .22, 2.3 - (i % 3) * .03, 0); hang(-.2, 2.3, 1); hang(.1, 2.28, 1); for (let i = 0; i < 6; i++) hang(.5 + i * .12, 2.42, 2); hang(1.6, 2.35, 3); hang(2.0, 2.3, 3);
-  for (let i = 0; i < 5; i++) hang(-1.9 + i * .3, 1.55, i % 2 ? 2 : 0); mb.set(MAT.STEEL, .66, .66, .68, .3); mb.push().tr(.9, 1.6, -3.31).rx(0); { const poly = [], N = 48; for (let i = 0; i < N; i++) { const t = i / N * TAU, r = .2 + .03 * ((i / N * 12) % 1); poly.push([Math.cos(t) * r, Math.sin(t) * r]); } mb.extrude(poly, .012, .002); } mb.pop(); mb.push().tr(1.6, 1.62, -3.31); mb.set(MAT.RUBBER, .03, .03, .03, .5); mb.rx(PI / 2).ring(.16, .1, .07, 20, .9); mb.pop();
+  for (let i = 0; i < 5; i++) hang(-1.9 + i * .3, 1.55, i % 2 ? 2 : 0); for (let i = 0; i < 9; i++) hang(-.9 + i * .16, 1.9 + (i % 2) * .05, i % 3 === 0 ? 2 : 0); for (let i = 0; i < 4; i++) hang(1.3 + i * .24, 1.9, 3 - (i % 2) * 2); hang(-1.4, 1.95, 1); hang(-1.65, 1.92, 1);
+  mb.set(MAT.WOOD, .3, .2, .12, 0); mb.bx(0, 1.12, -3.2, 4.6, .04, .3, .006); for (let i = 0; i < 10; i++) { const x = -2.1 + i * .46; if (i % 3 === 0) { mb.set(MAT.PAINT2, [.6, .1, .08][i % 3], .3, .1, .3); mb.cy(x, 1.25, -3.2, .06, .22, 12, 1, { bev: .01 }); } else if (i % 3 === 1) { mb.set(MAT.DARK, .05, .05, .06, .5); mb.bx(x, 1.2, -3.2, .22, .12, .16, .01); } else { mb.set(MAT.ALU, .75, .75, .78, .3); mb.cy(x, 1.19, -3.2, .05, .16, 12, 0); mb.set(MAT.BRASS, .8, .6, .3, .2); mb.cy(x + .14, 1.17, -3.2, .035, .06, 10, 2); } } mb.set(MAT.STEEL, .66, .66, .68, .3); mb.push().tr(.9, 1.6, -3.31).rx(0); { const poly = [], N = 48; for (let i = 0; i < N; i++) { const t = i / N * TAU, r = .2 + .03 * ((i / N * 12) % 1); poly.push([Math.cos(t) * r, Math.sin(t) * r]); } mb.extrude(poly, .012, .002); } mb.pop(); mb.push().tr(1.6, 1.62, -3.31); mb.set(MAT.RUBBER, .03, .03, .03, .5); mb.rx(PI / 2).ring(.16, .1, .07, 20, .9); mb.pop();
   banner(-3.9, 2.3, -3.37, 2.6, 1.3, 0, 1); banner(3.9, 2.2, -3.37, 1.8, 1.8, 0, 8);
   // bancada de trabalho + torno
   mb.set(MAT.WOOD, .34, .23, .13, 0); mb.bx(-3.6, .9, -2.7, 3.2, .07, .9, .01); mb.set(MAT.STEEL, .25, .25, .27, .4); for (const a of [-1, 1]) for (const b of [-1, 1]) mb.bx(-3.6 + a * 1.5, .43, -2.7 + b * .38, .06, .86, .06, .006); mb.bx(-3.6, .3, -2.7, 3.0, .03, .8, .006);
@@ -237,7 +239,7 @@ function buildWorldMeshes(mb) {
   mb.set(MAT.WIRE, .8, .35, .02, 0); mb.cable([[3.0, .02, -2.5], [2.2, .02, -1.4], [1.6, .02, -.2], [1.05, .02, .1]], .013, 5, 8); mb.set(MAT.WIRE, .03, .03, .03, 0); mb.cable([[-2.2, .02, -2.4], [-1.8, .02, -1.2], [-1.3, .02, -.5], [-1.0, .03, -.3]], .012, 5, 8);
   mb.end('garage');
   // tampo giratorio da bancada
-  mb.set(MAT.STEEL, .5, .5, .52, .15); mb.cy(0, -.03, 0, .98, .06, 48, 1, { bev: .008 }); mb.set(MAT.DARK, .05, .05, .06, .4); mb.cy(0, -.075, 0, .9, .03, 32, 1);
+  mb.set(MAT.STEEL, .5, .5, .52, .15); mb.cy(0, -.03, 0, .98, .06, 120, 1, { bev: .008 }); mb.set(MAT.DARK, .05, .05, .06, .4); mb.cy(0, -.075, 0, .9, .03, 32, 1);
   for (let i = 0; i < 12; i++) mb.bolt(Math.cos(i / 12 * TAU) * .9, 0, Math.sin(i / 12 * TAU) * .9, .014, 1, 1);
   mb.end('bench');
 }

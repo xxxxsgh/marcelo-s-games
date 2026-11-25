@@ -26,7 +26,7 @@ const GAR = {
   setNome(v) { v = String(v).trim().slice(0, 14) || 'Sem Nome'; if (v !== this.nome) { this.nome = v; Atlas.robot(0, this.nome, this.num, CORES[this.cor]); G.save(); } },
   enter(repair) {
     this.repair = !!repair; this.acoes = 2; this.mode = 0; this.row = 0; this.pre = this.com.slice(); this.hp = repair && TOR ? TOR.ent[0].hp : null;
-    G.st = 'garagem'; UI.show('gar'); R.exposure = .62; R.fog = .0016; R.mblur = .5; R.amb = 1.0; R.keyDim = 1; FX.reset(); DRAW.hide(SLOT.ROBOT + SLOT.ROBOT_N);
+    G.st = 'garagem'; UI.show('gar'); R.exposure = .5; R.fog = .0012; R.mblur = .4; R.amb = 1.0; R.keyDim = 1; FX.reset(); DRAW.hide(SLOT.ROBOT + SLOT.ROBOT_N);
     for (let i = SLOT.DEBRIS; i < SLOT.DEBRIS + SLOT.DEBRIS_N; i++) R.im[i] = -1; R.im[SLOT.AUX1] = -1; R.im[SLOT.AUX2] = -1; R.im[SLOT.AUX3] = -1; R.im[SLOT.GLASS] = -1;
     R.bake(1, MESH.garage.id, GAR_LIGHTS, [0, 1.5, 1.2]); this.refresh(-1); for (let k = 0; k < 4; k++) this.an[k] = .4 + k * .12;
   },
@@ -61,7 +61,7 @@ const GAR = {
     R.im[SLOT.AUX0] = MESH.bench.id; M4.ident(_m, 48); (_t[0] = 0, _t[1] = BENCH_Y, _t[2] = 0, _t[3] = a, M4.mulTRr(I, SLOT.AUX0 * INST_F, _m, 48, 1)); (_d[0] = 0, _d[1] = -1, _d[2] = 1, _d[3] = 1, _d[4] = 0, _d[5] = 0, _d[6] = 0, _d[7] = 0, _d[8] = 3, DRAW.putR(SLOT.AUX0, MESH.bench.id, B.cor)); DRAW.dents(SLOT.AUX0, null, 0);
     (_q[0] = 0, _q[1] = BENCH_Y + L.clear + B.ycm, _q[2] = 0, _q[3] = 0, _q[4] = Math.sin(a / 2), _q[5] = 0, _q[6] = Math.cos(a / 2), DRAW.botR(SLOT.ROBOT, B, 0, this.an));
     if (G.camFix) { const c = G.camFix; R.eye[0] = c[0]; R.eye[1] = c[1]; R.eye[2] = c[2]; R.tgt[0] = c[3]; R.tgt[1] = c[4]; R.tgt[2] = c[5]; R.cp[0] = c[6]; return; }
-    R.eye[0] = 1.5; R.eye[1] = 1.42; R.eye[2] = 2.15; R.tgt[0] = -.38; R.tgt[1] = .8; R.tgt[2] = 0; R.up[0] = 0; R.up[1] = 1; R.up[2] = 0; R.cp[0] = .62;
+    R.eye[0] = 1.1; R.eye[1] = 1.5; R.eye[2] = 2.75; R.tgt[0] = -.75; R.tgt[1] = .78; R.tgt[2] = 0; R.up[0] = 0; R.up[1] = 1; R.up[2] = 0; R.cp[0] = .62;
   },
 };
 
@@ -108,7 +108,7 @@ const G = {
   },
   enterArena() {
     if (R.scene !== 0) { R.im[SLOT.GLASS] = MESH.glass.id; R.im[SLOT.AUX0] = MESH.saw.id; R.im[SLOT.AUX1] = MESH.saw.id; R.im[SLOT.AUX2] = MESH.ahammer.id; R.bake(0, MESH.arena.id, ARENA_LIGHTS, [0, 1.2, 0]); }
-    R.exposure = .2; R.fog = .0042; R.mblur = 1; R.amb = 1; R.cp[0] = .9;
+    R.exposure = .26; R.fog = .003; R.mblur = .55; R.amb = 1; R.cp[0] = .9;
   },
   // prepara a luta do jogador (ou uma luta avulsa para teste/roteiro)
   setupFight(ia, ib, seed, dur, ea, eb) {
@@ -166,7 +166,7 @@ const G = {
   events() {
     const S = SIM, e = S.ev;
     for (let k = 0; k < S.nev; k++) { const o = k * 8, ty = e[o], x = e[o + 1], y = e[o + 2], z = e[o + 3], dx = e[o + 4], dy = e[o + 5], dz = e[o + 6], mag = e[o + 7];
-      if (ty === EV.HIT) { const dmg = mag % 1000; this.hits++; if (mag >= 1000) this.hitsB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy, _f[5] = dz, _f[6] = 24 + dmg * 6, _f[7] = 4 + dmg * .22, _f[8] = .75, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy + .5, _f[5] = dz, _f[6] = 4 + dmg * .5, _f[7] = 3.5, _f[8] = .9, FX.sparksR(1)); (_f[0] = x, _f[1] = y + .25, _f[2] = z, _f[3] = 4 + dmg * .12, _f[4] = 26 + dmg * 2.2, _f[5] = 15 + dmg * 1.1, _f[6] = 4, _f[7] = .22, FX.lightR()); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 2, _f[4] = .22, _f[5] = .7, FX.smokeR(0)); (_f[0] = x - dz * .2, _f[1] = z + dx * .2, _f[2] = x + dz * .2, _f[3] = z - dx * .2, _f[4] = .012, _f[5] = 1, _f[6] = .6, FX.markR());
+      if (ty === EV.HIT) { const dmg = mag % 1000; this.hits++; if (mag >= 1000) this.hitsB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy, _f[5] = dz, _f[6] = 14 + dmg * 3.5, _f[7] = 3.2 + dmg * .16, _f[8] = .75, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy + .5, _f[5] = dz, _f[6] = 4 + dmg * .5, _f[7] = 3.5, _f[8] = .9, FX.sparksR(1)); (_f[0] = x, _f[1] = y + .25, _f[2] = z, _f[3] = 3 + dmg * .08, _f[4] = 9 + dmg * .7, _f[5] = 5 + dmg * .35, _f[6] = 1.2, _f[7] = .2, FX.lightR()); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 2, _f[4] = .22, _f[5] = .7, FX.smokeR(0)); (_f[0] = x - dz * .2, _f[1] = z + dx * .2, _f[2] = x + dz * .2, _f[3] = z - dx * .2, _f[4] = .012, _f[5] = 1, _f[6] = .6, FX.markR());
         FX.sh[0] = Math.min(1, FX.sh[0] + dmg * .03); const st = Math.min(Math.max(.12 + dmg / 60, 0), 1); (_k[8] = st, _k[9] = st * .7, _k[10] = 120 + dmg * 7, IN.rumbleR()); if (this.rumbleLog && this.rumbleLog.length < 400) this.rumbleLog.push(dmg, st);
         if (dmg > S.best) { S.best = dmg; this.bestAt = S.frame; } _k[11] = dmg; this.pushEv(1, o); }
       else if (ty === EV.DETACH) { this.detached++; if (mag >= 100) this.detB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 70, _f[7] = 5, _f[8] = .9, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 14, _f[7] = 4, _f[8] = 1, FX.sparksR(1)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 4, _f[4] = .3, _f[5] = .9, FX.smokeR(1)); (_f[0] = x, _f[1] = y + .3, _f[2] = z, _f[3] = 5, _f[4] = 40, _f[5] = 22, _f[6] = 6, _f[7] = .3, FX.lightR()); (_k[8] = .9, _k[9] = .6, _k[10] = 260, IN.rumbleR()); FX.sh[0] = Math.min(1, FX.sh[0] + .5); _k[11] = 30; this.pushEv(2, o); this.note(this.notes[mag >= 100 ? 1 : 0][mag % 100 | 0]); }
@@ -182,7 +182,7 @@ const G = {
       else if (ty === EV.KO) { FX.sh[0] = .6; }
     }
     // fogo das armadilhas e das baterias
-    if (S.flameOn) { for (let i = 0; i < 3; i++) { const n = FLAME.n[i]; (_f[0] = n[0], _f[1] = .06, _f[2] = n[1], _f[3] = 3, _f[4] = .3, _f[5] = 5.5, FX.fireR()); if ((S.frame + i) % 6 === 0) (_f[0] = n[0] - .3, _f[1] = n[1], _f[2] = n[0] + .3, _f[3] = n[1], _f[4] = .35, _f[5] = 2, _f[6] = .1, FX.markR()); } (_f[0] = FLAME.x, _f[1] = .9, _f[2] = FLAME.z, _f[3] = 7, _f[4] = 60 + 20 * Math.sin(S.t * 31), _f[5] = 26, _f[6] = 5, FX.flightR()); if (S.frame % 9 === 0) (_f[0] = FLAME.x + (FX.rng.uR(), _u[0] * 2 - 1) * .6, _f[1] = 1.6, _f[2] = FLAME.z, _f[3] = 1, _f[4] = .5, _f[5] = 1.2, FX.smokeR(1)); }
+    if (S.flameOn) { for (let i = 0; i < 3; i++) { const n = FLAME.n[i]; (_f[0] = n[0], _f[1] = .06, _f[2] = n[1], _f[3] = 7, _f[4] = .15, _f[5] = 6.5, FX.fireR()); if ((S.frame + i) % 6 === 0) (_f[0] = n[0] - .3, _f[1] = n[1], _f[2] = n[0] + .3, _f[3] = n[1], _f[4] = .35, _f[5] = 2, _f[6] = .1, FX.markR()); } (_f[0] = FLAME.x, _f[1] = .9, _f[2] = FLAME.z, _f[3] = 7, _f[4] = 60 + 20 * Math.sin(S.t * 31), _f[5] = 26, _f[6] = 5, FX.flightR()); if (S.frame % 9 === 0) (_f[0] = FLAME.x + (FX.rng.uR(), _u[0] * 2 - 1) * .6, _f[1] = 1.6, _f[2] = FLAME.z, _f[3] = 1, _f[4] = .5, _f[5] = 1.2, FX.smokeR(1)); }
     for (let i = 0; i < 2; i++) { const B = S.bots[i], s = B.s; if (B.fireOn) { const c = CHASSIS[B.b[0]]; (_c[45] = (c.win[0] + c.win[1]) / 2, _c[46] = B.L.hy1 - B.ycm, _c[47] = 0, S.wptR(B)); (_f[0] = _c[0], _f[1] = _c[1], _f[2] = _c[2], _f[3] = 1, _f[4] = .16, _f[5] = 2.2, FX.fireR()); if (S.frame % 3 === 0) (_f[0] = _c[0], _f[1] = _c[1] + .25, _f[2] = _c[2], _f[3] = 1, _f[4] = .3, _f[5] = 1.3, FX.smokeR(1)); (_f[0] = _c[0], _f[1] = _c[1] + .3, _f[2] = _c[2], _f[3] = 4, _f[4] = 22 + 8 * Math.sin(S.t * 27 + i), _f[5] = 9, _f[6] = 2, FX.flightR()); B.burn = Math.min(1, B.burn + DT * .08); }
       else if (B.hp[P_BAT] < B.hpMax[P_BAT] * .6 && S.frame % 7 === 0) { const c = CHASSIS[B.b[0]]; (_c[45] = (c.win[0] + c.win[1]) / 2, _c[46] = B.L.hy1 - B.ycm, _c[47] = 0, S.wptR(B)); (_f[0] = _c[0], _f[1] = _c[1] + .05, _f[2] = _c[2], _f[3] = 1, _f[4] = .2, _f[5] = .8, FX.smokeR(0)); }
       const k = ARMAS[B.b[3]]; if (k.spin && B.wspin > k.wmax * .5 && B.hp[P_WP] > 0 && S.frame % 4 === 0) { /* brilho sutil do disco: nada */ } }
@@ -231,8 +231,8 @@ const G = {
       const kk = this.first ? 1 : 1 - Math.exp(-dt * 3.2); this.ft[3] = (this.ft[3] || fx) + (fx - (this.ft[3] || fx)) * kk; this.ft[4] = (this.ft[4] || 0) + (fz - (this.ft[4] || 0)) * kk; if (this.first) { this.ft[3] = fx; this.ft[4] = fz; }
       const n = Math.sqrt((this.ft[3]) * (this.ft[3]) + (this.ft[4]) * (this.ft[4])) || 1, ux = this.ft[3] / n, uz = this.ft[4] / n;
       (_k[0] = Math.min(Math.max(s[0] - ux * 2.5, -AR + .25), AR - .25) + jx, _k[1] = Math.min(Math.max(s[1] + 1.05, .5), 3) + jy, _k[2] = Math.min(Math.max(s[2] - uz * 2.5, -AR + .25), AR - .25), _k[3] = s[0] + ux * 1.1, _k[4] = Math.max(s[1], 0) + .2, _k[5] = s[2] + uz * 1.1, _k[6] = dt, _k[7] = .95, this.setCamR()); }
-    else if (this.cam === 1) { const L = A.L, y = L.hy1 - A.ycm + .2, x = -L.hx * .55; (_c[45] = x, _c[46] = y, _c[47] = 0, SIM.wptR(A)); e[0] = _c[0] + jx; e[1] = _c[1] + jy; e[2] = _c[2]; (_c[45] = x + 3, _c[46] = y - .55, _c[47] = 0, SIM.wptR(A)); t[0] = _c[0]; t[1] = _c[1]; t[2] = _c[2]; R.up[0] = R_[1]; R.up[1] = R_[4]; R.up[2] = R_[7]; R.cp[0] = 1.2; if (this.first) { this.first = 0; R.reset = 1; } }
-    else { const mx = (s[0] + B.s[0]) / 2, mz = (s[2] + B.s[2]) / 2, d = Math.sqrt((s[0] - B.s[0]) * (s[0] - B.s[0]) + (s[2] - B.s[2]) * (s[2] - B.s[2])); (_k[0] = mx * .25 + jx, _k[1] = 6.4 + jy, _k[2] = -8.1, _k[3] = mx, _k[4] = .2, _k[5] = mz, _k[6] = dt, _k[7] = Math.min(Math.max(.3 + d * .045, .34), .78), this.setCamR()); }
+    else if (this.cam === 1) { const L = A.L, y = L.hy1 - A.ycm + .3, x = L.mx - .12; (_c[45] = x, _c[46] = y, _c[47] = 0, SIM.wptR(A)); e[0] = _c[0] + jx; e[1] = _c[1] + jy; e[2] = _c[2]; (_c[45] = x + 3, _c[46] = y - .62, _c[47] = 0, SIM.wptR(A)); t[0] = _c[0]; t[1] = _c[1]; t[2] = _c[2]; R.up[0] = R_[1]; R.up[1] = R_[4]; R.up[2] = R_[7]; R.cp[0] = 1.05; if (this.first) { this.first = 0; R.reset = 1; } }
+    else { const mx = (s[0] + B.s[0]) / 2, mz = (s[2] + B.s[2]) / 2, d = Math.sqrt((s[0] - B.s[0]) * (s[0] - B.s[0]) + (s[2] - B.s[2]) * (s[2] - B.s[2])); (_k[0] = mx * .35 + jx, _k[1] = 3.55 + jy, _k[2] = -6.55, _k[3] = mx, _k[4] = .2, _k[5] = mz, _k[6] = dt, _k[7] = Math.min(Math.max(.34 + d * .07, .42), .95), this.setCamR()); }
   },
   drawProps() { // le serras, martelo e tampa do fosso de this.pr (sawH0, sawH1, sawA, ahA, pitY)
     const S = SIM, I = R.I, P = this.pr, h0 = P[0], h1 = P[1], sa = P[2], ah = P[3], py = P[4];

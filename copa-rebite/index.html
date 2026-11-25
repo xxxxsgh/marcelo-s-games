@@ -17,7 +17,7 @@ b,.h{font-weight:800}
 .card.r{right:2vw;clip-path:polygon(0 0,100% 0,100% 100%,4% 100%);border-right:.6vh solid var(--cc);text-align:right}
 .card .nm{font-size:2.9vh;font-weight:800;white-space:nowrap;overflow:hidden;line-height:1.1}
 .card .nu{display:inline-block;background:var(--cc);color:#fff;padding:0 .9vh;margin:0 .8vh 0 0;font-weight:800;text-shadow:0 0 .3vh #000}
-.card.r .nu{margin:0 0 0 .8vh}
+.card.r .nu{margin:0 .8vh 0 .8vh}
 .card .sb{color:var(--mu);font-size:1.5vh;margin:.1vh 0 .5vh}
 .bars{display:grid;grid-template-columns:repeat(5,1fr);gap:.7vh}
 .bar{font-size:1.25vh;color:var(--mu)}
@@ -566,7 +566,7 @@ function buildRobotMeshes(mb) {
         motor(mx + .01, ya + .05, 0, 1, .042, .07);
         mb.set(MAT.STEEL, .3, .3, .32, .4); mb.push().tr(0, ya + .1, 0).rx(PI / 2); mb.chain(mx + .01, 0, .02, g.px, 0, .03, .016); mb.pop(); mb.cy(g.px, ya + .1, 0, .028, .01, 12, 1);
         mb.end(`wb${ci}_0`);
-        mb.set(MAT.STEEL, .62, .62, .64, .25); const poly = []; const N = 64; for (let i = 0; i < N; i++) { const t = i / N * TAU, f = (i / N * 4) % 1, r = .165 + .05 * Math.pow(f, 2.2) * (f > .96 ? 0 : 1); poly.push([Math.cos(t) * r, Math.sin(t) * r]); }
+        mb.set(MAT.STEEL, .3, .3, .32, .25); const poly = []; const N = 64; for (let i = 0; i < N; i++) { const t = i / N * TAU, f = (i / N * 4) % 1, r = .165 + .05 * Math.pow(f, 2.2) * (f > .96 ? 0 : 1); poly.push([Math.cos(t) * r, Math.sin(t) * r]); }
         mb.push().rx(PI / 2).extrude(poly, .026, .005); mb.pop();
         mb.set(MAT.DARK, .07, .07, .08, .3); mb.cy(0, 0, 0, .06, .04, 16, 1); mb.set(MAT.PAINT, 1, 1, 1, .4); mb.cy(0, 0, 0, .1, .03, 20, 1, { bev: .003 });
         for (let i = 0; i < 6; i++) mb.bolt(Math.cos(i / 6 * TAU) * .08, .015, Math.sin(i / 6 * TAU) * .08, .008, 1, 1);
@@ -578,7 +578,7 @@ function buildRobotMeshes(mb) {
         motor(mx, ya + .055, -.02, 2, .04, .07);
         mb.set(MAT.STEEL, .3, .3, .32, .4); mb.push().tr(0, 0, .062); mb.chain(mx, ya + .055, .02, nose + .05, ya + .01, .02, .016); mb.pop();
         mb.end(`wb${ci}_1`);
-        mb.set(MAT.STEEL, .62, .62, .64, .25); const poly = []; const N = 60; for (let i = 0; i < N; i++) { const t = -i / N * TAU, f = (i / N * 2) % 1, r = .14 + .06 * Math.pow(f, 2.5) * (f > .97 ? 0 : 1); poly.push([Math.cos(t) * r, Math.sin(t) * r]); }
+        mb.set(MAT.STEEL, .3, .3, .32, .25); const poly = []; const N = 60; for (let i = 0; i < N; i++) { const t = -i / N * TAU, f = (i / N * 2) % 1, r = .14 + .06 * Math.pow(f, 2.5) * (f > .97 ? 0 : 1); poly.push([Math.cos(t) * r, Math.sin(t) * r]); }
         mb.extrude(poly, .032, .006);
         mb.set(MAT.PAINT, 1, 1, 1, .4); mb.cy(0, 0, 0, .075, .04, 18, 2, { bev: .003 }); for (let i = 0; i < 5; i++) { mb.bolt(Math.cos(i / 5 * TAU) * .055, Math.sin(i / 5 * TAU) * .055, .02, .007, 2, 1); mb.bolt(Math.cos(i / 5 * TAU) * .055, Math.sin(i / 5 * TAU) * .055, -.02, .007, 2, -1); }
         mb.end(`wm${ci}_1`);
@@ -589,7 +589,7 @@ function buildRobotMeshes(mb) {
         mb.set(MAT.STEEL, .3, .3, .32, .4); mb.push().tr(0, 0, .228); mb.chain(mx, ya + .05, .018, nose + .05, ya + .02, .018, .016); mb.chain(nose + .05, ya + .02, .018, g.px, g.py, .03, .016); mb.pop();
         mb.set(MAT.STEEL, .5, .5, .52, .4); mb.cy(mx, ya + .05, .18, .012, .11, 8, 2); mb.cy(nose + .05, ya + .02, .214, .012, .04, 8, 2);
         mb.end(`wb${ci}_2`);
-        mb.set(MAT.STEEL, .58, .58, .6, .3); mb.cy(0, 0, 0, .078, .35, 24, 2, { bev: .008 });
+        mb.set(MAT.STEEL, .32, .32, .34, .3); mb.cy(0, 0, 0, .078, .35, 24, 2, { bev: .008 });
         mb.set(MAT.PAINT, 1, 1, 1, .5); for (const z of [-.12, 0, .12]) mb.cy(0, 0, z, .08, .03, 24, 2, { bev: .002 });
         mb.set(MAT.STEEL, .7, .7, .72, .5); for (let i = 0; i < 2; i++) for (let j = 0; j < 3; j++) { const t = i * PI + j * .5, z = (j - 1) * .1 + (i ? .03 : -.03); mb.push().tr(0, 0, z).rz(t).tr(.082, 0, 0).box(.036, .03, .05, .005); mb.pop(); }
         mb.cy(0, 0, 0, .014, .40, 8, 2);
@@ -657,7 +657,7 @@ function buildRobotMeshes(mb) {
     mb.set(MAT.RUBBER, .03, .03, .03, 0); mb.push().rx(PI / 2).ring(w.r - .022, w.r * .6, w.w, 32, .2); mb.pop();
     const nl = 20; for (let i = 0; i < nl; i++) { const t = i / nl * TAU; for (const s of [-1, 1]) { mb.push().rz(t + (s > 0 ? PI / nl : 0)).tr(w.r - .0195, 0, s * w.w * .25).ry(s * .3).box(.022, .026, w.w * .5, .004); mb.pop(); } }
     mb.set(MAT.ALU, .78, .78, .8, .25); mb.push().rx(PI / 2).ring(w.r * .62, w.r * .5, w.w * .75, 24); mb.pop();
-    mb.set(MAT.PAINT, 1, 1, 1, .4); for (let i = 0; i < 5; i++) { mb.push().rz(i / 5 * TAU).tr(w.r * .3, 0, w.w * .1).box(w.r * .46, .026, .02, .004); mb.pop(); }
+    mb.set(MAT.STEEL, .5, .5, .52, .4); for (let i = 0; i < 5; i++) { mb.push().rz(i / 5 * TAU).tr(w.r * .3, 0, w.w * .1).box(w.r * .46, .026, .02, .004); mb.pop(); }
     mb.set(MAT.ALU, .8, .8, .82, .3); mb.cy(0, 0, w.w * .1, w.r * .2, .04, 14, 2); mb.bolt(0, 0, w.w * .1 + .02, .012, 2, 1);
     mb.set(MAT.STEEL, .5, .5, .52, .3); mb.cy(0, 0, -w.w / 2 - .014, .014, .05, 8, 2);
     mb.end('wh1');
@@ -692,16 +692,16 @@ const FLAME = { x: -4.3, z: -4.3, r: 1.15, n: [[-4.9, -4.3], [-4.3, -4.3], [-3.7
 const START = [[-5, 0], [5, 0]];
 // refletores: p posicao, t alvo, c cor, I intensidade, a meio-angulo (graus), s sombra
 const ARENA_LIGHTS = [
-  { p: [5.6, 7.0, 5.6], t: [-1.6, 0, -1.6], c: [1, .93, .82], I: 1500, a: 30, s: 1 },
-  { p: [-5.6, 7.0, -5.6], t: [1.6, 0, 1.6], c: [.82, .9, 1], I: 1500, a: 30, s: 1 },
-  { p: [5.6, 7.0, -5.6], t: [-1.6, 0, 1.6], c: [1, .96, .9], I: 1150, a: 30, s: 1 },
-  { p: [-5.6, 7.0, 5.6], t: [1.6, 0, -1.6], c: [.9, .95, 1], I: 1150, a: 30, s: 1 },
-  { p: [-7.6, 6.2, 0], t: [-4.2, 0, 0], c: [1, .12, .06], I: 520, a: 24, s: 0 },
-  { p: [7.6, 6.2, 0], t: [4.2, 0, 0], c: [.08, .25, 1], I: 520, a: 24, s: 0 },
-  { p: [0, 7.3, 9.5], t: [0, 2, 15], c: [1, .8, .6], I: 420, a: 48, s: 0 },
-  { p: [0, 7.3, -9.5], t: [0, 2, -15], c: [1, .8, .6], I: 420, a: 48, s: 0 },
-  { p: [9.5, 7.3, 0], t: [15, 2, 0], c: [.7, .8, 1], I: 380, a: 48, s: 0 },
-  { p: [-9.0, 6.5, 0], t: [-11.5, .5, 0], c: [1, .9, .75], I: 260, a: 50, s: 0 },
+  { p: [5.6, 7.0, 5.6], t: [-.8, 0, -.8], c: [1, .93, .82], I: 900, a: 43, s: 1 },
+  { p: [-5.6, 7.0, -5.6], t: [.8, 0, .8], c: [.82, .9, 1], I: 900, a: 43, s: 1 },
+  { p: [5.6, 7.0, -5.6], t: [-.8, 0, .8], c: [1, .96, .9], I: 780, a: 43, s: 1 },
+  { p: [-5.6, 7.0, 5.6], t: [.8, 0, -.8], c: [.9, .95, 1], I: 780, a: 43, s: 1 },
+  { p: [-7.6, 6.2, 0], t: [-4.2, 0, 0], c: [1, .12, .06], I: 420, a: 26, s: 0 },
+  { p: [7.6, 6.2, 0], t: [4.2, 0, 0], c: [.08, .25, 1], I: 420, a: 26, s: 0 },
+  { p: [0, 7.3, 9.5], t: [0, 2, 15], c: [1, .8, .6], I: 60, a: 48, s: 0, vol: 0 },
+  { p: [0, 7.3, -9.5], t: [0, 2, -15], c: [1, .8, .6], I: 60, a: 48, s: 0, vol: 0 },
+  { p: [9.5, 7.3, 0], t: [15, 2, 0], c: [.7, .8, 1], I: 55, a: 48, s: 0, vol: 0 },
+  { p: [0, 7.4, .01], t: [0, 0, 0], c: [.9, .95, 1], I: 330, a: 62, s: 0, vol: 0 },
 ];
 const GAR_LIGHTS = [
   { p: [1.5, 3.1, 1.9], t: [0, .7, 0], c: [1, .9, .74], I: 150, a: 38, s: 1 },
@@ -734,18 +734,19 @@ function buildWorldMeshes(mb) {
     mb.set(MAT.DARK, .06, .06, .065, .4); tube([L.p[0], L.p[1] + .16 * s, L.p[2]], [L.p[0], L.p[1] + .4, L.p[2]], .02, 6);
   };
   const person = (x, y, z, face, seated, raise, shirt, hi) => {
-    const sk = [[.78, .57, .44], [.55, .38, .27], [.9, .72, .58], [.36, .24, .17]][Math.floor(rng.u() * 4)], sh = shirt || [[.6, .08, .08], [.1, .2, .55], [.75, .75, .72], [.08, .08, .1], [.85, .55, .1], [.15, .4, .2], [.4, .1, .45], [.25, .25, .28]][Math.floor(rng.u() * 8)], sc = rng.r(.92, 1.08), bv = hi ? .03 : 0, sg = hi ? 10 : 6, sr = hi ? 7 : 4;
-    mb.push().tr(x, y, z).ry(face).sc(sc);
+    const sk = [[.6, .44, .34], [.42, .29, .21], [.7, .56, .45], [.28, .19, .14]][Math.floor(rng.u() * 4)], pal = [[.2, .05, .05], [.05, .08, .2], [.28, .28, .27], [.04, .04, .05], [.3, .2, .06], [.07, .14, .08], [.14, .05, .16], [.1, .1, .12], [.2, .2, .22], [.04, .05, .09]], sh = shirt || pal[Math.floor(rng.u() * pal.length)], sc = rng.r(.9, 1.1), sg = hi ? 12 : 7, lean = rng.s1() * .18, tw = rng.s1() * .3;
+    mb.push().tr(x, y, z).ry(face + tw).sc(sc);
     const hip = seated ? .0 : .82;
-    mb.set(MAT.CLOTH, .07 + rng.u() * .1, .07 + rng.u() * .08, .1 + rng.u() * .12, 0);
-    if (seated) { mb.bx(.2, .06, 0, .42, .13, .34, bv); mb.bx(.4, -.16, 0, .12, .42, .32, bv); }
-    else for (const s of [-1, 1]) mb.bx(0, .41, s * .09, .15, .82, .14, bv);
-    mb.set(MAT.CLOTH, sh[0], sh[1], sh[2], 0); mb.bx(0, hip + .3, 0, .22, .56, .38, hi ? .07 : 0);
-    const lean = raise ? 2.6 + rng.u() * .5 : (seated ? .5 : .15);
-    for (const s of [-1, 1]) { mb.push().tr(0, hip + .52, s * .23).rz(lean).tr(0, -.27, 0).box(.1, .56, .1, bv); mb.set(MAT.SKIN, sk[0], sk[1], sk[2], 0); mb.tr(0, -.3, 0).box(.08, .1, .09, bv); mb.set(MAT.CLOTH, sh[0], sh[1], sh[2], 0); mb.pop(); }
-    mb.set(MAT.SKIN, sk[0], sk[1], sk[2], 0); mb.push().tr(0, hip + .72, 0).sphere(.105, sg, sr, 1.15); mb.pop(); if (hi) mb.bx(0, hip + .6, 0, .08, .08, .08, .02);
-    const hc = rng.u() * .25; mb.set(MAT.CLOTH, hc, hc * .8, hc * .6, 0); mb.push().tr(-.012, hip + .755, 0).sphere(.108, sg, Math.max(3, sr - 1), .95); mb.pop();
-    mb.pop();
+    mb.set(MAT.CLOTH, .05 + rng.u() * .07, .05 + rng.u() * .06, .07 + rng.u() * .08, 0);
+    if (seated) { for (const s of [-1, 1]) { mb.cy(.2, .07, s * .09, .075, .42, 6, 0, { bev: .02 }); mb.cy(.41, -.14, s * .09, .06, .42, 6, 1, { bev: .02 }); } }
+    else for (const s of [-1, 1]) mb.cy(0, .41, s * .09, .075, .82, 6, 1, { bev: .02 });
+    mb.push().tr(0, hip, 0).rz(-lean);
+    mb.set(MAT.CLOTH, sh[0], sh[1], sh[2], 0); mb.push().tr(0, .3, 0).sc(.62, 1, 1).cyl(.2, .56, sg, { r2: .17, bev: .06 }); mb.pop();
+    const up = raise ? 2.5 + rng.u() * .6 : (seated ? .35 + rng.u() * .5 : .1 + rng.u() * .2);
+    for (const s of [-1, 1]) { mb.push().tr(0, .53, s * .22).rx(s * -.12).rz(up * (raise && s > 0 && rng.u() < .4 ? .3 : 1)).tr(0, -.26, 0).cyl(.05, .54, 6, { bev: .02 }); mb.set(MAT.SKIN, sk[0], sk[1], sk[2], 0); mb.tr(0, -.3, 0).sphere(.05, 6, 4); mb.set(MAT.CLOTH, sh[0], sh[1], sh[2], 0); mb.pop(); }
+    mb.set(MAT.SKIN, sk[0], sk[1], sk[2], 0); mb.cy(0, .6, 0, .045, .1, 6, 1, { bev: 0 }); mb.push().tr(.01, .74, 0).rz(rng.s1() * .2).sphere(.1, sg, hi ? 8 : 5, 1.18); mb.pop();
+    const hc = rng.u() * .18; mb.set(MAT.CLOTH, hc, hc * .8, hc * .6, 0); mb.push().tr(-.014, .775, 0).sphere(.104, sg, hi ? 6 : 4, .9); mb.pop();
+    mb.pop(); mb.pop();
   };
   const banner = (cx, cy, cz, w, h, yaw, region) => { mb.push().tr(cx, cy, cz).ry(yaw); mb.mat = MAT.BANNER; const q = []; for (const [u, v] of [[0, 1], [1, 1], [1, 0], [0, 0]]) { mb.col = [u, v, 0]; q.push(mb.v((u - .5) * w, (.5 - v) * h, 0, 0, 0, 1, region)); } mb.quad(q[0], q[1], q[2], q[3]); mb.pop(); };
   const screen = (cx, cy, cz, w, h, yaw, region) => { mb.push().tr(cx, cy, cz).ry(yaw); mb.set(MAT.DARK, .03, .03, .035, .3); mb.bx(0, 0, -.08, w + .2, h + .2, .14, .02); mb.mat = MAT.SCREEN; const q = []; for (const [u, v] of [[0, 1], [1, 1], [1, 0], [0, 0]]) { mb.col = [u, v, 0]; q.push(mb.v((u - .5) * w, (.5 - v) * h, 0, 0, 0, 1, region)); } mb.quad(q[0], q[1], q[2], q[3]); mb.pop(); };
@@ -792,7 +793,7 @@ function buildWorldMeshes(mb) {
   for (const n of FLAME.n) { mb.set(MAT.STEEL, .35, .33, .3, .6); mb.cy(n[0], .012, n[1], .11, .024, 16, 1); mb.set(MAT.DARK, .02, .02, .02, .2); mb.cy(n[0], .022, n[1], .06, .01, 12, 1, { bev: 0 }); for (let i = 0; i < 6; i++) mb.bolt(n[0] + Math.cos(i / 6 * TAU) * .09, .024, n[1] + Math.sin(i / 6 * TAU) * .09, .01, 1, 1); }
   mb.push().tr(AHAM.x, 0, AHAM.z).ry(-PI * .75 + PI); mb.set(MAT.HAZ, 1, .8, 0, 0); mb.bx(0, .32, 0, .7, .64, .7, .02); mb.set(MAT.STEEL, .4, .4, .42, .5); for (const s of [-1, 1]) mb.bx(0, .62, s * .2, .3, .5, .05, .01); mb.set(MAT.DARK, .06, .06, .07, .5); mb.cy(0, AHAM.y + .1, 0, .07, .52, 12, 2); mb.pop();
   // sinalizadores das armadilhas e dos cantos
-  mb.set(MAT.EMIS, 1, .2, .05, 8); mb.bx(-AR + .1, .55, 0, .04, .08, 1.6, 0); mb.set(MAT.EMIS, .08, .3, 1, 8); mb.bx(AR - .1, .55, 0, .04, .08, 1.6, 0);
+  mb.set(MAT.DARK, .05, .05, .06, .4); mb.bx(-AR + .06, .6, 0, .1, .2, 1.9, .01); mb.bx(AR - .06, .6, 0, .1, .2, 1.9, .01); mb.set(MAT.EMIS, 1, .2, .05, 2.5); mb.bx(-AR + .115, .6, 0, .01, .06, 1.7, 0); mb.set(MAT.EMIS, .08, .3, 1, 2.5); mb.bx(AR - .115, .6, 0, .01, .06, 1.7, 0);
 
   // grade de trelica dos refletores + torres
   const RG = 8.6, RY = 7.6;
@@ -817,7 +818,7 @@ function buildWorldMeshes(mb) {
       mb.set(MAT.CONC, .1, .1, .11, .5); mb.bx(0, y / 2, z + .42, wid, y, .85, 0);
       mb.set(MAT.SEAT, .1 + (r % 2) * .03, .1, .12, 0); mb.bx(0, y + .2, z + .55, wid - .4, .06, .4, .02);
       const n = Math.floor(wid / .6);
-      for (let i = 0; i < n; i++) { if (rng.u() < .09) continue; const x = -wid / 2 + .5 + i * .6 + rng.s1() * .05; person(x, y + .23, z + .5 + rng.s1() * .04, PI / 2 + rng.s1() * .25, true, rng.u() < .22); }
+      for (let i = 0; i < n; i++) { if (rng.u() < .13) continue; const x = -wid / 2 + .5 + i * .6 + rng.s1() * .12, st = rng.u() < .12; person(x, y + (st ? -.18 : .23), z + .5 + rng.s1() * .08, PI / 2 + rng.s1() * .3, !st, rng.u() < .2); }
     }
     mb.set(MAT.DARK, .08, .08, .09, .4); for (let i = 0; i <= wid / 2; i++) { const x = -wid / 2 + i * 2; tube([x, .5, d0 - .05], [x, 1.5, d0 - .05], .025, 6); } tube([-wid / 2, 1.5, d0 - .05], [wid / 2, 1.5, d0 - .05], .03, 6); tube([-wid / 2, 1.05, d0 - .05], [wid / 2, 1.05, d0 - .05], .02, 6);
     mb.set(MAT.CONC, .08, .08, .09, .5); mb.bx(0, .25, d0 - .1, wid, .5, .2, 0);
@@ -894,7 +895,8 @@ function buildWorldMeshes(mb) {
     else { mb.set(MAT.PAINT2, .7, .08, .05, .3); mb.box(.2, .1, .04, .01); mb.set(MAT.STEEL, .6, .6, .62, .3); mb.tr(.14, 0, 0).rz(PI / 2).cyl(.012, .1, 6); }
     mb.pop(); };
   for (let i = 0; i < 7; i++) hang(-2.0 + i * .22, 2.3 - (i % 3) * .03, 0); hang(-.2, 2.3, 1); hang(.1, 2.28, 1); for (let i = 0; i < 6; i++) hang(.5 + i * .12, 2.42, 2); hang(1.6, 2.35, 3); hang(2.0, 2.3, 3);
-  for (let i = 0; i < 5; i++) hang(-1.9 + i * .3, 1.55, i % 2 ? 2 : 0); mb.set(MAT.STEEL, .66, .66, .68, .3); mb.push().tr(.9, 1.6, -3.31).rx(0); { const poly = [], N = 48; for (let i = 0; i < N; i++) { const t = i / N * TAU, r = .2 + .03 * ((i / N * 12) % 1); poly.push([Math.cos(t) * r, Math.sin(t) * r]); } mb.extrude(poly, .012, .002); } mb.pop(); mb.push().tr(1.6, 1.62, -3.31); mb.set(MAT.RUBBER, .03, .03, .03, .5); mb.rx(PI / 2).ring(.16, .1, .07, 20, .9); mb.pop();
+  for (let i = 0; i < 5; i++) hang(-1.9 + i * .3, 1.55, i % 2 ? 2 : 0); for (let i = 0; i < 9; i++) hang(-.9 + i * .16, 1.9 + (i % 2) * .05, i % 3 === 0 ? 2 : 0); for (let i = 0; i < 4; i++) hang(1.3 + i * .24, 1.9, 3 - (i % 2) * 2); hang(-1.4, 1.95, 1); hang(-1.65, 1.92, 1);
+  mb.set(MAT.WOOD, .3, .2, .12, 0); mb.bx(0, 1.12, -3.2, 4.6, .04, .3, .006); for (let i = 0; i < 10; i++) { const x = -2.1 + i * .46; if (i % 3 === 0) { mb.set(MAT.PAINT2, [.6, .1, .08][i % 3], .3, .1, .3); mb.cy(x, 1.25, -3.2, .06, .22, 12, 1, { bev: .01 }); } else if (i % 3 === 1) { mb.set(MAT.DARK, .05, .05, .06, .5); mb.bx(x, 1.2, -3.2, .22, .12, .16, .01); } else { mb.set(MAT.ALU, .75, .75, .78, .3); mb.cy(x, 1.19, -3.2, .05, .16, 12, 0); mb.set(MAT.BRASS, .8, .6, .3, .2); mb.cy(x + .14, 1.17, -3.2, .035, .06, 10, 2); } } mb.set(MAT.STEEL, .66, .66, .68, .3); mb.push().tr(.9, 1.6, -3.31).rx(0); { const poly = [], N = 48; for (let i = 0; i < N; i++) { const t = i / N * TAU, r = .2 + .03 * ((i / N * 12) % 1); poly.push([Math.cos(t) * r, Math.sin(t) * r]); } mb.extrude(poly, .012, .002); } mb.pop(); mb.push().tr(1.6, 1.62, -3.31); mb.set(MAT.RUBBER, .03, .03, .03, .5); mb.rx(PI / 2).ring(.16, .1, .07, 20, .9); mb.pop();
   banner(-3.9, 2.3, -3.37, 2.6, 1.3, 0, 1); banner(3.9, 2.2, -3.37, 1.8, 1.8, 0, 8);
   // bancada de trabalho + torno
   mb.set(MAT.WOOD, .34, .23, .13, 0); mb.bx(-3.6, .9, -2.7, 3.2, .07, .9, .01); mb.set(MAT.STEEL, .25, .25, .27, .4); for (const a of [-1, 1]) for (const b of [-1, 1]) mb.bx(-3.6 + a * 1.5, .43, -2.7 + b * .38, .06, .86, .06, .006); mb.bx(-3.6, .3, -2.7, 3.0, .03, .8, .006);
@@ -922,7 +924,7 @@ function buildWorldMeshes(mb) {
   mb.set(MAT.WIRE, .8, .35, .02, 0); mb.cable([[3.0, .02, -2.5], [2.2, .02, -1.4], [1.6, .02, -.2], [1.05, .02, .1]], .013, 5, 8); mb.set(MAT.WIRE, .03, .03, .03, 0); mb.cable([[-2.2, .02, -2.4], [-1.8, .02, -1.2], [-1.3, .02, -.5], [-1.0, .03, -.3]], .012, 5, 8);
   mb.end('garage');
   // tampo giratorio da bancada
-  mb.set(MAT.STEEL, .5, .5, .52, .15); mb.cy(0, -.03, 0, .98, .06, 48, 1, { bev: .008 }); mb.set(MAT.DARK, .05, .05, .06, .4); mb.cy(0, -.075, 0, .9, .03, 32, 1);
+  mb.set(MAT.STEEL, .5, .5, .52, .15); mb.cy(0, -.03, 0, .98, .06, 120, 1, { bev: .008 }); mb.set(MAT.DARK, .05, .05, .06, .4); mb.cy(0, -.075, 0, .9, .03, 32, 1);
   for (let i = 0; i < 12; i++) mb.bolt(Math.cos(i / 12 * TAU) * .9, 0, Math.sin(i / 12 * TAU) * .9, .014, 1, 1);
   mb.end('bench');
 }
@@ -1022,25 +1024,27 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
     if (mat == 14u) { let s = fract((i.wp.x + i.wp.y * 1.2 + i.wp.z) * 2.2); base = mix(vec3f(.85, .6, .02), vec3f(.02, .02, .02), smoothstep(.48, .52, s) - smoothstep(.98, 1., s)); mk = 0.; }
     if (mat == 21u && mk > 1.5) { let s = fract((P.x - abs(P.z) * .7) * 2.4 + .1); cover = smoothstep(.0, .02, s) - smoothstep(.34, .36, s); }
     var sc = scratch(uv * 16., inst.p1.w) * (.3 + wear * 1.1);
-    let wm = n3 * .22 + nf * .2 + vn(P * 60. + 5.) * .22 + edge * .42 + wear * .26 + dent * .9;
-    var chip = smoothstep(.70, .74, wm); chip = max(chip, smoothstep(.83, .86, fbm(P * 11. + inst.p1.w * 3.) + wear * .2));
+    let wlow = fbm(P * 7. + inst.p1.w * 1.3);
+    let wm = n3 * .26 + nf * .12 + vn(P * 60. + 5.) * .16 + edge * .5 + wear * wlow * .16 + dent * .9;
+    var chip = smoothstep(.69, .73, wm); chip = max(chip, smoothstep(.84, .87, fbm(P * 11. + inst.p1.w * 3.) + wear * .05));
     chip = max(chip, smoothstep(.55, .85, sc)); let prim = clamp(smoothstep(.655, .70, wm) - chip, 0., 1.);
     var bare = vec3f(.52, .52, .54); var br = .34;
     if (mk > .5 && mk < 1.5) { bare = vec3f(.86, .87, .88); br = .3; } else if (mk > 1.5) { let tf = vn(P * 9. + 1.7); bare = mix(vec3f(.56, .52, .47), mix(vec3f(.35, .4, .62), vec3f(.62, .45, .3), tf), smoothstep(.45, .9, edge + tf * .5) * .55); br = .3; }
     let streak = vn(vec3f(uv.x * 3., uv.y * 260., 1.));
-    var palb = base * (.9 + .12 * n1); var pr = .28 + .14 * n1 + .08 * nf;
+    let lum0 = dot(base, vec3f(.3, .6, .1)); var palb = mix(vec3f(lum0), base, .8) * (.62 + .22 * n1 + .1 * wlow); var pr = .22 + .3 * wlow + .12 * n1;
     // adesivos / numero
     if (inst.p0.x >= 0. && mat == 21u) {
       var duv = vec2f(-1.);
       if (i.on.y > .5) { duv = vec2f(P.x / inst.p0.y, P.z / inst.p0.z) * .5 + .5; duv = vec2f(duv.x, duv.y * .6875); }
       else if (an.z > .7) { duv = vec2f(P.x / inst.p0.y * sign(i.on.z) * .5 + .5, 1. - clamp(P.y / .22, 0., 1.) * .3125); if (P.y > .215) { duv = vec2f(-1.); } }
-      if (duv.x > 0. && duv.x < 1. && duv.y > 0. && duv.y < 1.) { let t = textureSampleLevel(atlas, smp, (duv + vec2f(inst.p0.x, 0.)) * vec2f(.25, .25), 0.); palb = mix(palb, t.rgb * (.85 + .15 * n1), t.a); cover = max(cover, t.a); }
+      if (duv.x > 0. && duv.x < 1. && duv.y > 0. && duv.y < 1.) { let t = textureSample(atlas, smp, (duv + vec2f(inst.p0.x, 0.)) * vec2f(.25, .25)); palb = mix(palb, t.rgb * (.85 + .15 * n1), t.a); cover = max(cover, t.a); }
     }
     let grime = smoothstep(.5, .85, fbm(P * 4. + 9.) + (1. - clamp(P.y * 6., 0., 1.)) * .22);
-    palb = mix(palb, palb * vec3f(.5, .46, .42), grime * .4); pr = mix(pr, .7, grime * .5);
+    palb = mix(palb, palb * vec3f(.42, .38, .34), grime * .6); pr = mix(pr, .75, grime * .6);
+    let streakd = smoothstep(.55, .9, vn(vec3f(P.x * 30., P.y * 3., P.z * 30.) + 2.)) * (1. - abs(i.on.y)); palb *= 1. - streakd * .35;
     let pm = (1. - chip) * cover;
     alb = mix(bare * (.9 + .2 * streak), palb, pm); alb = mix(alb, vec3f(.5, .47, .42) * (.8 + .3 * nf), prim * cover * .8);
-    metal = 1. - pm; rough = mix(br + .22 * streak + sc * .1, pr, pm);
+    metal = 1. - pm * .62; rough = mix(br + .22 * streak + sc * .1, pr * .8, pm);
     h = pm * .00035 + nf * .00006 + sc * -.0002 + (1. - pm) * streak * .00004;
     if (edge > .95 && mat != 14u) { h += sin(dot(P, vec3f(310., 290., 330.))) * .00012; } // cordao de solda nas arestas
     if (mat == 21u) { // rasgo
@@ -1051,7 +1055,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
     let hot = dent * inst.p1.y; emis = hot * 2.5; alb = mix(alb, vec3f(1., .35, .05), clamp(hot, 0., 1.) * .8);
   } else if (mat == 2u || mat == 3u || mat == 4u || mat == 13u) { // metais nus
     let streak = vn(vec3f(uv.x * 4., uv.y * 300., 2.)); let n3 = fbm(P * 18.); let sc = scratch(uv * 26., 3.);
-    metal = 1.; rough = .27 + .2 * streak + n3 * .08; alb = alb * (.9 + .14 * streak);
+    metal = 1.; rough = .3 + .09 * streak + n3 * .1; alb = alb * (.93 + .08 * streak);
     if (mat == 2u) { let rust = smoothstep(.8, .9, n3 * .8 + edge * .1 + vn(P * 60.) * .2) * .7; alb = mix(alb, vec3f(.23, .11, .05) * (.7 + .6 * vn(P * 90.)), rust * .8); metal = 1. - rust * .7; rough = mix(rough, .82, rust);
       let blu = smoothstep(.7, 1., edge) * vn(P * 12.); alb = mix(alb, vec3f(.3, .33, .5), blu * .35); }
     if (mat == 4u) { let tf = vn(P * 9.); alb = mix(alb, mix(vec3f(.35, .4, .62), vec3f(.62, .45, .3), tf), .4); }
@@ -1078,13 +1082,13 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
     else { rough = .95; } }
   else if (mat == 12u || mat == 22u) { rough = select(.85, .55, mat == 22u); alb = i.col * (.8 + .35 * vn(i.wp * 60.)); }
   else if (mat == 15u) { rough = .45; }
-  else if (mat == 16u) { let r = region(i32(edge + .5)); let t = textureSampleLevel(atlas, smp, r.xy + i.col.rg * r.zw, 0.); alb = t.rgb; emis = 5.; rough = .3;
+  else if (mat == 16u) { let r = region(i32(edge + .5)); let t = textureSample(atlas, smp, r.xy + i.col.rg * r.zw); alb = t.rgb; emis = 5.; rough = .3;
     let px = fract(i.col.rg * vec2f(260., 130.)); let led = smoothstep(.0, .25, px.x) * smoothstep(1., .75, px.x) * smoothstep(.0, .25, px.y) * smoothstep(1., .75, px.y); emis *= mix(1., .55 + .9 * led, clamp(1. - fwidth(i.col.r * 260.) * 1.5, 0., 1.)); }
   else if (mat == 17u) { metal = 1.; rough = .3 + vn(P * 80.) * .15; h = sin(dot(P, vec3f(900., 900., 900.))) * .0002; }
   else if (mat == 18u) { alb = vec3f(.02, .025, .04); rough = .06; }
   else if (mat == 19u) { let g = vn(vec3f(P.x * 3., P.y * 60., P.z * 60.)); alb = i.col * (.6 + .7 * g); rough = .55 + g * .2; alb = mix(alb, alb * .4, smoothstep(.6, .8, fbm(P * 4.))); h = g * .0003; }
   else if (mat == 20u) { let g = fract(uv * 32.) - .5; let hole = 1. - smoothstep(.12, .16, length(g)); alb = i.col * (.85 + .2 * vn(P * 30.)) * (1. - hole * .85); rough = .8; h = -hole * .001; }
-  else if (mat == 23u) { let r = region(i32(edge + .5)); let t = textureSample(atlas, smp, r.xy + i.col.rg * r.zw); alb = t.rgb * (.85 + .15 * vn(i.wp * 30.)); rough = .7; emis = .25; }
+  else if (mat == 23u) { let r = region(i32(edge + .5)); let t = textureSample(atlas, smp, r.xy + i.col.rg * r.zw); alb = t.rgb * (.5 + .12 * vn(i.wp * 30.)); rough = .7; emis = .03; }
   // fuligem / queimado
   let burn = inst.p1.x; if (burn > 0.) { let b = clamp(burn * (.5 + fbm(P * 14.)), 0., 1.); alb = mix(alb, vec3f(.012), b * .9); rough = mix(rough, .92, b); metal *= 1. - b * .7; }
   if (h != 0.) { N = bump(N, i.wp, h * 1.4); }
@@ -1094,6 +1098,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
 }
 @fragment fn fs(i: VO, @builtin(front_facing) ff: bool) -> GO { var t = 0.; return shade(i, ff, &t); }
 @fragment fn fsTear(i: VO, @builtin(front_facing) ff: bool) -> GO { var t = 0.; let o = shade(i, ff, &t); if (t > .62) { discard; } return o; }
+@fragment fn fsFlat(i: VO) -> GO { var o: GO; o.a = vec4f(i.col * .5, 0.); o.n = vec4f(normalize(i.wn), .6); let c = i.cc.xy / i.cc.w; let p = i.pc.xy / i.pc.w; o.v = vec4f((c - p) * vec2f(.5, -.5), 0., 1.); return o; }
 // ---- policarbonato ----
 @group(1) @binding(0) var envT: texture_cube<f32>;
 @group(1) @binding(1) var smpC: sampler;
@@ -1106,9 +1111,9 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
   var lit = vec3f(0.);
   for (var k = 0u; k < u32(F.misc2.y); k++) { let L = F.lights[k]; let d = L.pos.xyz - i.wp; let dl = length(d); let dn = d / dl; var a = L.col.rgb / (dl * dl + 1.);
     if (L.ext.y < .5) { a *= smoothstep(L.dir.w, L.col.w, dot(-dn, L.dir.xyz)); } lit += a * (.3 + .7 * pow(max(dot(reflect(-dn, N), V), 0.), 6.) + .4 * pow(max(dot(-dn, V), 0.), 4.)); }
-  let scat = clamp(s1 * .9 + haze * haze * .12 + low * (.1 + .25 * haze) + .012, 0., 1.);
+  let scat = clamp(s1 * .3 * smoothstep(.35, .7, haze + low * .4) + haze * haze * .03 + low * (.03 + .08 * haze) + .004, 0., 1.);
   let col = refl * fr + lit * scat * .16 + vec3f(.5, .6, .65) * .0015;
-  let a = clamp(fr * .6 + scat * .22 + .035, 0., 1.);
+  let a = clamp(fr * .6 + scat * .2 + .012, 0., 1.);
   return vec4f(col, a);
 }
 `;
@@ -1168,8 +1173,9 @@ fn ggx(N: vec3f, V: vec3f, L: vec3f, r: f32, F0: vec3f) -> vec3f {
     col += (dif + ggx(N, V, ln, max(rough, .06), F0)) * L.col.rgb * (a * nl);
   }
   // ambiente: cubo de ambiente + reflexo no espaco de tela
-  let R = reflect(-V, N); let nv = max(dot(N, V), 0.);
-  let irr = textureSampleLevel(envT, smpC, N * vec3f(1., 1., -1.), 5.).rgb;
+  let rj = vec3f(ign(i.pos.xy + 17., fr), ign(i.pos.xy + 41., fr + 3.), ign(i.pos.xy + 73., fr + 7.)) - .5;
+  let R = normalize(reflect(-V, N) + rj * rough * rough * 1.6); let nv = max(dot(N, V), 0.);
+  let irr = textureSampleLevel(envT, smpC, N * vec3f(1., 1., -1.), 5.).rgb * 2.2 + vec3f(.016, .017, .021) * (.6 + .4 * N.y);
   var spec = textureSampleLevel(envT, smpC, R * vec3f(1., 1., -1.), rough * 5.).rgb; var hitc = 0.;
   if (rough < .62 && F.misc2.z > .5) {
     var t = .04 + noise * .06; var hit = false; var huv = vec2f(0.); var st = .07; var tp = 0.;
@@ -1248,7 +1254,7 @@ fn cur(px: vec2i) -> vec3f { return ycc(tm(textureLoad(t0, clamp(px, vec2i(0), v
 // bloom: reducao com limiar (t0), reducao simples, ampliacao
 fn ds(uv: vec2f, ts: vec2f) -> vec3f { return (textureSampleLevel(t0, smpC, uv + ts * vec2f(-1., -1.), 0.).rgb + textureSampleLevel(t0, smpC, uv + ts * vec2f(1., -1.), 0.).rgb + textureSampleLevel(t0, smpC, uv + ts * vec2f(-1., 1.), 0.).rgb + textureSampleLevel(t0, smpC, uv + ts * vec2f(1., 1.), 0.).rgb) * .25; }
 @fragment fn fsBloom0(i: FSO) -> @location(0) vec4f { let ts = 1. / vec2f(textureDimensions(t0)); var s = vec3f(0.); var ws = 0.;
-  for (var k = 0; k < 4; k++) { let o = vec2f(f32(k & 1) * 2. - 1., f32(k >> 1) * 2. - 1.); let c = min(textureSampleLevel(t0, smpC, i.uv + ts * o, 0.).rgb, vec3f(60.)); let l = max(c.r, max(c.g, c.b)); let w = 1. / (1. + l); s += c * w * smoothstep(.9, 2.2, l); ws += w; }
+  for (var k = 0; k < 4; k++) { let o = vec2f(f32(k & 1) * 2. - 1., f32(k >> 1) * 2. - 1.); let c = min(textureSampleLevel(t0, smpC, i.uv + ts * o, 0.).rgb, vec3f(60.)); let l = max(c.r, max(c.g, c.b)); let w = 1. / (1. + l); s += c * w * smoothstep(1.6, 4.5, l); ws += w; }
   return vec4f(s / ws, 1.); }
 @fragment fn fsBloomD(i: FSO) -> @location(0) vec4f { let ts = 1. / vec2f(textureDimensions(t0)); return vec4f((ds(i.uv, ts) * 2. + ds(i.uv, ts * 2.5)) / 3., 1.); }
 @fragment fn fsBloomU(i: FSO) -> @location(0) vec4f { let ts = 1. / vec2f(textureDimensions(t0)); return vec4f(ds(i.uv, ts * 1.2), 1.); }
@@ -1259,13 +1265,13 @@ fn tone(c0: vec3f) -> vec3f { var c = mat3x3f(.59719, .07600, .02840, .35458, .9
 @fragment fn fsFinal(i: FSO) -> @location(0) vec4f {
   let px = vec2i(i.pos.xy); var vel = textureLoad(t2, px, 0).xy * F.misc2.x; let d0 = textureLoad(gD, px, 0);
   if (F.fx.y > .5 && F.fx.y < 3.5) { return vec4f(pow(clamp(textureLoad(t0, px, 0).rgb, vec3f(0.), vec3f(1.)), vec3f(1. / 2.2)), 1.); }
-  let vl = length(vel * F.res.xy); let mxl = 26.; if (vl > mxl) { vel *= mxl / vl; }
+  let vl0 = length(vel * F.res.xy); let mxl = F.res.y * .011; if (vl0 > mxl) { vel *= mxl / vl0; } let vl = min(vl0, mxl);
   var c = textureSampleLevel(t0, smpC, i.uv, 0.).rgb;
-  if (vl > .7) { let n = ign(i.pos.xy, F.misc.y) - .5; var ws = 1.; for (var k = 0; k < 8; k++) { let t = (f32(k) + .5 + n) / 8. - .5; let uv = i.uv + vel * t; let sv = textureLoad(t2, vec2i(uv * F.res.xy), 0).xy * F.misc2.x; let sd = textureLoad(gD, vec2i(uv * F.res.xy), 0);
+  if (vl > .7) { let n = ign(i.pos.xy, F.misc.y) - .5; var ws = 1.; for (var k = 0; k < 10; k++) { let t = (f32(k) + .5 + n) / 10. - .5; let uv = i.uv + vel * t; let sv = textureLoad(t2, vec2i(uv * F.res.xy), 0).xy * F.misc2.x; let sd = textureLoad(gD, vec2i(uv * F.res.xy), 0);
       let w = select(clamp(length(sv * F.res.xy) / max(vl, 1.) + .1, 0., 1.), 1., sd <= d0 + .0002); c += textureSampleLevel(t0, smpC, uv, 0.).rgb * w; ws += w; } c /= ws; }
   // nitidez leve
   let nb = (textureSampleLevel(t0, smpC, i.uv + vec2f(F.res.z, 0.), 0.).rgb + textureSampleLevel(t0, smpC, i.uv - vec2f(F.res.z, 0.), 0.).rgb + textureSampleLevel(t0, smpC, i.uv + vec2f(0., F.res.w), 0.).rgb + textureSampleLevel(t0, smpC, i.uv - vec2f(0., F.res.w), 0.).rgb) * .25;
-  let c0 = textureSampleLevel(t0, smpC, i.uv, 0.).rgb; c += clamp((c0 - nb) * .35, vec3f(-.5), vec3f(.5)) * step(vl, 2.) ;
+  let c0 = textureSampleLevel(t0, smpC, i.uv, 0.).rgb; c += clamp((c0 - nb) * .12, vec3f(-.3), vec3f(.3)) * step(vl, 2.) ;
   c = max(c, vec3f(0.)) + textureSampleLevel(t1, smpC, i.uv, 0.).rgb * .075;
   let q = i.uv - .5; let vig = 1. - dot(q, q) * .55; c *= F.misc.x * vig * vig;
   c = tone(c); c = mix(c, c * c * (3. - 2. * c), .25);
@@ -1285,7 +1291,7 @@ struct PO { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
 @vertex fn vsP(@builtin(vertex_index) vi: u32, @location(0) a: vec4f, @location(1) b: vec4f, @location(2) c: vec4f) -> PO {
   var o: PO; let q = vec2f(f32(vi & 1u), f32((vi >> 1u) & 1u)) * 2. - 1.; let kind = b.w; let toC = normalize(F.cam.xyz - a.xyz);
   var wp = a.xyz; var col = c;
-  if (kind < 1.5) { let sp = length(b.xyz); let dir = b.xyz / max(sp, .001); let side = normalize(cross(dir, toC)); let len = max(a.w, sp * select(.022, .008, kind > .5)); wp += side * q.x * a.w + dir * q.y * len; }
+  if (kind < 1.5) { let sp = length(b.xyz); let dir = b.xyz / max(sp, .001); let side = normalize(cross(dir, toC)); let dc = distance(F.cam.xyz, a.xyz); let wd = min(a.w, dc * .0035); let len = min(max(wd, sp * select(.014, .006, kind > .5)), dc * .09 + .02); wp += side * q.x * wd + dir * q.y * len; }
   else { let r = F.view; let rt = vec3f(r[0][0], r[1][0], r[2][0]); let up = vec3f(r[0][1], r[1][1], r[2][1]); let rot = b.x; let cs = cos(rot); let sn = sin(rot); wp += (rt * (q.x * cs - q.y * sn) + up * (q.x * sn + q.y * cs)) * a.w;
     if (kind < 2.5) { var lit = vec3f(.02, .022, .025); for (var k = 0u; k < u32(F.misc2.y); k++) { let L = F.lights[k]; let d = L.pos.xyz - a.xyz; let dl = length(d); var at = 1. / (dl * dl + 1.); if (L.ext.y < .5) { at *= smoothstep(L.dir.w, L.col.w, dot(-d / dl, L.dir.xyz)); } else { let f = clamp(1. - dl / L.pos.w, 0., 1.); at *= f * f; } lit += L.col.rgb * at * .09; } col = vec4f(c.rgb * lit, c.a); } }
   o.pos = F.vp * vec4f(wp, 1.); o.uv = q; o.col = col; o.kind = kind; o.sd = b.y; o.zl = o.pos.w; return o;
@@ -1297,9 +1303,9 @@ struct PO { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
   if (i.kind < .5) { let f = (1. - abs(i.uv.x)) * (1. - i.uv.y * i.uv.y); return vec4f(i.col.rgb * f * f * i.col.a, 0.); }
   if (i.kind < 1.5) { let f = step(abs(i.uv.x), .7); return vec4f(i.col.rgb * f * i.col.a, f * i.col.a); }
   let soft = clamp((zs - i.zl) * 4., 0., 1.);
-  let n = fbm2(i.uv * 1.3 + i.sd * 37.) ; let m = smoothstep(0., 1., clamp((1. - sqrt(r2)) * 1.5 - (1. - n * 1.7) * .75, 0., 1.));
+  let n = fbm2(i.uv * 1.3 + i.sd * 37.) ; let m = smoothstep(0., 1., clamp((1. - sqrt(r2)) * 1.3 - (1. - n * 1.5) * .4, 0., 1.)) * (1. - r2);
   if (i.kind < 2.5) { let a = m * i.col.a * soft; return vec4f(i.col.rgb * a, a); }
-  let fl = clamp((1. - r2) * 1.5 - (1. - n * 1.8) * .8, 0., 1.); let heat = fl * i.col.a; let fc = mix(vec3f(1., .12, .01), vec3f(1., .62, .18), heat) * heat * heat * 3.2;
+  let fn2 = fbm2(vec2f(i.uv.x * 2.2 + i.sd * 11., i.uv.y * 1.1 - i.sd * 5.)); let fl = clamp((1. - r2) * 1.6 - (1. - fn2 * 1.9) * 1.1, 0., 1.) * smoothstep(-1., -.3, i.uv.y); let heat = fl * i.col.a; let fc = mix(vec3f(1., .12, .01), vec3f(1., .62, .18), heat) * heat * heat * 3.2;
   return vec4f(fc * soft, 0.);
 }
 // marcas no piso: segmento (x0,z0,x1,z1) + (largura, canal, intensidade)
@@ -1336,14 +1342,14 @@ fn fl(q: vec2f) -> array<vec4f, 2> {
   let dir = floor(hr * 4.) * .7854 + .2; let sq = vec2f(q.x * cos(dir) + q.y * sin(dir), -q.x * sin(dir) + q.y * cos(dir));
   let brushed = vn2(vec2f(sq.x * 3., sq.y * 380.)) * .6 + vn2(vec2f(sq.x * 9., sq.y * 900.)) * .4;
   let sc = scratch(q * 4., 1.) + scratch(q * 11., 4.) * .8 + scratch(q * 27., 7.) * .5;
-  alb = vec3f(.33, .335, .345) * (.84 + .12 * hr + .14 * brushed); rough = mix(.44, .2, wearP) + (brushed - .5) * .14 + (n_m - .5) * .08;
+  alb = vec3f(.33, .335, .345) * (.84 + .12 * hr + .14 * brushed); rough = mix(.5, .3, wearP) + (brushed - .5) * .07 + (n_m - .5) * .08;
   let oil = smoothstep(.7, .78, fbm2(q * 1.1 + 40.)); alb = mix(alb, alb * vec3f(.45, .42, .38), oil * .6); rough = mix(rough, .1, oil * .7);
   let rust = smoothstep(.74, .86, n_m * .6 + seam * .3 + fbm2(q * 14.) * .4) * .5; alb = mix(alb, vec3f(.2, .11, .06), rust); rough = mix(rough, .7, rust); metal = 1. - rust * .6;
   var pc = vec3f(0.); var pa = 0.;
   for (var s = -1.; s <= 1.; s += 2.) { let d = sdBox(q - vec2f(s * 5., 0.), vec2f(1.05)); let l = 1. - smoothstep(.04, .046, abs(d)); let col = select(vec3f(.04, .13, .6), vec3f(.6, .04, .025), s < 0.); pc = mix(pc, col, l); pa = max(pa, l); let f = (1. - smoothstep(0., .006, d + .12)) * step(.5, fract((q.x + q.y) * 2.5)) * .85; pc = mix(pc, col, f); pa = max(pa, f); }
   let rc = length(q); let ring = 1. - smoothstep(.04, .046, abs(rc - 1.7)); let ang = atan2(q.y, q.x);
   let gear = 1. - smoothstep(.0, .008, abs(rc - (.95 + .1 * smoothstep(.3, .34, abs(fract(ang * 1.9099) - .5)))) - .035); let hub = 1. - smoothstep(.03, .036, abs(rc - .38));
-  let em = max(ring, max(gear, hub)); pc = mix(pc, vec3f(.7, .68, .62), em); pa = max(pa, em);
+  let em = max(ring, hub * 0. + gear * 0.); pc = mix(pc, vec3f(.62, .6, .55), em); pa = max(pa, em);
   let dp = sdBox(q - vec2f(${PIT.x}, ${PIT.z}), vec2f(${PIT.h})); let hz = (1. - smoothstep(.34, .346, dp)) * step(0., dp);
   let dsw = sdBox(q - vec2f(4.3, -4.3), vec2f(1.15, .55)); let hz2 = 1. - smoothstep(.0, .006, abs(dsw) - .07);
   let dfl = length(q - vec2f(${FLAME.x}, ${FLAME.z})) - ${FLAME.r}; let hz3 = 1. - smoothstep(.0, .006, abs(dfl) - .07);
@@ -1360,7 +1366,7 @@ fn fl(q: vec2f) -> array<vec4f, 2> {
 }
 @fragment fn fs(i: FSO) -> FO {
   let q = (i.uv - .5) * 14.; let e = 14. / 4096.; let c = fl(q); let hx = fl(q + vec2f(e, 0.))[1].x; let hz = fl(q + vec2f(0., e))[1].x; let h0 = c[1].x;
-  let n = normalize(vec3f(-(hx - h0) / e * 1.6, 1., -(hz - h0) / e * 1.6));
+  let n = normalize(vec3f(-(hx - h0) / e * .8, 1., -(hz - h0) / e * .8));
   var o: FO; o.a = c[0]; o.b = vec4f(n.x * .5 + .5, n.z * .5 + .5, clamp(c[1].y, .05, 1.), 1.); return o;
 }
 `;
@@ -1377,7 +1383,7 @@ const SLOT = { WORLD: 0, GLASS: 1, AUX0: 2, AUX1: 3, AUX2: 4, AUX3: 5, ROBOT: 8,
 const R = {
   ok: false, w: 0, h: 0, frameNo: 0, scene: -1, exposure: 1, fog: .02, mblur: 1, flash: 0, quality: 1, reset: 1, amb: 1,
   I: new Float32Array(INST_MAX * INST_F), im: new Int16Array(INST_MAX).fill(-1),
-  eye: new Float32Array([0, 3, 8]), tgt: new Float32Array([0, 0, 0]), up: new Float32Array([0, 1, 0]), cp: new Float32Array([.9, 0, 0, 0]), tm: new Float64Array(1), near: .08, far: 120,
+  eye: new Float32Array([0, 3, 8]), tgt: new Float32Array([0, 0, 0]), up: new Float32Array([0, 1, 0]), cp: new Float32Array([.9, 0, 0, 0]), tm: new Float64Array(1), near: .045, far: 120,
   dl: new Float32Array(6 * 8), ndl: 0,
   pA: new Float32Array(PMAX_A * 12), nA: 0, pB: new Float32Array(PMAX_B * 12), nB: 0, mk: new Float32Array(MARK_MAX * 8), nmk: 0,
   U: new Float32Array(428), view: new Float32Array(16), proj: new Float32Array(16), vp: new Float32Array(16), pvp: new Float32Array(16), tmp: new Float32Array(16), tmp2: new Float32Array(16),
@@ -1403,7 +1409,7 @@ const R = {
     this.mbuf = dev.createBuffer({ size: this.mk.byteLength, usage: B.VERTEX | B.COPY_DST });
     for (let i = 0; i < INST_MAX; i++) { M4.ident(this.I, i * INST_F); M4.ident(this.I, i * INST_F + 16); this.I[i * INST_F + 36] = -1; }
     const T = GPUTextureUsage;
-    this.atlas = dev.createTexture({ size: [2048, 2048], format: 'rgba8unorm', usage: T.TEXTURE_BINDING | T.COPY_DST | T.RENDER_ATTACHMENT });
+    this.atlas = dev.createTexture({ size: [2048, 2048], format: 'rgba8unorm', mipLevelCount: 8, usage: T.TEXTURE_BINDING | T.COPY_DST | T.RENDER_ATTACHMENT });
     this.marks = dev.createTexture({ size: [2048, 2048], format: 'rgba8unorm', usage: T.TEXTURE_BINDING | T.RENDER_ATTACHMENT }); this.marksV = this.marks.createView();
     this.shStat = dev.createTexture({ size: [SH_RES, SH_RES, 4], format: 'depth32float', usage: T.RENDER_ATTACHMENT | T.COPY_SRC });
     this.shDyn = dev.createTexture({ size: [SH_RES, SH_RES, 4], format: 'depth32float', usage: T.RENDER_ATTACHMENT | T.COPY_DST | T.TEXTURE_BINDING });
@@ -1427,6 +1433,7 @@ const R = {
     this.pShadow = dev.createRenderPipeline({ layout: plShadow, vertex: { module: mShadow, entryPoint: 'vsShadow', buffers: vbl }, primitive: { cullMode: 'none' }, depthStencil: { format: 'depth32float', depthWriteEnabled: true, depthCompare: 'less', depthBias: 2, depthBiasSlopeScale: 2.2 } });
     this.pG = dev.createRenderPipeline({ layout: plScene, vertex: { module: mScene, entryPoint: 'vs', buffers: vbl }, fragment: { module: mScene, entryPoint: 'fs', targets: [{ format: 'rgba8unorm' }, { format: 'rgba16float' }, { format: 'rgba16float' }] }, primitive: { cullMode: 'back' }, depthStencil: { format: 'depth32float', depthWriteEnabled: true, depthCompare: 'less' } });
     const pm = { color: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' }, alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } }, addB = { color: { srcFactor: 'one', dstFactor: 'one' }, alpha: { srcFactor: 'one', dstFactor: 'one' } };
+    this.pGF = dev.createRenderPipeline({ layout: plScene, vertex: { module: mScene, entryPoint: 'vs', buffers: vbl }, fragment: { module: mScene, entryPoint: 'fsFlat', targets: [{ format: 'rgba8unorm' }, { format: 'rgba16float' }, { format: 'rgba16float' }] }, primitive: { cullMode: 'back' }, depthStencil: { format: 'depth32float', depthWriteEnabled: true, depthCompare: 'less' } });
     this.pGT = dev.createRenderPipeline({ layout: plScene, vertex: { module: mScene, entryPoint: 'vs', buffers: vbl }, fragment: { module: mScene, entryPoint: 'fsTear', targets: [{ format: 'rgba8unorm' }, { format: 'rgba16float' }, { format: 'rgba16float' }] }, primitive: { cullMode: 'none' }, depthStencil: { format: 'depth32float', depthWriteEnabled: true, depthCompare: 'less' } });
     this.pGlass = dev.createRenderPipeline({ layout: plGlass, vertex: { module: mScene, entryPoint: 'vs', buffers: vbl }, fragment: { module: mScene, entryPoint: 'fsGlass', targets: [{ format: 'rgba16float', blend: pm }] }, primitive: { cullMode: 'none' }, depthStencil: { format: 'depth32float', depthWriteEnabled: false, depthCompare: 'less' } });
     const fsq = (m, ep, fmt, blend, layout, ds) => dev.createRenderPipeline({ layout: layout || 'auto', vertex: { module: m, entryPoint: 'vsFS' }, fragment: { module: m, entryPoint: ep, targets: [{ format: fmt, blend }] }, depthStencil: ds });
@@ -1495,7 +1502,7 @@ const R = {
     for (let i = 0; i < list.length; i++) {
       const L = list[i], o = 100 + i * 16, dx = L.t[0] - L.p[0], dy = L.t[1] - L.p[1], dz = L.t[2] - L.p[2], l = 1 / Math.hypot(dx, dy, dz), a = L.a * PI / 180;
       U[o] = L.p[0]; U[o + 1] = L.p[1]; U[o + 2] = L.p[2]; U[o + 3] = 60; U[o + 4] = dx * l; U[o + 5] = dy * l; U[o + 6] = dz * l; U[o + 7] = Math.cos(a);
-      U[o + 8] = L.c[0] * L.I; U[o + 9] = L.c[1] * L.I; U[o + 10] = L.c[2] * L.I; U[o + 11] = Math.cos(a * .72); U[o + 12] = L.s ? si : -1; U[o + 13] = 0; U[o + 14] = (L.s || i < 6) && L.vol !== 0 ? 1 : 0; U[o + 15] = 0;
+      U[o + 8] = L.c[0] * L.I; U[o + 9] = L.c[1] * L.I; U[o + 10] = L.c[2] * L.I; U[o + 11] = Math.cos(a * .45); U[o + 12] = L.s ? si : -1; U[o + 13] = 0; U[o + 14] = (L.s || i < 6) && L.vol !== 0 ? 1 : 0; U[o + 15] = 0;
       if (L.s) { const P = new Float32Array(16), V = new Float32Array(16), O = new Float32Array(16); M4.persp(P, 2 * (a + .05), 1, .4, 40); M4.lookAt(V, L.p[0], L.p[1], L.p[2], L.t[0], L.t[1], L.t[2], Math.abs(dy * l) > .98 ? 1 : 0, Math.abs(dy * l) > .98 ? 0 : 1, 0); M4.mul(O, 0, P, 0, V, 0); U.set(O, 356 + si * 16); this.dev.queue.writeBuffer(this.shUbo[si], 0, O); si++; }
     }
     this.nsh = si; this.baseL = new Float32Array(48); for (let i = 0; i < list.length; i++) for (let c = 0; c < 3; c++) this.baseL[i * 3 + c] = U[100 + i * 16 + 8 + c];
@@ -1570,7 +1577,7 @@ const R = {
     for (let s = 0; s < this.nsh; s++) { const d = this.dShadow[s]; if (ts && s === 0) d.timestampWrites = this.tsW0 || (this.tsW0 = { querySet: this.qs, beginningOfPassWriteIndex: 0 }); else if (d.timestampWrites) d.timestampWrites = undefined;
       p = e.beginRenderPass(d); p.setPipeline(this.pShadow); p.setBindGroup(0, this.bgScene); p.setBindGroup(1, this.bgSh[s]); p.setVertexBuffer(0, this.vb); p.setIndexBuffer(this.ib, 'uint32'); this.drawRange(p, 2, INST_MAX); p.end(); }
     // G-buffer
-    p = e.beginRenderPass(t.dG); p.setPipeline(this.pG); p.setBindGroup(0, this.bgScene); p.setVertexBuffer(0, this.vb); p.setIndexBuffer(this.ib, 'uint32'); this.drawRange(p, 0, 1); this.drawRange(p, 2, SLOT.ROBOT); p.setPipeline(this.pGT); this.drawRange(p, SLOT.ROBOT, INST_MAX); p.end();
+    p = e.beginRenderPass(t.dG); p.setPipeline(this.flatWorld ? this.pGF : this.pG); p.setBindGroup(0, this.bgScene); p.setVertexBuffer(0, this.vb); p.setIndexBuffer(this.ib, 'uint32'); this.drawRange(p, 0, 1); p.setPipeline(this.pG); this.drawRange(p, 2, SLOT.ROBOT); p.setPipeline(this.pGT); this.drawRange(p, SLOT.ROBOT, INST_MAX); p.end();
     // volumetrico
     p = e.beginRenderPass(t.dVol); if (this.fog > 0) { p.setPipeline(this.pVol); p.setBindGroup(0, t.bgVol); p.draw(3); } p.end();
     // iluminacao
@@ -1607,9 +1614,13 @@ const R = {
     await this.capBuf.mapAsync(GPUMapMode.READ); const src = new Uint8Array(this.capBuf.getMappedRange()), dst = this.capImg.data, w = this.w, h = this.h, bgra = this.fmt === 'bgra8unorm';
     for (let y = 0; y < h; y++) { const so = y * this.capBpr, d0 = y * w * 4; if (!bgra) dst.set(src.subarray(so, so + w * 4), d0); else for (let x = 0; x < w * 4; x += 4) { dst[d0 + x] = src[so + x + 2]; dst[d0 + x + 1] = src[so + x + 1]; dst[d0 + x + 2] = src[so + x]; dst[d0 + x + 3] = 255; } }
     this.capBuf.unmap(); this.c2.putImageData(this.capImg, 0, 0); },
+  flushMarks() { if (this.nmk <= 0) return; const dev = this.dev, e = dev.createCommandEncoder(); dev.queue.writeBuffer(this.mbuf, 0, this.mk, 0, this.nmk * 8); const p = e.beginRenderPass(this.dMark); p.setPipeline(this.pMark); p.setVertexBuffer(0, this.mbuf); p.draw(4, this.nmk); p.end(); this.nmk = 0; dev.queue.submit([e.finish()]); },
   snap(i) { const I = this.I, o = i * INST_F; for (let j = 0; j < 16; j++) I[o + 16 + j] = I[o + j]; },
-  uploadAtlas(cv) { // canvas 2048x2048 -> textura
-    this.dev.queue.copyExternalImageToTexture({ source: cv }, { texture: this.atlas }, [2048, 2048]);
+  uploadAtlas(cv) { // canvas 2048x2048 -> textura + mips (so em eventos: inicio de luta, troca de pintura)
+    const dev = this.dev; dev.queue.copyExternalImageToTexture({ source: cv }, { texture: this.atlas, mipLevel: 0 }, [2048, 2048]);
+    const e = dev.createCommandEncoder();
+    for (let m = 1; m < 8; m++) { const bg = dev.createBindGroup({ layout: this.pBlit.getBindGroupLayout(0), entries: [{ binding: 0, resource: this.atlas.createView({ baseMipLevel: m - 1, mipLevelCount: 1 }) }, { binding: 1, resource: this.sLin }] }); const p = e.beginRenderPass({ colorAttachments: [{ view: this.atlas.createView({ baseMipLevel: m, mipLevelCount: 1 }), loadOp: 'clear', storeOp: 'store' }] }); p.setPipeline(this.pBlit); p.setBindGroup(0, bg); p.draw(3); p.end(); }
+    dev.queue.submit([e.finish()]);
   },
 };
 
@@ -1902,7 +1913,8 @@ class Sim {
       const wx = BR[0] * nx + BR[1] * ny + BR[2] * nz, wy = BR[3] * nx + BR[4] * ny + BR[5] * nz, wz = BR[6] * nx + BR[7] * ny + BR[8] * nz;
       const bx = px - bs[0], by = py - bs[1], bz = pz - bs[2];
       const vx = (as[7] + as[11] * rz - as[12] * ry) - (bs[7] + bs[11] * bz - bs[12] * by), vy = (as[8] + as[12] * rx - as[10] * rz) - (bs[8] + bs[12] * bx - bs[10] * bz), vz = (as[9] + as[10] * ry - as[11] * rx) - (bs[9] + bs[10] * by - bs[11] * bx), vn = vx * wx + vy * wy + vz * wz;
-      let fn = kc * Math.min(pen, .06) - cc * vn; if (fn < 0) fn = 0; if (fn > mm * 300) fn = mm * 300;
+      let fn = kc * Math.min(pen, .12) * (pen > .03 ? 2.2 : 1) - cc * vn; if (fn < 0) fn = 0; if (fn > mm * 500) fn = mm * 500;
+      if (pen > .035) { const q = (pen - .035) * .22, ia = B.m / (A.m + B.m), ib = 1 - ia; as[0] += wx * q * ia; as[1] += wy * q * ia; as[2] += wz * q * ia; bs[0] -= wx * q * ib; bs[1] -= Math.min(wy * q * ib, 0) ; bs[2] -= wz * q * ib; }
       const tvx = vx - wx * vn, tvy = vy - wy * vn, tvz = vz - wz * vn, tl = Math.sqrt((tvx) * (tvx) + (tvy) * (tvy) + (tvz) * (tvz)), k = Math.min(.35 * fn / (tl + .1), mm * 5), fx = wx * fn - tvx * k, fy = wy * fn - tvy * k, fz = wz * fn - tvz * k;
       (_c[36] = px, _c[37] = py, _c[38] = pz, _c[39] = fx, _c[40] = fy, _c[41] = fz, this.forceR(A)); (_c[36] = px, _c[37] = py, _c[38] = pz, _c[39] = -fx, _c[40] = -fy, _c[41] = -fz, this.forceR(B));
       if (-vn > 2.2 && A.hitcd <= 0 && B.hitcd <= 0) { // trombada
@@ -2040,7 +2052,7 @@ const FX = {
     const x = _f[0], y = _f[1], z = _f[2], dx = _f[3], dy = _f[4], dz = _f[5], sp = _f[7], spread = _f[8], p = this.p, r = this.rng, n = Math.min(_f[6] | 0, 260);
     for (let i = 0; i < n; i++) { const o = this.nx * 12; this.nx = (this.nx + 1) % this.N; const s = sp * (0.25 + (r.uR(), _u[0]) * (r.uR(), _u[0]) * 1.3);
       p[o] = x; p[o + 1] = y; p[o + 2] = z; p[o + 3] = (dx + (r.uR(), _u[0] * 2 - 1) * spread) * s; p[o + 4] = (dy + (r.uR(), _u[0] * 2 - 1) * spread) * s + 1; p[o + 5] = (dz + (r.uR(), _u[0] * 2 - 1) * spread) * s;
-      p[o + 7] = kind === 1 ? (r.uR(), (.5) + ((1.4) - (.5)) * _u[0]) : (r.uR(), (.25) + ((1.1) - (.25)) * _u[0]); p[o + 6] = p[o + 7]; p[o + 8] = kind || 0; p[o + 9] = kind === 1 ? (r.uR(), (.004) + ((.011) - (.004)) * _u[0]) : (r.uR(), (.004) + ((.009) - (.004)) * _u[0]); p[o + 10] = (r.uR(), _u[0]); p[o + 11] = 0; }
+      p[o + 7] = kind === 1 ? (r.uR(), (.5) + ((1.4) - (.5)) * _u[0]) : (r.uR(), (.25) + ((1.1) - (.25)) * _u[0]); p[o + 6] = p[o + 7]; p[o + 8] = kind || 0; p[o + 9] = kind === 1 ? (r.uR(), (.002) + ((.005) - (.002)) * _u[0]) : (r.uR(), (.002) + ((.008) - (.002)) * _u[0] * _u[0]); p[o + 10] = (r.uR(), _u[0]); p[o + 11] = 0; }
   },
   smokeR(dark) { const x = _f[0], y = _f[1], z = _f[2], n = _f[3] | 0, size = _f[4], up = _f[5], m = this.sm, r = this.rng; for (let i = 0; i < n; i++) { const k = this.nxs; this.nxs = (this.nxs + 1) % this.NS; const o = k * 10; m[o] = x + (r.uR(), _u[0] * 2 - 1) * .08; m[o + 1] = y + (r.uR(), _u[0] * 2 - 1) * .05; m[o + 2] = z + (r.uR(), _u[0] * 2 - 1) * .08; m[o + 3] = (r.uR(), _u[0] * 2 - 1) * .35; m[o + 4] = (up || .8) * (r.uR(), (.6) + ((1.3) - (.6)) * _u[0]); m[o + 5] = (r.uR(), _u[0] * 2 - 1) * .35; m[o + 7] = (r.uR(), (1.4) + ((3.0) - (1.4)) * _u[0]); m[o + 6] = m[o + 7]; m[o + 8] = size * (r.uR(), (.7) + ((1.3) - (.7)) * _u[0]); m[o + 9] = (r.uR(), _u[0]) * 100; this.st[k] = dark ? 1 : 0; } },
   fireR() { const x = _f[0], y = _f[1], z = _f[2], n = _f[3] | 0, size = _f[4], up = _f[5], p = this.p, r = this.rng; for (let i = 0; i < n; i++) { const o = this.nx * 12; this.nx = (this.nx + 1) % this.N; p[o] = x + (r.uR(), _u[0] * 2 - 1) * .06; p[o + 1] = y; p[o + 2] = z + (r.uR(), _u[0] * 2 - 1) * .06; p[o + 3] = (r.uR(), _u[0] * 2 - 1) * .5; p[o + 4] = up * (r.uR(), (.6) + ((1.2) - (.6)) * _u[0]); p[o + 5] = (r.uR(), _u[0] * 2 - 1) * .5; p[o + 7] = (r.uR(), (.25) + ((.55) - (.25)) * _u[0]); p[o + 6] = p[o + 7]; p[o + 8] = 3; p[o + 9] = size * (r.uR(), (.7) + ((1.3) - (.7)) * _u[0]); p[o + 10] = (r.uR(), _u[0]) * 100; p[o + 11] = (r.uR(), _u[0]) * 6; } },
@@ -2057,7 +2069,7 @@ const FX = {
       if (kind < 2) { if (Math.abs(p[o]) > AR - .03) { p[o] = Math.sign(p[o]) * (AR - .03); p[o + 3] *= -.4; } if (Math.abs(p[o + 2]) > AR - .03) { p[o + 2] = Math.sign(p[o + 2]) * (AR - .03); p[o + 5] *= -.4; } }
       if (p[o + 6] <= 0 || nb >= PMAX_B) continue; const q = nb++ * 12, f = p[o + 6] / p[o + 7];
       B[q] = p[o]; B[q + 1] = p[o + 1]; B[q + 2] = p[o + 2]; B[q + 3] = p[o + 9];
-      if (kind === 0) { B[q + 4] = p[o + 3]; B[q + 5] = p[o + 4]; B[q + 6] = p[o + 5]; B[q + 7] = 0; const h = f * (.6 + .4 * p[o + 10]); B[q + 8] = 26 * h + 1; B[q + 9] = 26 * h * h * .62 + .25; B[q + 10] = 26 * h * h * h * .3; B[q + 11] = Math.min(1, f * 3); }
+      if (kind === 0) { B[q + 4] = p[o + 3]; B[q + 5] = p[o + 4]; B[q + 6] = p[o + 5]; B[q + 7] = 0; const h = f * (.6 + .4 * p[o + 10]); B[q + 8] = 30 * h + 1; B[q + 9] = 30 * h * h * .8 + .25; B[q + 10] = 30 * h * h * h * .55; B[q + 11] = Math.min(1, f * 3); }
       else if (kind === 1) { B[q + 4] = p[o + 3]; B[q + 5] = p[o + 4]; B[q + 6] = p[o + 5]; B[q + 7] = 1; const g = .05 + p[o + 10] * .5; B[q + 8] = g; B[q + 9] = g; B[q + 10] = g * 1.05; B[q + 11] = Math.min(1, f * 4); }
       else { B[q + 3] = p[o + 9] * (.6 + (1 - f) * .9); B[q + 4] = p[o + 11] + (1 - f); B[q + 5] = p[o + 10]; B[q + 6] = 0; B[q + 7] = 3; B[q + 8] = 1; B[q + 9] = 1; B[q + 10] = 1; B[q + 11] = Math.sin(f * 3.1) * .9 + .1; }
     }
@@ -2148,7 +2160,8 @@ const Atlas = {
     this.gear(x0 + 440, 84, 26, acc, 8); g.fillStyle = '#f2f2ee'; g.fillRect(x0 + 380, 120, 110, 40); this.txt(PATROS[(num + slot) % 8].split(' ')[0], x0 + 435, 141, 22, '#0b0d10', 'center', 100, 800);
     g.strokeStyle = '#f2b21c'; g.lineWidth = 5; g.beginPath(); g.moveTo(x0 + 30, 310); g.lineTo(x0 + 56, 266); g.lineTo(x0 + 82, 310); g.closePath(); g.stroke(); this.txt('!', x0 + 56, 296, 26, '#f2b21c', 'center', 0, 800);
     // lateral
-    const y1 = 352; g.fillStyle = ink; g.fillRect(x0 + 196, y1 + 24, 120, 112); this.txt(String(num), x0 + 256, y1 + 84, 96, lum > .35 ? '#f2f2ee' : '#0b0d10', 'center', 100, 800);
+    const y1 = 352; g.fillStyle = lum > .35 ? '#0b0d10' : '#d9d6cc'; g.fillRect(x0 + 200, y1 + 28, 112, 104); g.strokeStyle = acc; g.lineWidth = 6; g.strokeRect(x0 + 200, y1 + 28, 112, 104); this.txt(String(num), x0 + 256, y1 + 84, 88, lum > .35 ? '#f2f2ee' : '#0b0d10', 'center', 92, 800);
+    for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${40 + (i * 37) % 50},${35 + (i * 17) % 40},30,${.04 + ((i * 13) % 10) / 90})`; const px = x0 + 196 + (i * 97) % 120, py = y1 + 24 + (i * 61) % 112; g.fillRect(px, py, 2 + (i * 7) % 14, 1 + (i * 3) % 3); }
     this.txt(nome.toUpperCase(), x0 + 420, y1 + 110, 30, ink, 'center', 150, 800); g.fillStyle = acc; g.fillRect(x0 + 20, y1 + 120, 150, 10);
     g.restore(); this.dirty = true;
   },
@@ -2320,7 +2333,7 @@ const GAR = {
   setNome(v) { v = String(v).trim().slice(0, 14) || 'Sem Nome'; if (v !== this.nome) { this.nome = v; Atlas.robot(0, this.nome, this.num, CORES[this.cor]); G.save(); } },
   enter(repair) {
     this.repair = !!repair; this.acoes = 2; this.mode = 0; this.row = 0; this.pre = this.com.slice(); this.hp = repair && TOR ? TOR.ent[0].hp : null;
-    G.st = 'garagem'; UI.show('gar'); R.exposure = .62; R.fog = .0016; R.mblur = .5; R.amb = 1.0; R.keyDim = 1; FX.reset(); DRAW.hide(SLOT.ROBOT + SLOT.ROBOT_N);
+    G.st = 'garagem'; UI.show('gar'); R.exposure = .5; R.fog = .0012; R.mblur = .4; R.amb = 1.0; R.keyDim = 1; FX.reset(); DRAW.hide(SLOT.ROBOT + SLOT.ROBOT_N);
     for (let i = SLOT.DEBRIS; i < SLOT.DEBRIS + SLOT.DEBRIS_N; i++) R.im[i] = -1; R.im[SLOT.AUX1] = -1; R.im[SLOT.AUX2] = -1; R.im[SLOT.AUX3] = -1; R.im[SLOT.GLASS] = -1;
     R.bake(1, MESH.garage.id, GAR_LIGHTS, [0, 1.5, 1.2]); this.refresh(-1); for (let k = 0; k < 4; k++) this.an[k] = .4 + k * .12;
   },
@@ -2355,7 +2368,7 @@ const GAR = {
     R.im[SLOT.AUX0] = MESH.bench.id; M4.ident(_m, 48); (_t[0] = 0, _t[1] = BENCH_Y, _t[2] = 0, _t[3] = a, M4.mulTRr(I, SLOT.AUX0 * INST_F, _m, 48, 1)); (_d[0] = 0, _d[1] = -1, _d[2] = 1, _d[3] = 1, _d[4] = 0, _d[5] = 0, _d[6] = 0, _d[7] = 0, _d[8] = 3, DRAW.putR(SLOT.AUX0, MESH.bench.id, B.cor)); DRAW.dents(SLOT.AUX0, null, 0);
     (_q[0] = 0, _q[1] = BENCH_Y + L.clear + B.ycm, _q[2] = 0, _q[3] = 0, _q[4] = Math.sin(a / 2), _q[5] = 0, _q[6] = Math.cos(a / 2), DRAW.botR(SLOT.ROBOT, B, 0, this.an));
     if (G.camFix) { const c = G.camFix; R.eye[0] = c[0]; R.eye[1] = c[1]; R.eye[2] = c[2]; R.tgt[0] = c[3]; R.tgt[1] = c[4]; R.tgt[2] = c[5]; R.cp[0] = c[6]; return; }
-    R.eye[0] = 1.5; R.eye[1] = 1.42; R.eye[2] = 2.15; R.tgt[0] = -.38; R.tgt[1] = .8; R.tgt[2] = 0; R.up[0] = 0; R.up[1] = 1; R.up[2] = 0; R.cp[0] = .62;
+    R.eye[0] = 1.1; R.eye[1] = 1.5; R.eye[2] = 2.75; R.tgt[0] = -.75; R.tgt[1] = .78; R.tgt[2] = 0; R.up[0] = 0; R.up[1] = 1; R.up[2] = 0; R.cp[0] = .62;
   },
 };
 
@@ -2402,7 +2415,7 @@ const G = {
   },
   enterArena() {
     if (R.scene !== 0) { R.im[SLOT.GLASS] = MESH.glass.id; R.im[SLOT.AUX0] = MESH.saw.id; R.im[SLOT.AUX1] = MESH.saw.id; R.im[SLOT.AUX2] = MESH.ahammer.id; R.bake(0, MESH.arena.id, ARENA_LIGHTS, [0, 1.2, 0]); }
-    R.exposure = .2; R.fog = .0042; R.mblur = 1; R.amb = 1; R.cp[0] = .9;
+    R.exposure = .26; R.fog = .003; R.mblur = .55; R.amb = 1; R.cp[0] = .9;
   },
   // prepara a luta do jogador (ou uma luta avulsa para teste/roteiro)
   setupFight(ia, ib, seed, dur, ea, eb) {
@@ -2460,7 +2473,7 @@ const G = {
   events() {
     const S = SIM, e = S.ev;
     for (let k = 0; k < S.nev; k++) { const o = k * 8, ty = e[o], x = e[o + 1], y = e[o + 2], z = e[o + 3], dx = e[o + 4], dy = e[o + 5], dz = e[o + 6], mag = e[o + 7];
-      if (ty === EV.HIT) { const dmg = mag % 1000; this.hits++; if (mag >= 1000) this.hitsB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy, _f[5] = dz, _f[6] = 24 + dmg * 6, _f[7] = 4 + dmg * .22, _f[8] = .75, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy + .5, _f[5] = dz, _f[6] = 4 + dmg * .5, _f[7] = 3.5, _f[8] = .9, FX.sparksR(1)); (_f[0] = x, _f[1] = y + .25, _f[2] = z, _f[3] = 4 + dmg * .12, _f[4] = 26 + dmg * 2.2, _f[5] = 15 + dmg * 1.1, _f[6] = 4, _f[7] = .22, FX.lightR()); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 2, _f[4] = .22, _f[5] = .7, FX.smokeR(0)); (_f[0] = x - dz * .2, _f[1] = z + dx * .2, _f[2] = x + dz * .2, _f[3] = z - dx * .2, _f[4] = .012, _f[5] = 1, _f[6] = .6, FX.markR());
+      if (ty === EV.HIT) { const dmg = mag % 1000; this.hits++; if (mag >= 1000) this.hitsB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy, _f[5] = dz, _f[6] = 14 + dmg * 3.5, _f[7] = 3.2 + dmg * .16, _f[8] = .75, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy + .5, _f[5] = dz, _f[6] = 4 + dmg * .5, _f[7] = 3.5, _f[8] = .9, FX.sparksR(1)); (_f[0] = x, _f[1] = y + .25, _f[2] = z, _f[3] = 3 + dmg * .08, _f[4] = 9 + dmg * .7, _f[5] = 5 + dmg * .35, _f[6] = 1.2, _f[7] = .2, FX.lightR()); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 2, _f[4] = .22, _f[5] = .7, FX.smokeR(0)); (_f[0] = x - dz * .2, _f[1] = z + dx * .2, _f[2] = x + dz * .2, _f[3] = z - dx * .2, _f[4] = .012, _f[5] = 1, _f[6] = .6, FX.markR());
         FX.sh[0] = Math.min(1, FX.sh[0] + dmg * .03); const st = Math.min(Math.max(.12 + dmg / 60, 0), 1); (_k[8] = st, _k[9] = st * .7, _k[10] = 120 + dmg * 7, IN.rumbleR()); if (this.rumbleLog && this.rumbleLog.length < 400) this.rumbleLog.push(dmg, st);
         if (dmg > S.best) { S.best = dmg; this.bestAt = S.frame; } _k[11] = dmg; this.pushEv(1, o); }
       else if (ty === EV.DETACH) { this.detached++; if (mag >= 100) this.detB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 70, _f[7] = 5, _f[8] = .9, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 14, _f[7] = 4, _f[8] = 1, FX.sparksR(1)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 4, _f[4] = .3, _f[5] = .9, FX.smokeR(1)); (_f[0] = x, _f[1] = y + .3, _f[2] = z, _f[3] = 5, _f[4] = 40, _f[5] = 22, _f[6] = 6, _f[7] = .3, FX.lightR()); (_k[8] = .9, _k[9] = .6, _k[10] = 260, IN.rumbleR()); FX.sh[0] = Math.min(1, FX.sh[0] + .5); _k[11] = 30; this.pushEv(2, o); this.note(this.notes[mag >= 100 ? 1 : 0][mag % 100 | 0]); }
@@ -2476,7 +2489,7 @@ const G = {
       else if (ty === EV.KO) { FX.sh[0] = .6; }
     }
     // fogo das armadilhas e das baterias
-    if (S.flameOn) { for (let i = 0; i < 3; i++) { const n = FLAME.n[i]; (_f[0] = n[0], _f[1] = .06, _f[2] = n[1], _f[3] = 3, _f[4] = .3, _f[5] = 5.5, FX.fireR()); if ((S.frame + i) % 6 === 0) (_f[0] = n[0] - .3, _f[1] = n[1], _f[2] = n[0] + .3, _f[3] = n[1], _f[4] = .35, _f[5] = 2, _f[6] = .1, FX.markR()); } (_f[0] = FLAME.x, _f[1] = .9, _f[2] = FLAME.z, _f[3] = 7, _f[4] = 60 + 20 * Math.sin(S.t * 31), _f[5] = 26, _f[6] = 5, FX.flightR()); if (S.frame % 9 === 0) (_f[0] = FLAME.x + (FX.rng.uR(), _u[0] * 2 - 1) * .6, _f[1] = 1.6, _f[2] = FLAME.z, _f[3] = 1, _f[4] = .5, _f[5] = 1.2, FX.smokeR(1)); }
+    if (S.flameOn) { for (let i = 0; i < 3; i++) { const n = FLAME.n[i]; (_f[0] = n[0], _f[1] = .06, _f[2] = n[1], _f[3] = 7, _f[4] = .15, _f[5] = 6.5, FX.fireR()); if ((S.frame + i) % 6 === 0) (_f[0] = n[0] - .3, _f[1] = n[1], _f[2] = n[0] + .3, _f[3] = n[1], _f[4] = .35, _f[5] = 2, _f[6] = .1, FX.markR()); } (_f[0] = FLAME.x, _f[1] = .9, _f[2] = FLAME.z, _f[3] = 7, _f[4] = 60 + 20 * Math.sin(S.t * 31), _f[5] = 26, _f[6] = 5, FX.flightR()); if (S.frame % 9 === 0) (_f[0] = FLAME.x + (FX.rng.uR(), _u[0] * 2 - 1) * .6, _f[1] = 1.6, _f[2] = FLAME.z, _f[3] = 1, _f[4] = .5, _f[5] = 1.2, FX.smokeR(1)); }
     for (let i = 0; i < 2; i++) { const B = S.bots[i], s = B.s; if (B.fireOn) { const c = CHASSIS[B.b[0]]; (_c[45] = (c.win[0] + c.win[1]) / 2, _c[46] = B.L.hy1 - B.ycm, _c[47] = 0, S.wptR(B)); (_f[0] = _c[0], _f[1] = _c[1], _f[2] = _c[2], _f[3] = 1, _f[4] = .16, _f[5] = 2.2, FX.fireR()); if (S.frame % 3 === 0) (_f[0] = _c[0], _f[1] = _c[1] + .25, _f[2] = _c[2], _f[3] = 1, _f[4] = .3, _f[5] = 1.3, FX.smokeR(1)); (_f[0] = _c[0], _f[1] = _c[1] + .3, _f[2] = _c[2], _f[3] = 4, _f[4] = 22 + 8 * Math.sin(S.t * 27 + i), _f[5] = 9, _f[6] = 2, FX.flightR()); B.burn = Math.min(1, B.burn + DT * .08); }
       else if (B.hp[P_BAT] < B.hpMax[P_BAT] * .6 && S.frame % 7 === 0) { const c = CHASSIS[B.b[0]]; (_c[45] = (c.win[0] + c.win[1]) / 2, _c[46] = B.L.hy1 - B.ycm, _c[47] = 0, S.wptR(B)); (_f[0] = _c[0], _f[1] = _c[1] + .05, _f[2] = _c[2], _f[3] = 1, _f[4] = .2, _f[5] = .8, FX.smokeR(0)); }
       const k = ARMAS[B.b[3]]; if (k.spin && B.wspin > k.wmax * .5 && B.hp[P_WP] > 0 && S.frame % 4 === 0) { /* brilho sutil do disco: nada */ } }
@@ -2525,8 +2538,8 @@ const G = {
       const kk = this.first ? 1 : 1 - Math.exp(-dt * 3.2); this.ft[3] = (this.ft[3] || fx) + (fx - (this.ft[3] || fx)) * kk; this.ft[4] = (this.ft[4] || 0) + (fz - (this.ft[4] || 0)) * kk; if (this.first) { this.ft[3] = fx; this.ft[4] = fz; }
       const n = Math.sqrt((this.ft[3]) * (this.ft[3]) + (this.ft[4]) * (this.ft[4])) || 1, ux = this.ft[3] / n, uz = this.ft[4] / n;
       (_k[0] = Math.min(Math.max(s[0] - ux * 2.5, -AR + .25), AR - .25) + jx, _k[1] = Math.min(Math.max(s[1] + 1.05, .5), 3) + jy, _k[2] = Math.min(Math.max(s[2] - uz * 2.5, -AR + .25), AR - .25), _k[3] = s[0] + ux * 1.1, _k[4] = Math.max(s[1], 0) + .2, _k[5] = s[2] + uz * 1.1, _k[6] = dt, _k[7] = .95, this.setCamR()); }
-    else if (this.cam === 1) { const L = A.L, y = L.hy1 - A.ycm + .2, x = -L.hx * .55; (_c[45] = x, _c[46] = y, _c[47] = 0, SIM.wptR(A)); e[0] = _c[0] + jx; e[1] = _c[1] + jy; e[2] = _c[2]; (_c[45] = x + 3, _c[46] = y - .55, _c[47] = 0, SIM.wptR(A)); t[0] = _c[0]; t[1] = _c[1]; t[2] = _c[2]; R.up[0] = R_[1]; R.up[1] = R_[4]; R.up[2] = R_[7]; R.cp[0] = 1.2; if (this.first) { this.first = 0; R.reset = 1; } }
-    else { const mx = (s[0] + B.s[0]) / 2, mz = (s[2] + B.s[2]) / 2, d = Math.sqrt((s[0] - B.s[0]) * (s[0] - B.s[0]) + (s[2] - B.s[2]) * (s[2] - B.s[2])); (_k[0] = mx * .25 + jx, _k[1] = 6.4 + jy, _k[2] = -8.1, _k[3] = mx, _k[4] = .2, _k[5] = mz, _k[6] = dt, _k[7] = Math.min(Math.max(.3 + d * .045, .34), .78), this.setCamR()); }
+    else if (this.cam === 1) { const L = A.L, y = L.hy1 - A.ycm + .3, x = L.mx - .12; (_c[45] = x, _c[46] = y, _c[47] = 0, SIM.wptR(A)); e[0] = _c[0] + jx; e[1] = _c[1] + jy; e[2] = _c[2]; (_c[45] = x + 3, _c[46] = y - .62, _c[47] = 0, SIM.wptR(A)); t[0] = _c[0]; t[1] = _c[1]; t[2] = _c[2]; R.up[0] = R_[1]; R.up[1] = R_[4]; R.up[2] = R_[7]; R.cp[0] = 1.05; if (this.first) { this.first = 0; R.reset = 1; } }
+    else { const mx = (s[0] + B.s[0]) / 2, mz = (s[2] + B.s[2]) / 2, d = Math.sqrt((s[0] - B.s[0]) * (s[0] - B.s[0]) + (s[2] - B.s[2]) * (s[2] - B.s[2])); (_k[0] = mx * .35 + jx, _k[1] = 3.55 + jy, _k[2] = -6.55, _k[3] = mx, _k[4] = .2, _k[5] = mz, _k[6] = dt, _k[7] = Math.min(Math.max(.34 + d * .07, .42), .95), this.setCamR()); }
   },
   drawProps() { // le serras, martelo e tampa do fosso de this.pr (sawH0, sawH1, sawA, ahA, pitY)
     const S = SIM, I = R.I, P = this.pr, h0 = P[0], h1 = P[1], sa = P[2], ah = P[3], py = P[4];
@@ -2545,7 +2558,7 @@ const G = {
 
 // ==== 85_roteiro.js ====
 // comandos gravados da luta roteirizada (gerado por trabalho/gravar_roteiro.py)
-const ROTEIRO = {"a": [1, 1, 1, 0], "b": [1, 2, 0, 3], "seed": 11, "eb": 2, "nb": "Catapimba", "cb": 1, "hash": -1521826810, "dados": "ZAUBZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAUAZAUAZAUAZAQAZAQAZAQAZAMAZAMAZAMAZAIAZAIAZAIAZAIAZAEAZAEAZAEAZAEAZAAAZAAAZAAAZAAAZP8AZP8AZP8AZP4AZP4AZP4AZP0AZP0AZP0AZPwAZPwAZPsAZPsAZPoAZPkAZPgAZPYAZPMAZO8AZOwAZOgAZOMAZN4AZPAAZNYAZLsAZKIAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAZMQAZNgAZPEAZBIAZD4AZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZJwAZJwAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QCD2QCFZwCOJwCSpwCVKUCW7sCYcwCZNsCZOgCZPUCZAECZA0CZBoCZCYCYjMCXUACWU0CVFsCT2QCS2QCRmQCQWQCPWQAOGQANGQAMGQAK5wAJpwAIJwAG5wAFJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wID5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEmQAFWQAF2QAGWQAGmQAGmQAG2QAG2QAG2QAHGQAHGQAHWQAHWQAHmQAHmQAH2QAH2QAH2QAIGQAIGQAIGQAIWQAIWQAIWQAIWQAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAJpwAJpwAJpwAJpwAJpwAJpwAJpwAJ5wAJ5wAJ5wAKJwAKJwAKZwAKZwAKpwAKpwAK5wAK5wALJwALZwALZwALpwAL5wAL5wAMJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAEJwAEpwAFJwAFpwAGJwAGpwAHZwAH5wAIZwAI5wAJpwAKJwAKpwALJwALpwAMZwAM5wANZwAOJwAOpwAPJwAP5wAQZwAQ5wARpwASJwAS5wATZwAT5wAUp8AVKYAV60AWbQAUZ0ASZwAQ5wARZwASZwATZwAUJwAU6QAV60AWrYAX8YAZNYAZOUAZPUAZAUAZBQAZCQAYTMAXEMAV1MAUWMATGQARmQAQWQAPGQAOWQANWQAM2QAMmQAMWQAMWQAMGQAMGQAMWQAMWQAMmQAMmQAM2QAM2QANGQANGQANWQANWQANWQANmQAN2QAN2QAOGQAOGQAOGQAOGQAOGQAOGQAN2QAF2QAFmQAFmQAFWQAFWQAFmQAFmQAF2QAGGQAGGQAGWQAGmQAG2QAHWQAH2QAIGQAIWQAImQAImQAImQAImQAImQAImQAImQAImQAImQAI2QAI2QAI2QAI2QAI2QAI2QAJGQAJGQAJGQAJGQAJGQAJWQAJWQAJWQAJWQAJWQAJmQAKGQAKWQAKmQAK2QAK2QAK2QAK2QAK2QAKmQAKmQAKmQAKmQAKmQAKmQAK2QAK2QAK2QAK2QAK2QALGQALGQALGQALGQALGQAK2QAK2QAK2QAK2QAKmQAKmQAKmQAKmQAKWQAKWQAKWQAKGQAKGQAKGQAKWQAKmQAKmQAKmQAKmQAKmQAKmQAKWQAKWQAKWQAKGQAKGQAKGQAKGQAKGQAKGQAKGQAKWQAKWQAKWQAKmQAKmQAK2QAK2QALGQALGQALWQALWQALmQAL2QAL2QAMGQAMGQAMWQAMmQAMmQAM2QANGQANGQANWQANWQANmQAN2QAN2QAOGQAPmQAPmQAPmQAPmQAPmQAPmQAP2QAP2QAP2QAP2QAQGQAQGQAQGQAQWQAQmQAQmQAQ2QAQ2QARGQARWQARWQARmQAR2QASGQASGQASWQASmQAS2QAS2QATGQATGQATWQATWQATmQATmQATmQATmQATmQAV1IAYDkAZCEAZAkAZPoAZPYAZPMAZPEAZO8AZO4AZPQAZPkAZP8AZAQAZAoAZA8AZBUAZBoAZB4AZCIAZCUAZCcAZCkAZCoAZCsAZC0AYy4AYzAAZC0AZCkAZCsAZCsAZCwAYy4AYzAAYjIAYTUAYDgAXzsAXT8AXEQAWkoAWFAAVlYAVFwAUmIAUGQATmQAS2QASWQASGQASGQAR2QAR2QARmQARmQARmQARmQARmQARmQARWQARWQARWQARWQARWQARmQARmQAR2QAR2QAR2QARmQARmQARmQAR2QAR2QAR2QAR2QAR2QAR2QAR2QAR2QAR2QAR2QARmQARmQARWQARWQARGQARGQARGQARGQARGQAQ2QAQ2QAQ2QAQmQAQmQAQmQAQWQAQWQAQWQAQGQAQGQAP2QAPmQAPmQAPWQAPGQAO2QAOmQAOWQAOGQAOGQAN2QANmQANmQANWQANWQANWQANGQAM2QAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAM2QAM2QAM2QANGQANGQANGQANGQANGQANWQANWQANWQIZDgAZDcAZDgAZDgAZDkAZDoAZDsAZDwAZD4AZEAAZEIAZEUAZEgAZFgAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD2QAD2QAD2QAD2QAD2QAD2QAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEmQAFGQAFmQAGGQAGGQAGGQAF2QAF2QAF2QAFmQAFWQAFGQAE2QAE2QAEmQAEmQAEmQAEmQAEmQAEmQAEWQAEWQAEWQAEWQAEWQAEWQAEGQAEGQAEGQAEGQAEGQAEGQAEGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEmQAFmQAGWQAHGQAH2QAImQAJWQAKGQAKmQALWQAMGQAM2QANWQAOGQAOmQAPGQAPmQAP2QAQGQAQmQAQmQAQ2QARGQARGQARGQARGQARGQAQ2QAQmQAQWQAQGQAP2QAPWQAO2QAOWQAN2QANGQAMWQAL2QALGQAKWQAJmQAImQAH2QAHWQAGmQAF2QAFGQAEmQAEGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QCD2QCD5wCD5wCD5wCEJwCGJwCIJwCJ5wCLpwCNZwCO5wCQJwCRZwCSZwCTJwCUJwCUqACVacCV60CWLICW7oAXb8AXsMAX8UAX8UAX8YAYMcAYMcAX8UAXsEAW7oAVqoATZwAPpwAJ5wAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAQpwAQJwAP5wAPZwAPJwAO5wAOpwAOZwAOJwAN5wAN5wAN5wAOJwAOpwAPJwAO5wAOZwANpwANJwAMpwAMJwALpwALZwAK5wAKZwAKJwAJpwAJZwAJZwAJJwAJJwAI5wAI5wAJJwAJJwAJJwAJZwAJZwAJZwAJpwAJpwAJpwAJ5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAEZwAFpwAGpwIIJwAJpwALJwCMpwCOGQCPmQCRGQCSWQCTWQCUWQCVFoCV1MCWU0CWkkCW0cCW0YCW0YCWkgCWUsCWFACVlUCVFwCUWMCT2QCTGQCSWQCRmQCQmQCPmQCPGQAO2QAOWQAN2QANWQAM2QAMGQALGQAKGQAI2QAHWQAFmQAD2QAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAIGQARmQAZBAATGQAPGQAM2QALWQAKmQAJmQAI2QAIGQAHWQAG2QAGWQAF2QAFWQAFGQAEmQAEGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEGQAEWQAEmQAE2QAFGQAFWQAFWQAFWQAFmQAFmQAFmQAFmQAF2QAF2QAGGQAGGQAGWQAGWQAGmQAGmQAG2QAHGQAHWQAHWQAHmQAH2QAIGQAIWQAImQAI2QAJGQAJWQAJmQAJ2QAKGQAKWQAKmQAK2QALGQALWQALmQAL2QAMGQAMGQAMWQAMmQAM2QANGQANWQANmQANmQAN2QAOGQAOWQAOWQAOmQAO2QAPGQAPGQAPWQAPmQAP2QATmQATmQATmQATWQATWQATWQATGQATGQATGQAS2QAS2QAS2QAS2QAS2QASmQASmQASmQASmQASWQASWQASWQASGQAVlUAXj4AZCwAZBoAZAkAZPkAZOoAZNsAYcwAXL0AVKUATZwARpwAP5wAOZwAM5wALZwAKJwAIpwAHZwAGZwAFZwAEZwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAEJwAEZwAE5wAFJwAFZwAFpwAF5wAGJwAGZwAGZwAGpwAGpwAG5wAG5wAHJwAHJwAHJwAHZwAHZwAHZwAHJwAHJwAHJwAG5wAGpwAGpwAGJwAF5wAFpwAFJwAEpwAEJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAEJwAEZwAEpwAE5wAFJwAFZwAFpwAF5wAGJwAGZwAGpwAGpwAG5wAHJwAHZwAHZwAHpwAHpwAH5wAH5wAH5wAIJwAIJwAIZwAIZwAIZwAIZwAIpwAIpwAIpwAIpwAI5wAI5wAI5wAI5wAI5wAI5wAI5wAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAI5wAI5wAI5wAI5wAI5wAI5wAI5wAI5wAI5wAI5wAI5wAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QCD2QCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCEpwCGZwCZJwCZJwCZJwCZJwCZJwCZJwCZJwCZJwCZKkAZNMAZPgAZBYAZC8AZEEAZLEAZKgAZKIAZJ8AZJ8AZKAAZKQAZKoAZLIAZLsAZMUAZNEAZN4AZOwAZPkAZAcAZBQAZCEAZCkAZCwAYy4AYy8AYjEAYjEAYjMAYDgAXT8AWkkAVlUAUWIATGQAR2QAQmQAPGQANmQAMGQAKmQAJWQAIGQAG2QAJGQAIGQAHGQAGWQAFmQAFGQAE2QAEmQAEmQAEmQAEmQAEmQAEWQAEWQAEGQAEGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEWQAEWQAEmQAE2QAE2QAFGQAFWQAFmQAFmQAF2QAGGQAGGQAGWQAGmQAGmQAG2QAHGQAHGQAHWQAHWQAHmQAHmQAH2QAH2QAIGQAIWQAIWQAIWQAImQAImQAI2QAI2QAJGQAJGQAJWQAJWQAJWQAJmQAJmQAJmQAJ2QAJ2QAJ2QAJ2QAJmQAJmQAJWQAJGQAI2QAImQAImQAImQAImQAImQAImQAImQAImQAI2QAI2QAJGQAJGQAJGQAJWQAJWQAJWQAJmQAJmQAJmQAJmQAJmQAJ2QAJ2QAJ2QAJ2QAKGQAKGQAKWQAK2QALWQAMGQAMmQANGQANmQANmQANmQANmQANmQANWQANGQANGQAM2QAMmQAMGQAL2QALmQALWQALGQALGQAK2QAK2QAK2QAK2QAKmQAKmQAKmQAKmQAKmQAKmQAKmQAKmQAKmQAK2QAK2QALGQALGQALWQALWQALWQALmQALmQALmQAL2QAL2QAL2QAL2QAMGQAMGQAMGQAMWQAMWQAMWQAMWQAMWQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMWQAMWQAMWQAMWQAMWQAMWQAMWQAMWQAMmQAMmQA"};
+const ROTEIRO = {"a": [1, 1, 1, 0], "b": [1, 2, 0, 3], "seed": 11, "eb": 2, "nb": "Catapimba", "cb": 1, "hash": -825307786, "dados": "ZAUBZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAUAZAUAZAUAZAQAZAQAZAQAZAMAZAMAZAMAZAIAZAIAZAIAZAIAZAEAZAEAZAEAZAEAZAAAZAAAZAAAZAAAZP8AZP8AZP8AZP4AZP4AZP4AZP0AZP0AZP0AZPwAZPwAZPsAZPsAZPoAZPkAZPgAZPYAZPMAZO8AZOwAZOgAZOMAZN4AZPAAZNYAZLsAZKIAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAZMQAZNgAZPEAZBIAZD4AZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZJwAZJwAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QCD2QCFZwCOJwCSpwCVKUCW7sCYcwCZNsCZOgCZPUCZAECZA0CZBoCZCYCYjMCXUACWU0CVFsCT2QCS2QCRmQCQWQCPWQAOGQANGQAMGQAK5wAJpwAIJwAG5wAFJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wID5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEmQAFWQAF2QAGWQAGmQAGmQAG2QAG2QAG2QAHGQAHGQAHWQAHWQAHmQAHmQAH2QAH2QAH2QAIGQAIGQAIGQAIWQAIWQAIWQAIWQAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAJpwAJpwAJpwAJpwAJpwAJpwAJpwAJ5wAJ5wAJ5wAKJwAKJwAKZwAKZwAKpwAKpwAK5wAK5wALJwALZwALZwALpwAL5wAL5wAMJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAEJwAEpwAFJwAFpwAGJwAGpwAHZwAH5wAIZwAI5wAJpwAKJwAKpwALJwALpwAMZwAM5wANZwAOJwAOpwAPJwAP5wAQZwAQ5wARpwASJwAS5wATZwAT5wAUp8AVKYAV60AWbQAUZ0ASZwAQ5wARpwASZwATJwAT5wAU6EAVqsAWbMAWbQAWrYAWrgAW7oAXLwAXL4AXcAAXsEAXsMAX8UAX8YAYMgAYMkAYcsAYcwAYcwAYcoAYMgAYMkAYcoAYcsAYcoAYMoAYcoAYcwAYcwAYcwAYcsAYMgAX8UAXcEAXL0AXLwAXb8AXsIAX8YAYMgAYcoAYcwAYs0AYs0AYs4AYs4AYs4AYs8AYs8AYs8AYs8AY9AAY9AAY9AAY9AAY9EAY9EAY9EAY9EAY9EAY9IAY9IAY9IAY9IAY9IAZNMAZNMAZNMAZNMAZNMAZNQAZNQAZN4AZOcAZO4AZPUAZPoAZP0AZP4AZP4AZP4AZP0AZP0AZP0AZP0AZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPwAZPoAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEWQAFGQAFmQAGGQAGmQAHGQAHGQAHGQAHWQAHWQAHWQAHWQAHmQAHmQAHmQAH2QAH2QAIGQAIGQAIWQAImQAImQAIWQAIWQAIWQAIWQAIWQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIWQAIWQAIWQAImQAImQAI2QAI2QAJGQAJWQAJmQAJmQAJ2QAKGQAKmQAK2QALGQALWQAL2QAMGQAMWQAM2QANWQANmQAOGQAOmQAPGQAPmQAQGQAQmQARGQARmQASGQAS2QATWQAT2QAUWMAVFwAVlYAWFAAWkoAXEQAZBgAZOoAW7oAWLEAWLAAV68AV64AV64AV60AVqwAVqsAVqwAV6wAV60AV64AV68AWLEAWbMAWbUAWrYAWrcAWrcAWrYAWbQAWLIAV68AVqsAVacAVKQAUqAAUZwAUJwATpwATJwAS5wASZwASJwARpwARZwAQ5wAQpwAP5wAPZwAO5wAOZwAOJwANpwANZwANJwAM5wAMpwAMZwAMZwAMJwAMJwAMJwAMJwAMJwAMJwAMJwAMJwAMJwAMJwAMJwAMJwAMJwAMJwAMZwAMZwAMZwAMZwAMZwAMZwAMpwAMpwAMpwAMpwAMpwAMpwANJwANpwAN5wAOJwAOJwAOJwAOZwAOZwAOZwAOZwAOZwAOZwAOZwAOZwAOZwAOZwAOZwIOZwAOZwAOZwAOpwAOpwAOpwAOpwAOpwAOpwAOpwAOpwAOpwAO5wAO5wAO5wAO5wAO5wAO5wAO5wAPJwAPJwAD5wAD5wAD5wAD5wAEJwAD5wAD5wAZGQAZGQAZGQAZGQAD5wAD5wAD5wAD5wAD5wAZGQAZGQAZGQAZGQAZGQAD5wAD5wAZGQAZGQAZGQAZGQAZGQAD5wAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAUl8AUGQATmQATWQAS2QASmQASGQARmQARWQAQ2QAQmQAQWQAQGQAPmQAPWQAPGQAO2QAOmQAOGQAN2QANmQANWQANWQANGQAM2QAM2QAMmQAMWQAMWQAMGQAMGQAL2QAL2QAL2QAL2QAL2QAL2QAL2QALmQALmQALmQALmQALmQALmQALmQALmQALmQAL2QAL2QAMGQAMWQAMWQAMmQAMmQAM2QAM2QANGQANGQANWQANWQANWQANmQANmQAN2QAN2QAN2QAN2QAOGQAOGQAOGQAOGQAOWQAOWQAOWQAOWQAOWQAOWQAOWQAN2QANGQAMmQAL2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAKWQALWQAMGQANGQAN2QAOmQAPGQAP2QAQWQAQmQARGQARWQAR2QASGQASWQASmQAS2QAS2QATGQATWQATmQATmQAT2QAT2QAUGQAUGQAUGQAUWQAUWQAUWMAUmIAUmEAUmEAUmAAUmAAUmAAU18AU18AU18AU18AU18AUmAAWUwAYDkAZCYAZBQAZAIAZPIAZOIAY9IAXsMAWbQAV68AVakAU6IAUJwAT5wATZwATJwASpwASZwAR5wARZwARJwAQpwAQJwAP5wAPZwAPJwAOpwAOJwANpwANJwAMpwAMZwAD5wAD5wAD5wAD5wAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QID2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEmQAFGQAFmQAGGQAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAYcsAXb4AXLsAW7oAW7gAWrcAWrYAWbUAWbQAWLIAWLEAWLAAV64AV60AVqsAVqoAVagAVKYARpwARZwARZwARJwAQ5wAQJwAPZwAOpwANpwAM5wAMJwAHZwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAE5wAGJwAHJwCIJwCJZwCKZwCLZwCMpwCN5wCO2QCQWQCRmQCTGQCU6ICW7gCZNMCZPICZBgCXEMCS2QAOmQAKGQAGWQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEWQAE2QAFWQAFmQAGGQAGWQAGmQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEGQAEWQAEWQAEmQAEmQAEmQAE2QAE2QAE2QAE2QAE2QAE2QAE2QAE2QAE2QAE2QAHWQAJ2QAMWQAOmQAQ2QATGQAVFkAXUIAZCsAZBQAZAoAZAMAZP0AZPYAZPAAZOsAZOcAZOMAZOAAZN0AZNkAZNUAY9AAYcoAXsMAW7sAWLEAVKYAUJwATJwAR5wAQpwAPpwAOZwANZwAMZwALZwAKZwAJZwAIpwAHpwAG5wAF5wAFJwAEZwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAQ5wARpwASZwATJwAT5wAUZwAU6EAVKYAVakAVqsAV60AV68AWLAAWLEAWLIAWLIAWLEAV64AVqoAVKUAUqAAUJwATpwAS5wASZwAR5wCRZwCRGQCRWQCRmQCR2QCSGQCSGQCSGQCR2QCR2QCRWQCRGQCQ2QCQWQCP2QCOmQANGQAMGQAK2QAJ2QAI2QAIWQAHmQAHWQAHWQAHWQAHZwAH5wAIZwAJJwAJ5wAKpwAL5wAM5wAN5wAPJwAQJwARJwAR5wAS5wATpwAUZwAVKQAVqsAWLEAWrcAW7sAXb8AXsEAXsMAXsMAXsEAXb4AW7kAWLEAVKUATpwAR5wAPZwAMWQAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAHmQAG2QAGWQAGGQAFmQAFWQAE2QAEmQAEWQAD2QAD2QAD2QAD2QAD2QAD2QAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQA"};
 
 // ==== 99_main.js ====
 // ---------- inicializacao, laco principal e ganchos de teste ----------
@@ -2556,6 +2569,9 @@ const CR = window.CR = { G, GAR, SIM, BG, R, IN, UI, FX, Atlas, MESH, DRAW, stat
   advance(n) { for (let i = 0; i < n; i++) G.tick(DT); },
   // avanca 1 quadro e desenha; devolve promise quando os pixels estao no canvas
   async frame(n) { for (let i = 0; i < (n || 1); i++) { G.tick(DT); R.tm[0] += DT; Atlas.flush(); R.frame(); } if (R.capture) await R.grab(); else await R.dev.queue.onSubmittedWorkDone(); return R.lastError || 'ok'; },
+  // captura deterministica da luta roteirizada: vai ate o quadro f (so para frente) e o desenha.
+  // quadros pulados nao passam pela GPU (so as marcas do piso); 'warm' quadros antes de f sao desenhados para o TAA convergir
+  async goto(f, warm) { warm = warm === undefined ? 8 : warm; if (G.sf > f) throw new Error('so para frente'); while (G.sf < f - warm - 1) { G.tick(DT); R.tm[0] += DT; R.flushMarks(); } if (G.sf < f - 1) R.reset = 1; while (G.sf < f) { G.tick(DT); R.tm[0] += DT; R.frameNo = G.sf; Atlas.flush(); R.frame(); } await R.grab(); return R.lastError || 'ok'; },
   // luta avulsa (roteirizada ou automatica): montagens e semente fixas
   duel(ba, bb, seed, dur, opts) { opts = opts || {}; G.round = opts.round || 'LUTA ROTEIRIZADA'; G.auto = !!opts.auto; G.curMatch = null; const ea = { nome: opts.na || 'Fagulha', b: ba, cor: CORES[opts.ca === undefined ? 0 : opts.ca], num: 7, estilo: opts.ea === undefined ? 0 : opts.ea, hp: null, v: 0, d: 0 }, eb = { nome: opts.nb || 'Vespa 9', b: bb, cor: CORES[opts.cb === undefined ? 2 : opts.cb], num: 9, estilo: opts.eb === undefined ? 2 : opts.eb, hp: null, v: 0, d: 0 };
     G.setupFight(0, 1, seed, dur, ea, eb); G.script = opts.script || null; G.rec = opts.rec ? new Int8Array(opts.rec * 3) : null; G.startFight(); },

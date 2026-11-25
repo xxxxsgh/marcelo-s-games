@@ -37,7 +37,8 @@ const Atlas = {
     this.gear(x0 + 440, 84, 26, acc, 8); g.fillStyle = '#f2f2ee'; g.fillRect(x0 + 380, 120, 110, 40); this.txt(PATROS[(num + slot) % 8].split(' ')[0], x0 + 435, 141, 22, '#0b0d10', 'center', 100, 800);
     g.strokeStyle = '#f2b21c'; g.lineWidth = 5; g.beginPath(); g.moveTo(x0 + 30, 310); g.lineTo(x0 + 56, 266); g.lineTo(x0 + 82, 310); g.closePath(); g.stroke(); this.txt('!', x0 + 56, 296, 26, '#f2b21c', 'center', 0, 800);
     // lateral
-    const y1 = 352; g.fillStyle = ink; g.fillRect(x0 + 196, y1 + 24, 120, 112); this.txt(String(num), x0 + 256, y1 + 84, 96, lum > .35 ? '#f2f2ee' : '#0b0d10', 'center', 100, 800);
+    const y1 = 352; g.fillStyle = lum > .35 ? '#0b0d10' : '#d9d6cc'; g.fillRect(x0 + 200, y1 + 28, 112, 104); g.strokeStyle = acc; g.lineWidth = 6; g.strokeRect(x0 + 200, y1 + 28, 112, 104); this.txt(String(num), x0 + 256, y1 + 84, 88, lum > .35 ? '#f2f2ee' : '#0b0d10', 'center', 92, 800);
+    for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${40 + (i * 37) % 50},${35 + (i * 17) % 40},30,${.04 + ((i * 13) % 10) / 90})`; const px = x0 + 196 + (i * 97) % 120, py = y1 + 24 + (i * 61) % 112; g.fillRect(px, py, 2 + (i * 7) % 14, 1 + (i * 3) % 3); }
     this.txt(nome.toUpperCase(), x0 + 420, y1 + 110, 30, ink, 'center', 150, 800); g.fillStyle = acc; g.fillRect(x0 + 20, y1 + 120, 150, 10);
     g.restore(); this.dirty = true;
   },

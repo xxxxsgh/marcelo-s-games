@@ -11,7 +11,7 @@ b,.h{font-weight:800}
 .card.r{right:2vw;clip-path:polygon(0 0,100% 0,100% 100%,4% 100%);border-right:.6vh solid var(--cc);text-align:right}
 .card .nm{font-size:2.9vh;font-weight:800;white-space:nowrap;overflow:hidden;line-height:1.1}
 .card .nu{display:inline-block;background:var(--cc);color:#fff;padding:0 .9vh;margin:0 .8vh 0 0;font-weight:800;text-shadow:0 0 .3vh #000}
-.card.r .nu{margin:0 0 0 .8vh}
+.card.r .nu{margin:0 .8vh 0 .8vh}
 .card .sb{color:var(--mu);font-size:1.5vh;margin:.1vh 0 .5vh}
 .bars{display:grid;grid-template-columns:repeat(5,1fr);gap:.7vh}
 .bar{font-size:1.25vh;color:var(--mu)}

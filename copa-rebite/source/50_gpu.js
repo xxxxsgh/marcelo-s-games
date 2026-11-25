@@ -4,7 +4,7 @@ const SLOT = { WORLD: 0, GLASS: 1, AUX0: 2, AUX1: 3, AUX2: 4, AUX3: 5, ROBOT: 8,
 const R = {
   ok: false, w: 0, h: 0, frameNo: 0, scene: -1, exposure: 1, fog: .02, mblur: 1, flash: 0, quality: 1, reset: 1, amb: 1,
   I: new Float32Array(INST_MAX * INST_F), im: new Int16Array(INST_MAX).fill(-1),
-  eye: new Float32Array([0, 3, 8]), tgt: new Float32Array([0, 0, 0]), up: new Float32Array([0, 1, 0]), cp: new Float32Array([.9, 0, 0, 0]), tm: new Float64Array(1), near: .08, far: 120,
+  eye: new Float32Array([0, 3, 8]), tgt: new Float32Array([0, 0, 0]), up: new Float32Array([0, 1, 0]), cp: new Float32Array([.9, 0, 0, 0]), tm: new Float64Array(1), near: .045, far: 120,
   dl: new Float32Array(6 * 8), ndl: 0,
   pA: new Float32Array(PMAX_A * 12), nA: 0, pB: new Float32Array(PMAX_B * 12), nB: 0, mk: new Float32Array(MARK_MAX * 8), nmk: 0,
   U: new Float32Array(428), view: new Float32Array(16), proj: new Float32Array(16), vp: new Float32Array(16), pvp: new Float32Array(16), tmp: new Float32Array(16), tmp2: new Float32Array(16),
@@ -30,7 +30,7 @@ const R = {
     this.mbuf = dev.createBuffer({ size: this.mk.byteLength, usage: B.VERTEX | B.COPY_DST });
     for (let i = 0; i < INST_MAX; i++) { M4.ident(this.I, i * INST_F); M4.ident(this.I, i * INST_F + 16); this.I[i * INST_F + 36] = -1; }
     const T = GPUTextureUsage;
-    this.atlas = dev.createTexture({ size: [2048, 2048], format: 'rgba8unorm', usage: T.TEXTURE_BINDING | T.COPY_DST | T.RENDER_ATTACHMENT });
+    this.atlas = dev.createTexture({ size: [2048, 2048], format: 'rgba8unorm', mipLevelCount: 8, usage: T.TEXTURE_BINDING | T.COPY_DST | T.RENDER_ATTACHMENT });
     this.marks = dev.createTexture({ size: [2048, 2048], format: 'rgba8unorm', usage: T.TEXTURE_BINDING | T.RENDER_ATTACHMENT }); this.marksV = this.marks.createView();
     this.shStat = dev.createTexture({ size: [SH_RES, SH_RES, 4], format: 'depth32float', usage: T.RENDER_ATTACHMENT | T.COPY_SRC });
     this.shDyn = dev.createTexture({ size: [SH_RES, SH_RES, 4], format: 'depth32float', usage: T.RENDER_ATTACHMENT | T.COPY_DST | T.TEXTURE_BINDING });
@@ -54,6 +54,7 @@ const R = {
     this.pShadow = dev.createRenderPipeline({ layout: plShadow, vertex: { module: mShadow, entryPoint: 'vsShadow', buffers: vbl }, primitive: { cullMode: 'none' }, depthStencil: { format: 'depth32float', depthWriteEnabled: true, depthCompare: 'less', depthBias: 2, depthBiasSlopeScale: 2.2 } });
     this.pG = dev.createRenderPipeline({ layout: plScene, vertex: { module: mScene, entryPoint: 'vs', buffers: vbl }, fragment: { module: mScene, entryPoint: 'fs', targets: [{ format: 'rgba8unorm' }, { format: 'rgba16float' }, { format: 'rgba16float' }] }, primitive: { cullMode: 'back' }, depthStencil: { format: 'depth32float', depthWriteEnabled: true, depthCompare: 'less' } });
     const pm = { color: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' }, alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } }, addB = { color: { srcFactor: 'one', dstFactor: 'one' }, alpha: { srcFactor: 'one', dstFactor: 'one' } };
+    this.pGF = dev.createRenderPipeline({ layout: plScene, vertex: { module: mScene, entryPoint: 'vs', buffers: vbl }, fragment: { module: mScene, entryPoint: 'fsFlat', targets: [{ format: 'rgba8unorm' }, { format: 'rgba16float' }, { format: 'rgba16float' }] }, primitive: { cullMode: 'back' }, depthStencil: { format: 'depth32float', depthWriteEnabled: true, depthCompare: 'less' } });
     this.pGT = dev.createRenderPipeline({ layout: plScene, vertex: { module: mScene, entryPoint: 'vs', buffers: vbl }, fragment: { module: mScene, entryPoint: 'fsTear', targets: [{ format: 'rgba8unorm' }, { format: 'rgba16float' }, { format: 'rgba16float' }] }, primitive: { cullMode: 'none' }, depthStencil: { format: 'depth32float', depthWriteEnabled: true, depthCompare: 'less' } });
     this.pGlass = dev.createRenderPipeline({ layout: plGlass, vertex: { module: mScene, entryPoint: 'vs', buffers: vbl }, fragment: { module: mScene, entryPoint: 'fsGlass', targets: [{ format: 'rgba16float', blend: pm }] }, primitive: { cullMode: 'none' }, depthStencil: { format: 'depth32float', depthWriteEnabled: false, depthCompare: 'less' } });
     const fsq = (m, ep, fmt, blend, layout, ds) => dev.createRenderPipeline({ layout: layout || 'auto', vertex: { module: m, entryPoint: 'vsFS' }, fragment: { module: m, entryPoint: ep, targets: [{ format: fmt, blend }] }, depthStencil: ds });
@@ -122,7 +123,7 @@ const R = {
     for (let i = 0; i < list.length; i++) {
       const L = list[i], o = 100 + i * 16, dx = L.t[0] - L.p[0], dy = L.t[1] - L.p[1], dz = L.t[2] - L.p[2], l = 1 / Math.hypot(dx, dy, dz), a = L.a * PI / 180;
       U[o] = L.p[0]; U[o + 1] = L.p[1]; U[o + 2] = L.p[2]; U[o + 3] = 60; U[o + 4] = dx * l; U[o + 5] = dy * l; U[o + 6] = dz * l; U[o + 7] = Math.cos(a);
-      U[o + 8] = L.c[0] * L.I; U[o + 9] = L.c[1] * L.I; U[o + 10] = L.c[2] * L.I; U[o + 11] = Math.cos(a * .72); U[o + 12] = L.s ? si : -1; U[o + 13] = 0; U[o + 14] = (L.s || i < 6) && L.vol !== 0 ? 1 : 0; U[o + 15] = 0;
+      U[o + 8] = L.c[0] * L.I; U[o + 9] = L.c[1] * L.I; U[o + 10] = L.c[2] * L.I; U[o + 11] = Math.cos(a * .45); U[o + 12] = L.s ? si : -1; U[o + 13] = 0; U[o + 14] = (L.s || i < 6) && L.vol !== 0 ? 1 : 0; U[o + 15] = 0;
       if (L.s) { const P = new Float32Array(16), V = new Float32Array(16), O = new Float32Array(16); M4.persp(P, 2 * (a + .05), 1, .4, 40); M4.lookAt(V, L.p[0], L.p[1], L.p[2], L.t[0], L.t[1], L.t[2], Math.abs(dy * l) > .98 ? 1 : 0, Math.abs(dy * l) > .98 ? 0 : 1, 0); M4.mul(O, 0, P, 0, V, 0); U.set(O, 356 + si * 16); this.dev.queue.writeBuffer(this.shUbo[si], 0, O); si++; }
     }
     this.nsh = si; this.baseL = new Float32Array(48); for (let i = 0; i < list.length; i++) for (let c = 0; c < 3; c++) this.baseL[i * 3 + c] = U[100 + i * 16 + 8 + c];
@@ -197,7 +198,7 @@ const R = {
     for (let s = 0; s < this.nsh; s++) { const d = this.dShadow[s]; if (ts && s === 0) d.timestampWrites = this.tsW0 || (this.tsW0 = { querySet: this.qs, beginningOfPassWriteIndex: 0 }); else if (d.timestampWrites) d.timestampWrites = undefined;
       p = e.beginRenderPass(d); p.setPipeline(this.pShadow); p.setBindGroup(0, this.bgScene); p.setBindGroup(1, this.bgSh[s]); p.setVertexBuffer(0, this.vb); p.setIndexBuffer(this.ib, 'uint32'); this.drawRange(p, 2, INST_MAX); p.end(); }
     // G-buffer
-    p = e.beginRenderPass(t.dG); p.setPipeline(this.pG); p.setBindGroup(0, this.bgScene); p.setVertexBuffer(0, this.vb); p.setIndexBuffer(this.ib, 'uint32'); this.drawRange(p, 0, 1); this.drawRange(p, 2, SLOT.ROBOT); p.setPipeline(this.pGT); this.drawRange(p, SLOT.ROBOT, INST_MAX); p.end();
+    p = e.beginRenderPass(t.dG); p.setPipeline(this.flatWorld ? this.pGF : this.pG); p.setBindGroup(0, this.bgScene); p.setVertexBuffer(0, this.vb); p.setIndexBuffer(this.ib, 'uint32'); this.drawRange(p, 0, 1); p.setPipeline(this.pG); this.drawRange(p, 2, SLOT.ROBOT); p.setPipeline(this.pGT); this.drawRange(p, SLOT.ROBOT, INST_MAX); p.end();
     // volumetrico
     p = e.beginRenderPass(t.dVol); if (this.fog > 0) { p.setPipeline(this.pVol); p.setBindGroup(0, t.bgVol); p.draw(3); } p.end();
     // iluminacao
@@ -234,8 +235,12 @@ const R = {
     await this.capBuf.mapAsync(GPUMapMode.READ); const src = new Uint8Array(this.capBuf.getMappedRange()), dst = this.capImg.data, w = this.w, h = this.h, bgra = this.fmt === 'bgra8unorm';
     for (let y = 0; y < h; y++) { const so = y * this.capBpr, d0 = y * w * 4; if (!bgra) dst.set(src.subarray(so, so + w * 4), d0); else for (let x = 0; x < w * 4; x += 4) { dst[d0 + x] = src[so + x + 2]; dst[d0 + x + 1] = src[so + x + 1]; dst[d0 + x + 2] = src[so + x]; dst[d0 + x + 3] = 255; } }
     this.capBuf.unmap(); this.c2.putImageData(this.capImg, 0, 0); },
+  flushMarks() { if (this.nmk <= 0) return; const dev = this.dev, e = dev.createCommandEncoder(); dev.queue.writeBuffer(this.mbuf, 0, this.mk, 0, this.nmk * 8); const p = e.beginRenderPass(this.dMark); p.setPipeline(this.pMark); p.setVertexBuffer(0, this.mbuf); p.draw(4, this.nmk); p.end(); this.nmk = 0; dev.queue.submit([e.finish()]); },
   snap(i) { const I = this.I, o = i * INST_F; for (let j = 0; j < 16; j++) I[o + 16 + j] = I[o + j]; },
-  uploadAtlas(cv) { // canvas 2048x2048 -> textura
-    this.dev.queue.copyExternalImageToTexture({ source: cv }, { texture: this.atlas }, [2048, 2048]);
+  uploadAtlas(cv) { // canvas 2048x2048 -> textura + mips (so em eventos: inicio de luta, troca de pintura)
+    const dev = this.dev; dev.queue.copyExternalImageToTexture({ source: cv }, { texture: this.atlas, mipLevel: 0 }, [2048, 2048]);
+    const e = dev.createCommandEncoder();
+    for (let m = 1; m < 8; m++) { const bg = dev.createBindGroup({ layout: this.pBlit.getBindGroupLayout(0), entries: [{ binding: 0, resource: this.atlas.createView({ baseMipLevel: m - 1, mipLevelCount: 1 }) }, { binding: 1, resource: this.sLin }] }); const p = e.beginRenderPass({ colorAttachments: [{ view: this.atlas.createView({ baseMipLevel: m, mipLevelCount: 1 }), loadOp: 'clear', storeOp: 'store' }] }); p.setPipeline(this.pBlit); p.setBindGroup(0, bg); p.draw(3); p.end(); }
+    dev.queue.submit([e.finish()]);
   },
 };
