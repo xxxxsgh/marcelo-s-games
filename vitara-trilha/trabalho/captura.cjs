@@ -40,7 +40,7 @@ const grabPNG = async (p, file) => { const url = await p.evaluate(() => window._
     }
   } else if (mode === 'video') {
     const ini = +a1, fim = +a2;
-    const ff = cp.spawn('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${W}x${H}`, '-r', '60', '-i', '-', '-c:v', 'libx264', '-preset', 'medium', '-crf', '15', '-pix_fmt', 'yuv420p', '-r', '60', out], { stdio: ['pipe', 'inherit', 'inherit'] });
+    const ff = cp.spawn('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${W}x${H}`, '-r', '60', '-i', '-', '-c:v', 'libx264', '-preset', 'slow', '-crf', '19', '-maxrate', '11M', '-bufsize', '22M', '-g', '60', '-pix_fmt', 'yuv420p', '-r', '60', out], { stdio: ['pipe', 'inherit', 'inherit'] });
     await p.evaluate(async ([ini]) => { const c = window.__cap; c.sim(Math.max(0, ini - 8)); c.render(ini - c.f); await window.__t.flush(); }, [ini]);
     for (let f = ini; f < fim; f++) {
       await p.evaluate(() => window.__cap.render(1)); const raw = await p.evaluate(() => window.__t.grab('raw'));
