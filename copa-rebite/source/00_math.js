@@ -1,5 +1,10 @@
 // ---------- matematica sem alocacao: tudo escreve em arrays ja existentes ----------
 const PI = Math.PI, TAU = PI * 2;
+const hyp = (a, b, c = 0, d = 0) => Math.sqrt(a * a + b * b + c * c + d * d);
+// Registradores pre-alocados. Convencao do codigo quente (luta): nenhuma funcao recebe ou devolve double;
+// os valores vao por estes arrays, porque o V8 encaixota doubles (HeapNumber) em chamadas nao embutidas.
+// _c simulacao (0-14 saidas, 32-63 entradas), _f efeitos, _d instancia, _t translacao+angulo, _q pose, _k camera/vibracao, _u aleatorio
+const _c = new Float64Array(64), _f = new Float32Array(16), _d = new Float32Array(12), _t = new Float64Array(4), _q = new Float64Array(8), _k = new Float32Array(12), _u = new Float64Array(1);
 const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
 const lerp = (a, b, t) => a + (b - a) * t;
 const sstep = (a, b, x) => { x = clamp((x - a) / (b - a), 0, 1); return x * x * (3 - 2 * x); };
@@ -14,6 +19,7 @@ class Rng {
     t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
+  uR() { const s = this.s; s[0] += 0x6D2B79F5; let t = s[0]; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); _u[0] = ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
   r(a, b) { return a + (b - a) * this.u(); }
   s1() { return this.u() * 2 - 1; }
 }
@@ -40,8 +46,8 @@ const M4 = {
     o[12] = (l + r) / (l - r); o[13] = (t + b) / (b - t); o[14] = n / (n - f); o[15] = 1;
   },
   lookAt(o, ex, ey, ez, tx, ty, tz, ux, uy, uz) {
-    let zx = ex - tx, zy = ey - ty, zz = ez - tz; let l = 1 / Math.hypot(zx, zy, zz); zx *= l; zy *= l; zz *= l;
-    let xx = uy * zz - uz * zy, xy = uz * zx - ux * zz, xz = ux * zy - uy * zx; l = 1 / (Math.hypot(xx, xy, xz) || 1); xx *= l; xy *= l; xz *= l;
+    let zx = ex - tx, zy = ey - ty, zz = ez - tz; let l = 1 / hyp(zx, zy, zz); zx *= l; zy *= l; zz *= l;
+    let xx = uy * zz - uz * zy, xy = uz * zx - ux * zz, xz = ux * zy - uy * zx; l = 1 / (hyp(xx, xy, xz) || 1); xx *= l; xy *= l; xz *= l;
     const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
     o[0] = xx; o[1] = yx; o[2] = zx; o[3] = 0; o[4] = xy; o[5] = yy; o[6] = zy; o[7] = 0; o[8] = xz; o[9] = yz; o[10] = zz; o[11] = 0;
     o[12] = -(xx * ex + xy * ey + xz * ez); o[13] = -(yx * ex + yy * ey + yz * ez); o[14] = -(zx * ex + zy * ey + zz * ez); o[15] = 1;
@@ -56,7 +62,8 @@ const M4 = {
     o[12] = (a11 * b07 - a10 * b09 - a12 * b06) * d; o[13] = (a00 * b09 - a01 * b07 + a02 * b06) * d; o[14] = (a31 * b01 - a30 * b03 - a32 * b00) * d; o[15] = (a20 * b03 - a21 * b01 + a22 * b00) * d;
   },
   // matriz a partir de quaternio + posicao (escala 1)
-  fromQT(o, i, x, y, z, w, px, py, pz) {
+  fromQTr(o, i) {
+    const x = _q[0], y = _q[1], z = _q[2], w = _q[3], px = _q[4], py = _q[5], pz = _q[6];
     const x2 = x + x, y2 = y + y, z2 = z + z, xx = x * x2, xy = x * y2, xz = x * z2, yy = y * y2, yz = y * z2, zz = z * z2, wx = w * x2, wy = w * y2, wz = w * z2;
     o[i] = 1 - yy - zz; o[i + 1] = xy + wz; o[i + 2] = xz - wy; o[i + 3] = 0;
     o[i + 4] = xy - wz; o[i + 5] = 1 - xx - zz; o[i + 6] = yz + wx; o[i + 7] = 0;
@@ -64,8 +71,8 @@ const M4 = {
     o[i + 12] = px; o[i + 13] = py; o[i + 14] = pz; o[i + 15] = 1;
   },
   // o = a * T(tx,ty,tz) * R(eixo 0|1|2, ang)
-  mulTR(o, i, a, j, tx, ty, tz, axis, ang) {
-    const c = Math.cos(ang), s = Math.sin(ang), t = M4._t; t.fill(0); t[0] = t[5] = t[10] = t[15] = 1;
+  mulTRr(o, i, a, j, axis) {
+    const tx = _t[0], ty = _t[1], tz = _t[2], ang = _t[3], c = Math.cos(ang), s = Math.sin(ang), t = M4._t; t.fill(0); t[0] = t[5] = t[10] = t[15] = 1;
     if (axis === 0) { t[5] = c; t[6] = s; t[9] = -s; t[10] = c; } else if (axis === 1) { t[0] = c; t[2] = -s; t[8] = s; t[10] = c; } else { t[0] = c; t[1] = s; t[4] = -s; t[5] = c; }
     t[12] = tx; t[13] = ty; t[14] = tz; M4.mul(o, i, a, j, t, 0);
   },

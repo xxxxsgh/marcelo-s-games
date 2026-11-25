@@ -33,23 +33,23 @@ const UI = {
     e.rd.textContent = rodada; e.ko.style.display = 'none'; e.rep.style.display = 'none'; this.msg('', '');
     e.hint.textContent = 'RT acelera · LT ré · A arma · X desvira · Y câmera · B canto';
   },
-  setBar(k, el, v, bar) { v = v < 0 ? 0 : v > 100 ? 100 : v | 0; if (this.last[k] === v) return; this.last[k] = v; el.style.transform = SC[v]; if (bar) { bar.classList.toggle('low', v < 34 && v > 0); bar.classList.toggle('dead', v === 0); } },
+  setBar(k, el, v, bar) { v = v | 0; v = v < 0 ? 0 : v > 100 ? 100 : v; if (this.last[k] === v) return; this.last[k] = v; el.style.transform = SC[v]; if (bar) { bar.classList.toggle('low', v < 34 && v > 0); bar.classList.toggle('dead', v === 0); } },
   hud(sim, camIdx) {
     const e = this.el, L = this.last, H = this.he;
     for (let i = 0; i < 2; i++) { const B = sim.bots[i], h = B.hp, m = B.hpMax, o = i * 12, q = H[i];
-      this.setBar(o, q[0], Math.ceil(h[0] / m[0] * 100), q[5]);
-      this.setBar(o + 1, q[1], Math.ceil((h[1] + h[2] + h[3] + h[4]) / (4 * m[1]) * 100), q[6]);
-      this.setBar(o + 2, q[2], Math.ceil((h[5] + h[6] + h[7] + h[8] + h[9]) / (m[5] + m[6] + m[7] + m[8] + m[9]) * 100), q[7]);
-      this.setBar(o + 3, q[3], Math.ceil(h[10] / m[10] * 100), q[8]);
-      this.setBar(o + 4, q[4], Math.ceil(h[11] / m[11] * 100), q[9]);
+      this.setBar(o, q[0], Math.ceil(h[0] / m[0] * 100) | 0, q[5]);
+      this.setBar(o + 1, q[1], Math.ceil((h[1] + h[2] + h[3] + h[4]) / (4 * m[1]) * 100) | 0, q[6]);
+      this.setBar(o + 2, q[2], Math.ceil((h[5] + h[6] + h[7] + h[8] + h[9]) / (m[5] + m[6] + m[7] + m[8] + m[9]) * 100) | 0, q[7]);
+      this.setBar(o + 3, q[3], Math.ceil(h[10] / m[10] * 100) | 0, q[8]);
+      this.setBar(o + 4, q[4], Math.ceil(h[11] / m[11] * 100) | 0, q[9]);
       const k = ARMAS[B.b[3]]; let code = 0, lvl = 0;
-      if (h[10] <= 0) { code = 200; } else if (k.spin) { lvl = Math.round(B.wspin / k.wmax * 20) * 5; code = B.won || lvl > 0 ? lvl : 201; } else if (B.wst === 2) { code = 204; lvl = 100; } else if (B.wst === 1) { code = 203; lvl = 100; } else if (B.wcd > 0) { lvl = Math.round((1 - B.wcd / k.cd) * 20) * 5; code = 300 + lvl; } else { code = 202; lvl = 100; }
+      if (h[10] <= 0) { code = 200; } else if (k.spin) { lvl = (Math.round(B.wspin / k.wmax * 20) | 0) * 5; code = B.won || lvl > 0 ? lvl : 201; } else if (B.wst === 2) { code = 204; lvl = 100; } else if (B.wst === 1) { code = 203; lvl = 100; } else if (B.wcd > 0) { lvl = (Math.round((1 - B.wcd / k.cd) * 20) | 0) * 5; code = 300 + lvl; } else { code = 202; lvl = 100; }
       if (L[o + 5] !== code) { L[o + 5] = code; q[11].textContent = code === 200 ? 'DESTRUÍDA' : code === 201 ? 'DESLIGADA' : code === 202 ? 'PRONTA' : code === 203 ? 'DISPARADA' : code === 204 ? 'PRENDENDO' : code >= 300 ? 'RECARREGANDO' : RPM[code]; }
       this.setBar(o + 6, q[10], lvl, null);
     }
-    const t = Math.max(0, Math.ceil(sim.dur - sim.t)); if (L[30] !== t) { L[30] = t; e.tm.textContent = TM[Math.min(t, 600)]; }
+    const t = Math.max(0, Math.ceil(sim.dur - sim.t) | 0); if (L[30] !== t) { L[30] = t; e.tm.textContent = TM[Math.min(t, 600)]; }
     if (L[31] !== camIdx) { L[31] = camIdx; e.camn.textContent = CAMN[camIdx]; }
-    let ko = -1; for (let i = 0; i < 2; i++) { const B = sim.bots[i]; if (B.imm > 0 && !sim.over) ko = i * 20 + Math.min(10, Math.ceil(KO_T - B.imm)); }
+    let ko = -1; for (let i = 0; i < 2; i++) { const B = sim.bots[i]; if (B.imm > 0 && !sim.over) ko = i * 20 + Math.min(10, Math.ceil(KO_T - B.imm) | 0); }
     if (ko !== this.koShown) { this.koShown = ko; if (ko < 0) e.ko.style.display = 'none'; else { e.ko.style.display = 'block'; e.ko.textContent = this.kos[ko >= 20 ? 1 : 0][ko % 20]; } }
   },
   // ----- garagem -----

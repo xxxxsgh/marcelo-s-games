@@ -5,7 +5,7 @@ const CR = window.CR = { G, GAR, SIM, BG, R, IN, UI, FX, Atlas, MESH, DRAW, stat
   // avanca n quadros de 1/60 s sem desenhar na GPU
   advance(n) { for (let i = 0; i < n; i++) G.tick(DT); },
   // avanca 1 quadro e desenha; devolve promise quando os pixels estao no canvas
-  async frame(n) { for (let i = 0; i < (n || 1); i++) { G.tick(DT); R.time += DT; Atlas.flush(); R.frame(); } if (R.capture) await R.grab(); else await R.dev.queue.onSubmittedWorkDone(); return R.lastError || 'ok'; },
+  async frame(n) { for (let i = 0; i < (n || 1); i++) { G.tick(DT); R.tm[0] += DT; Atlas.flush(); R.frame(); } if (R.capture) await R.grab(); else await R.dev.queue.onSubmittedWorkDone(); return R.lastError || 'ok'; },
   // luta avulsa (roteirizada ou automatica): montagens e semente fixas
   duel(ba, bb, seed, dur, opts) { opts = opts || {}; G.round = opts.round || 'LUTA ROTEIRIZADA'; G.auto = !!opts.auto; G.curMatch = null; const ea = { nome: opts.na || 'Fagulha', b: ba, cor: CORES[opts.ca === undefined ? 0 : opts.ca], num: 7, estilo: opts.ea === undefined ? 0 : opts.ea, hp: null, v: 0, d: 0 }, eb = { nome: opts.nb || 'Vespa 9', b: bb, cor: CORES[opts.cb === undefined ? 2 : opts.cb], num: 9, estilo: opts.eb === undefined ? 2 : opts.eb, hp: null, v: 0, d: 0 };
     G.setupFight(0, 1, seed, dur, ea, eb); G.script = opts.script || null; G.rec = opts.rec ? new Int8Array(opts.rec * 3) : null; G.startFight(); },
@@ -52,7 +52,11 @@ async function boot() {
   if (QS.get('q') === '0') R.quality = 0;
   R.perf = !!QS.get('perf'); Atlas.flush();
   G.load(); GAR.pre = GAR.com.slice();
-  if (TOR && TOR.ativo && TOR.lutas > 0 && TOR.vivo) GAR.enter(true); else if (TOR && TOR.ativo && TOR.lutas === 0) { GAR.enter(false); } else { if (TOR && !TOR.ativo) TOR = null; GAR.enter(false); }
+  if (TOR && !TOR.ativo) TOR = null;
+  // ensaio oculto: aquece o JIT e fixa a forma dos objetos antes da primeira luta (sem isso o V8 aloca numeros
+  // encaixotados nos primeiros segundos, enquanto o codigo ainda roda no interpretador)
+  if (!QS.get('frio')) { const sv = [G.auto, R.keyDim]; for (const [a, b_, n] of [[[1, 1, 1, 0], [1, 2, 0, 3], 5400], [[0, 0, 0, 1], [2, 1, 2, 4], 1500], [[1, 0, 2, 2], [2, 2, 1, 5], 1500]]) { CR.duel(a, b_, 3, 600, { auto: true, eb: 1 }); SIM.noKO = true; for (let i = 0; i < n && G.st === 'luta'; i++) G.tick(DT); } if (ROTEIRO.dados) { CR.roteiro(); for (let i = 0; i < 1500 && G.st === 'luta'; i++) G.tick(DT); G.script = null; } SIM.noKO = false; G.auto = sv[0]; R.nmk = 0; FX.reset(); UI.msg('', ''); }
+  if (TOR && TOR.ativo && TOR.lutas > 0 && TOR.vivo) GAR.enter(true); else GAR.enter(false);
   $('carga').remove(); CR.pronto = true; document.title = 'Copa Rebite';
   if (QS.get('roteiro')) CR.roteiro();
   if (QS.get('cap')) return;
@@ -60,7 +64,7 @@ async function boot() {
   const loop = now => { requestAnimationFrame(loop); let dt = (now - last) / 1000; last = now; if (G.frameLog && G.nlog < G.frameLog.length) G.frameLog[G.nlog++] = dt * 1000; if (dt > .1) dt = .1;
     // passo fixo de simulacao (1/60 s); em telas de 60 Hz e exatamente 1 passo por quadro
     G.acc += dt; let n = Math.abs(dt - DT) < .004 ? 1 : Math.floor(G.acc / DT); if (n > 3) n = 3; if (n < 1 && G.st !== 'luta' && G.st !== 'fim') n = 1; G.acc = Math.max(0, Math.min(G.acc - n * DT, DT));
-    for (let i = 0; i < n; i++) G.tick(DT); R.time += dt; Atlas.flush(); if (!G.skipRender) R.frame(); };
+    for (let i = 0; i < n; i++) G.tick(DT); R.tm[0] += dt; Atlas.flush(); if (!G.skipRender) R.frame(); };
   requestAnimationFrame(loop);
 }
 boot().catch(e => { console.error(e); CR.erro = String(e && e.message || e); UI.fatal('Não foi possível iniciar: ' + CR.erro + ' — este jogo precisa de um navegador com WebGPU (Chrome atualizado).'); });

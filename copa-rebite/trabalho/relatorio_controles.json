@@ -1,0 +1,402 @@
+{
+ "resultados": [
+  {
+   "teste": "sem gamepad no inicio",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "gamepad detectado ao conectar (sem recarregar)",
+   "ok": true,
+   "info": "CONTROLE CONECTADO"
+  },
+  {
+   "teste": "garagem aberta",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "direcional baixo/cima escolhe o encaixe",
+   "ok": true,
+   "info": "(0, 1, 0)"
+  },
+  {
+   "teste": "A entra no encaixe; direcional direita troca a peca (previa)",
+   "ok": true,
+   "info": "([1, 1, 1, 0], [2, 1, 1, 0])"
+  },
+  {
+   "teste": "barras se atualizam ao trocar",
+   "ok": true,
+   "info": "(['0.771', '0.427', '0.410', '0.355', '0.675', '0.888'], ['0.871', '0.401', '0.266', '0.177', '0.782', '0.933'])"
+  },
+  {
+   "teste": "peca encaixa com animacao",
+   "ok": true,
+   "info": "0.3397851586341858"
+  },
+  {
+   "teste": "B volta e desfaz a troca",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "direcional esquerda + A confirma a peca",
+   "ok": true,
+   "info": "[0, 1, 1, 0]"
+  },
+  {
+   "teste": "pintura muda no direcional",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "numero muda no direcional",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "A sorteia o nome",
+   "ok": true,
+   "info": "Rebimboca"
+  },
+  {
+   "teste": "analogico direito gira o robo na bancada",
+   "ok": true,
+   "info": "(0.6, 1.3634920634920629, 0.9817460317460319)"
+  },
+  {
+   "teste": "zona morta do analogico direito",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "Start nao entra com peso acima do limite",
+   "ok": true,
+   "info": "PESO ACIMA DO LIMITE (130 / 110 kg)"
+  },
+  {
+   "teste": "seta baixo escolhe o encaixe",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "seta cima",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "Enter entra, seta direita troca, Esc desfaz",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "seta esquerda + Enter confirma",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "tecla E gira a bancada",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "Enter em IR PARA A LUTA abre a chave",
+   "ok": true,
+   "info": "chave"
+  },
+  {
+   "teste": "chave mostra os 8 robos",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "parado sem comando",
+   "ok": true,
+   "info": "0"
+  },
+  {
+   "teste": "RT acelera, proporcional a pressao",
+   "ok": true,
+   "info": "(1.77, 5.06, 0.0)"
+  },
+  {
+   "teste": "LT freia e da re, proporcional",
+   "ok": true,
+   "info": "(-2.02, -5.06)"
+  },
+  {
+   "teste": "analogico esquerdo esterca para os dois lados",
+   "ok": true,
+   "info": "(0, 0.9, -0.89)"
+  },
+  {
+   "teste": "zona morta do analogico esquerdo",
+   "ok": true,
+   "info": "(0, -2.0570989356372138e-10)"
+  },
+  {
+   "teste": "A aciona a arma",
+   "ok": true,
+   "info": "(1, 119)"
+  },
+  {
+   "teste": "Y troca entre as tres cameras",
+   "ok": true,
+   "info": "(0, 1, 2, 0)"
+  },
+  {
+   "teste": "tres cameras: perseguicao, a bordo, TV",
+   "ok": true,
+   "info": "['PERSEGUIÇÃO', 'A BORDO', 'TV']"
+  },
+  {
+   "teste": "X desvira o robo capotado",
+   "ok": true,
+   "info": "(-1, 1)"
+  },
+  {
+   "teste": "B devolve o robo ao canto dele",
+   "ok": true,
+   "info": "([1.1252921924588093, 0.14552071428571436, 0], [-5.002276234567905, 0.190119375, 0])"
+  },
+  {
+   "teste": "Start pausa e continua",
+   "ok": true,
+   "info": "('pausa', 'luta')"
+  },
+  {
+   "teste": "W acelera, S freia e da re",
+   "ok": true,
+   "info": "(4.89, -4.89)"
+  },
+  {
+   "teste": "A e D estercam",
+   "ok": true,
+   "info": "(0, 0.91, -0.93)"
+  },
+  {
+   "teste": "Espaco aciona a arma",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "C troca a camera",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "F desvira",
+   "ok": true,
+   "info": "(-1, 1)"
+  },
+  {
+   "teste": "R devolve o robo ao canto",
+   "ok": true,
+   "info": "[-5.001982934473869, 0.19011933291752928, 0]"
+  },
+  {
+   "teste": "vibracao em cada impacto",
+   "ok": true,
+   "info": "(12, 16)"
+  },
+  {
+   "teste": "vibracao mais forte conforme o dano",
+   "ok": true,
+   "info": "((13.87994384765625, 0.3513323974609375), (41.337345123291016, 0.8089557520548503))"
+  },
+  {
+   "teste": "roteiro: 60 s de luta sem terminar antes",
+   "ok": true,
+   "info": "59.999999999997875"
+  },
+  {
+   "teste": "roteiro: meu robo acerta o adversario",
+   "ok": true,
+   "info": "23"
+  },
+  {
+   "teste": "roteiro: arranca pelo menos uma peca do adversario",
+   "ok": true,
+   "info": "(2, [39, 145, 129, 145, 129, 0, 0, 57, 45, 53, 44, 87])"
+  },
+  {
+   "teste": "roteiro: nenhum robo atravessa a parede da caixa",
+   "ok": true,
+   "info": "maior avanco do casco alem da parede: 0.029 m"
+  },
+  {
+   "teste": "roteiro: deterministico (duas execucoes iguais e igual ao gravado)",
+   "ok": true,
+   "info": "(-1521826810, -1521826810, -1521826810)"
+  },
+  {
+   "teste": "tempo esgotado -> tres juizes pontuam dano, agressividade e controle (placar na tela)",
+   "ok": true,
+   "info": "('fim', 'juizes', [9, 2, 8, 3, 9, 2], 'VITÓRIA DE Fagulha')"
+  },
+  {
+   "teste": "torneio: 8 robos em chave, quartas -> semifinal -> final",
+   "ok": true,
+   "info": "semente 3, campeao Pipoca"
+  },
+  {
+   "teste": "torneio: jogador vai das quartas a final",
+   "ok": true,
+   "info": "3 lutas do jogador; estados: chave>intro>contagem>luta>chave>garagem>intro>contagem>luta>chave>garagem>intro>contagem>luta>chave"
+  },
+  {
+   "teste": "torneio: vencedores avancam na chave",
+   "ok": true,
+   "info": ""
+  },
+  {
+   "teste": "torneio: decisao dos juizes em pelo menos uma luta",
+   "ok": true,
+   "info": "['nocaute', 'nocaute', 'juizes', 'nocaute', 'nocaute', 'nocaute', 'nocaute']"
+  },
+  {
+   "teste": "torneio: conserto entre lutas (dano continua; so duas acoes)",
+   "ok": true,
+   "info": "[{'antes': [0.9985811233520507, 1, 0.9932598198619629, 0.7733973821004232], 'slot': 3, 'depois': 1, 'acoes': [2, 1, 0], 'arma': [0, 1], 'hpArma': 1, 'terceiraBloqueada': True}, {'antes': [0.6963765335083008, 1, 0.8077573597999332, 0.6884996202256944], 'slot': 3, 'depois': 1, 'acoes': [2, 1, 0], 'arm"
+  },
+  {
+   "teste": "montagem e andamento do torneio ficam salvos entre aberturas",
+   "ok": true,
+   "info": "([0, 2, 2, 4], 'Tranco', 4, 4)"
+  },
+  {
+   "teste": "zero alocacao de JS por quadro na luta (58 janelas de 60 quadros: simulacao+IA+efeitos+desenho+HUD, sem chamadas de GPU)",
+   "ok": true,
+   "info": "58/58 janelas de 1 s com exatamente 0 byte; mediana 0.0 bytes/quadro; janelas com alocacao (bytes em 60 quadros): []; controle: +51212 bytes ao alocar 1000 objetos; 26 impactos em 58 s"
+  }
+ ],
+ "torneio": {
+  "semente": 3,
+  "jogos": [
+   [
+    {
+     "a": 0,
+     "b": 1,
+     "w": 0,
+     "how": "nocaute",
+     "pa": 26,
+     "pb": 7,
+     "next": false
+    },
+    {
+     "a": 2,
+     "b": 3,
+     "w": 3,
+     "how": "nocaute",
+     "pa": 0,
+     "pb": 0,
+     "next": false
+    },
+    {
+     "a": 4,
+     "b": 5,
+     "w": 4,
+     "how": "juizes",
+     "pa": 25,
+     "pb": 8,
+     "next": false
+    },
+    {
+     "a": 6,
+     "b": 7,
+     "w": 6,
+     "how": "nocaute",
+     "pa": 25,
+     "pb": 8,
+     "next": false
+    }
+   ],
+   [
+    {
+     "a": 0,
+     "b": 3,
+     "w": 0,
+     "how": "nocaute",
+     "pa": 26,
+     "pb": 7,
+     "next": false
+    },
+    {
+     "a": 4,
+     "b": 6,
+     "w": 6,
+     "how": "nocaute",
+     "pa": 25,
+     "pb": 8,
+     "next": false
+    }
+   ],
+   [
+    {
+     "a": 0,
+     "b": 6,
+     "w": 6,
+     "how": "nocaute",
+     "pa": 26,
+     "pb": 7,
+     "next": false
+    }
+   ]
+  ],
+  "robos": [
+   "Rebimboca",
+   "Trator Zé",
+   "Vespa 9",
+   "Quebra-Noz",
+   "Serrote",
+   "Dona Morsa",
+   "Pipoca",
+   "Catapimba"
+  ],
+  "consertos": [
+   {
+    "antes": [
+     0.9985811233520507,
+     1,
+     0.9932598198619629,
+     0.7733973821004232
+    ],
+    "slot": 3,
+    "depois": 1,
+    "acoes": [
+     2,
+     1,
+     0
+    ],
+    "arma": [
+     0,
+     1
+    ],
+    "hpArma": 1,
+    "terceiraBloqueada": true
+   },
+   {
+    "antes": [
+     0.6963765335083008,
+     1,
+     0.8077573597999332,
+     0.6884996202256944
+    ],
+    "slot": 3,
+    "depois": 1,
+    "acoes": [
+     2,
+     1,
+     0
+    ],
+    "arma": [
+     1,
+     2
+    ],
+    "hpArma": 1,
+    "terceiraBloqueada": true
+   }
+  ]
+ }
+}

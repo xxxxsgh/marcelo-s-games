@@ -2,9 +2,9 @@
 const INST_MAX = 160, INST_F = 64, PMAX_A = 384, PMAX_B = 3072, MARK_MAX = 256, SH_RES = 2048, ENV_RES = 128, ENV_MIPS = 6;
 const SLOT = { WORLD: 0, GLASS: 1, AUX0: 2, AUX1: 3, AUX2: 4, AUX3: 5, ROBOT: 8, ROBOT_N: 20, DEBRIS: 48, DEBRIS_N: 40 };
 const R = {
-  ok: false, w: 0, h: 0, frameNo: 0, time: 0, scene: -1, exposure: 1, fog: .02, mblur: 1, flash: 0, quality: 1, reset: 1, amb: 1,
+  ok: false, w: 0, h: 0, frameNo: 0, scene: -1, exposure: 1, fog: .02, mblur: 1, flash: 0, quality: 1, reset: 1, amb: 1,
   I: new Float32Array(INST_MAX * INST_F), im: new Int16Array(INST_MAX).fill(-1),
-  eye: new Float32Array([0, 3, 8]), tgt: new Float32Array([0, 0, 0]), up: new Float32Array([0, 1, 0]), fov: .9, near: .08, far: 120,
+  eye: new Float32Array([0, 3, 8]), tgt: new Float32Array([0, 0, 0]), up: new Float32Array([0, 1, 0]), cp: new Float32Array([.9, 0, 0, 0]), tm: new Float64Array(1), near: .08, far: 120,
   dl: new Float32Array(6 * 8), ndl: 0,
   pA: new Float32Array(PMAX_A * 12), nA: 0, pB: new Float32Array(PMAX_B * 12), nB: 0, mk: new Float32Array(MARK_MAX * 8), nmk: 0,
   U: new Float32Array(428), view: new Float32Array(16), proj: new Float32Array(16), vp: new Float32Array(16), pvp: new Float32Array(16), tmp: new Float32Array(16), tmp2: new Float32Array(16),
@@ -172,7 +172,7 @@ const R = {
     U.set(this.pvp, 32); U.set(this.vp, 16);
     this.proj[8] += jx; this.proj[9] += jy; M4.mul(this.tmp, 0, this.proj, 0, this.view, 0); this.proj[8] -= jx; this.proj[9] -= jy;
     U.set(this.tmp, 0); M4.invert(this.tmp2, this.tmp); U.set(this.tmp2, 48); U.set(this.view, 64);
-    U[80] = eye[0]; U[81] = eye[1]; U[82] = eye[2]; U[83] = this.time; U[84] = w; U[85] = h; U[86] = 1 / w; U[87] = 1 / h;
+    U[80] = eye[0]; U[81] = eye[1]; U[82] = eye[2]; U[83] = this.tm[0]; U[84] = w; U[85] = h; U[86] = 1 / w; U[87] = 1 / h;
     U[88] = this.exposure; U[89] = this.frameNo; U[90] = this.scene; U[91] = this.amb; U[92] = this.mblur; U[93] = this.nsl + this.ndl; U[94] = this.quality; U[95] = this.reset;
     U[96] = jx; U[97] = jy; U[420] = this.flash; U[421] = this.proj[5]; U[422] = this.near; U[423] = this.far; U[424] = this.fog; U[425] = this.debug || 0;
     if (this.baseL) { const kd = this.keyDim === undefined ? 1 : this.keyDim; for (let i = 0; i < this.nsl; i++) { const o = 100 + i * 16, k = i < 4 ? kd : 1; U[o + 8] = this.baseL[i * 3] * k; U[o + 9] = this.baseL[i * 3 + 1] * k; U[o + 10] = this.baseL[i * 3 + 2] * k; } }
@@ -185,7 +185,7 @@ const R = {
     // jitter Halton(2,3)
     let n = (this.frameNo % 8) + 1, jx = 0, jy = 0, f = .5, k = n; while (k > 0) { jx += f * (k & 1); k >>= 1; f *= .5; } f = 1 / 3; k = n; while (k > 0) { jy += f * (k % 3); k = (k / 3) | 0; f /= 3; }
     jx = (jx - .5) * 2 / w; jy = (jy - .5) * 2 / h;
-    M4.persp(this.proj, this.fov, w / h, this.near, this.far); M4.lookAt(this.view, this.eye[0], this.eye[1], this.eye[2], this.tgt[0], this.tgt[1], this.tgt[2], this.up[0], this.up[1], this.up[2]);
+    M4.persp(this.proj, this.cp[0], w / h, this.near, this.far); M4.lookAt(this.view, this.eye[0], this.eye[1], this.eye[2], this.tgt[0], this.tgt[1], this.tgt[2], this.up[0], this.up[1], this.up[2]);
     this.fillFrame(w, h, this.eye, jx, jy, this.reset > 0);
     q.writeBuffer(this.ubo, 0, this.U); q.writeBuffer(this.ibuf, 0, this.I);
     if (this.nA > 0) q.writeBuffer(this.pbufA, 0, this.pA, 0, this.nA * 12); if (this.nB > 0) q.writeBuffer(this.pbufB, 0, this.pB, 0, this.nB * 12);

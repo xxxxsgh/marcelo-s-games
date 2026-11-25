@@ -129,6 +129,11 @@ b,.h{font-weight:800}
 // ==== 00_math.js ====
 // ---------- matematica sem alocacao: tudo escreve em arrays ja existentes ----------
 const PI = Math.PI, TAU = PI * 2;
+const hyp = (a, b, c = 0, d = 0) => Math.sqrt(a * a + b * b + c * c + d * d);
+// Registradores pre-alocados. Convencao do codigo quente (luta): nenhuma funcao recebe ou devolve double;
+// os valores vao por estes arrays, porque o V8 encaixota doubles (HeapNumber) em chamadas nao embutidas.
+// _c simulacao (0-14 saidas, 32-63 entradas), _f efeitos, _d instancia, _t translacao+angulo, _q pose, _k camera/vibracao, _u aleatorio
+const _c = new Float64Array(64), _f = new Float32Array(16), _d = new Float32Array(12), _t = new Float64Array(4), _q = new Float64Array(8), _k = new Float32Array(12), _u = new Float64Array(1);
 const clamp = (x, a, b) => x < a ? a : x > b ? b : x;
 const lerp = (a, b, t) => a + (b - a) * t;
 const sstep = (a, b, x) => { x = clamp((x - a) / (b - a), 0, 1); return x * x * (3 - 2 * x); };
@@ -143,6 +148,7 @@ class Rng {
     t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
+  uR() { const s = this.s; s[0] += 0x6D2B79F5; let t = s[0]; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); _u[0] = ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
   r(a, b) { return a + (b - a) * this.u(); }
   s1() { return this.u() * 2 - 1; }
 }
@@ -169,8 +175,8 @@ const M4 = {
     o[12] = (l + r) / (l - r); o[13] = (t + b) / (b - t); o[14] = n / (n - f); o[15] = 1;
   },
   lookAt(o, ex, ey, ez, tx, ty, tz, ux, uy, uz) {
-    let zx = ex - tx, zy = ey - ty, zz = ez - tz; let l = 1 / Math.hypot(zx, zy, zz); zx *= l; zy *= l; zz *= l;
-    let xx = uy * zz - uz * zy, xy = uz * zx - ux * zz, xz = ux * zy - uy * zx; l = 1 / (Math.hypot(xx, xy, xz) || 1); xx *= l; xy *= l; xz *= l;
+    let zx = ex - tx, zy = ey - ty, zz = ez - tz; let l = 1 / hyp(zx, zy, zz); zx *= l; zy *= l; zz *= l;
+    let xx = uy * zz - uz * zy, xy = uz * zx - ux * zz, xz = ux * zy - uy * zx; l = 1 / (hyp(xx, xy, xz) || 1); xx *= l; xy *= l; xz *= l;
     const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
     o[0] = xx; o[1] = yx; o[2] = zx; o[3] = 0; o[4] = xy; o[5] = yy; o[6] = zy; o[7] = 0; o[8] = xz; o[9] = yz; o[10] = zz; o[11] = 0;
     o[12] = -(xx * ex + xy * ey + xz * ez); o[13] = -(yx * ex + yy * ey + yz * ez); o[14] = -(zx * ex + zy * ey + zz * ez); o[15] = 1;
@@ -185,7 +191,8 @@ const M4 = {
     o[12] = (a11 * b07 - a10 * b09 - a12 * b06) * d; o[13] = (a00 * b09 - a01 * b07 + a02 * b06) * d; o[14] = (a31 * b01 - a30 * b03 - a32 * b00) * d; o[15] = (a20 * b03 - a21 * b01 + a22 * b00) * d;
   },
   // matriz a partir de quaternio + posicao (escala 1)
-  fromQT(o, i, x, y, z, w, px, py, pz) {
+  fromQTr(o, i) {
+    const x = _q[0], y = _q[1], z = _q[2], w = _q[3], px = _q[4], py = _q[5], pz = _q[6];
     const x2 = x + x, y2 = y + y, z2 = z + z, xx = x * x2, xy = x * y2, xz = x * z2, yy = y * y2, yz = y * z2, zz = z * z2, wx = w * x2, wy = w * y2, wz = w * z2;
     o[i] = 1 - yy - zz; o[i + 1] = xy + wz; o[i + 2] = xz - wy; o[i + 3] = 0;
     o[i + 4] = xy - wz; o[i + 5] = 1 - xx - zz; o[i + 6] = yz + wx; o[i + 7] = 0;
@@ -193,8 +200,8 @@ const M4 = {
     o[i + 12] = px; o[i + 13] = py; o[i + 14] = pz; o[i + 15] = 1;
   },
   // o = a * T(tx,ty,tz) * R(eixo 0|1|2, ang)
-  mulTR(o, i, a, j, tx, ty, tz, axis, ang) {
-    const c = Math.cos(ang), s = Math.sin(ang), t = M4._t; t.fill(0); t[0] = t[5] = t[10] = t[15] = 1;
+  mulTRr(o, i, a, j, axis) {
+    const tx = _t[0], ty = _t[1], tz = _t[2], ang = _t[3], c = Math.cos(ang), s = Math.sin(ang), t = M4._t; t.fill(0); t[0] = t[5] = t[10] = t[15] = 1;
     if (axis === 0) { t[5] = c; t[6] = s; t[9] = -s; t[10] = c; } else if (axis === 1) { t[0] = c; t[2] = -s; t[8] = s; t[10] = c; } else { t[0] = c; t[1] = s; t[4] = -s; t[5] = c; }
     t[12] = tx; t[13] = ty; t[14] = tz; M4.mul(o, i, a, j, t, 0);
   },
@@ -1368,9 +1375,9 @@ const WGSL_BLIT = WGSL_FS_TRI_SRC + /* wgsl */`
 const INST_MAX = 160, INST_F = 64, PMAX_A = 384, PMAX_B = 3072, MARK_MAX = 256, SH_RES = 2048, ENV_RES = 128, ENV_MIPS = 6;
 const SLOT = { WORLD: 0, GLASS: 1, AUX0: 2, AUX1: 3, AUX2: 4, AUX3: 5, ROBOT: 8, ROBOT_N: 20, DEBRIS: 48, DEBRIS_N: 40 };
 const R = {
-  ok: false, w: 0, h: 0, frameNo: 0, time: 0, scene: -1, exposure: 1, fog: .02, mblur: 1, flash: 0, quality: 1, reset: 1, amb: 1,
+  ok: false, w: 0, h: 0, frameNo: 0, scene: -1, exposure: 1, fog: .02, mblur: 1, flash: 0, quality: 1, reset: 1, amb: 1,
   I: new Float32Array(INST_MAX * INST_F), im: new Int16Array(INST_MAX).fill(-1),
-  eye: new Float32Array([0, 3, 8]), tgt: new Float32Array([0, 0, 0]), up: new Float32Array([0, 1, 0]), fov: .9, near: .08, far: 120,
+  eye: new Float32Array([0, 3, 8]), tgt: new Float32Array([0, 0, 0]), up: new Float32Array([0, 1, 0]), cp: new Float32Array([.9, 0, 0, 0]), tm: new Float64Array(1), near: .08, far: 120,
   dl: new Float32Array(6 * 8), ndl: 0,
   pA: new Float32Array(PMAX_A * 12), nA: 0, pB: new Float32Array(PMAX_B * 12), nB: 0, mk: new Float32Array(MARK_MAX * 8), nmk: 0,
   U: new Float32Array(428), view: new Float32Array(16), proj: new Float32Array(16), vp: new Float32Array(16), pvp: new Float32Array(16), tmp: new Float32Array(16), tmp2: new Float32Array(16),
@@ -1538,7 +1545,7 @@ const R = {
     U.set(this.pvp, 32); U.set(this.vp, 16);
     this.proj[8] += jx; this.proj[9] += jy; M4.mul(this.tmp, 0, this.proj, 0, this.view, 0); this.proj[8] -= jx; this.proj[9] -= jy;
     U.set(this.tmp, 0); M4.invert(this.tmp2, this.tmp); U.set(this.tmp2, 48); U.set(this.view, 64);
-    U[80] = eye[0]; U[81] = eye[1]; U[82] = eye[2]; U[83] = this.time; U[84] = w; U[85] = h; U[86] = 1 / w; U[87] = 1 / h;
+    U[80] = eye[0]; U[81] = eye[1]; U[82] = eye[2]; U[83] = this.tm[0]; U[84] = w; U[85] = h; U[86] = 1 / w; U[87] = 1 / h;
     U[88] = this.exposure; U[89] = this.frameNo; U[90] = this.scene; U[91] = this.amb; U[92] = this.mblur; U[93] = this.nsl + this.ndl; U[94] = this.quality; U[95] = this.reset;
     U[96] = jx; U[97] = jy; U[420] = this.flash; U[421] = this.proj[5]; U[422] = this.near; U[423] = this.far; U[424] = this.fog; U[425] = this.debug || 0;
     if (this.baseL) { const kd = this.keyDim === undefined ? 1 : this.keyDim; for (let i = 0; i < this.nsl; i++) { const o = 100 + i * 16, k = i < 4 ? kd : 1; U[o + 8] = this.baseL[i * 3] * k; U[o + 9] = this.baseL[i * 3 + 1] * k; U[o + 10] = this.baseL[i * 3 + 2] * k; } }
@@ -1551,7 +1558,7 @@ const R = {
     // jitter Halton(2,3)
     let n = (this.frameNo % 8) + 1, jx = 0, jy = 0, f = .5, k = n; while (k > 0) { jx += f * (k & 1); k >>= 1; f *= .5; } f = 1 / 3; k = n; while (k > 0) { jy += f * (k % 3); k = (k / 3) | 0; f /= 3; }
     jx = (jx - .5) * 2 / w; jy = (jy - .5) * 2 / h;
-    M4.persp(this.proj, this.fov, w / h, this.near, this.far); M4.lookAt(this.view, this.eye[0], this.eye[1], this.eye[2], this.tgt[0], this.tgt[1], this.tgt[2], this.up[0], this.up[1], this.up[2]);
+    M4.persp(this.proj, this.cp[0], w / h, this.near, this.far); M4.lookAt(this.view, this.eye[0], this.eye[1], this.eye[2], this.tgt[0], this.tgt[1], this.tgt[2], this.up[0], this.up[1], this.up[2]);
     this.fillFrame(w, h, this.eye, jx, jy, this.reset > 0);
     q.writeBuffer(this.ubo, 0, this.U); q.writeBuffer(this.ibuf, 0, this.I);
     if (this.nA > 0) q.writeBuffer(this.pbufA, 0, this.pA, 0, this.nA * 12); if (this.nB > 0) q.writeBuffer(this.pbufB, 0, this.pB, 0, this.nB * 12);
@@ -1619,7 +1626,6 @@ const ESTILOS = [ // agress, distancia preferida, usa armadilha, recua apos golp
   { nome: 'caça o ponto fraco', ag: .8, dist: 1.4, trap: .4, back: .4, flank: 1.0 },
 ];
 const DEB_N = SLOT.DEBRIS_N, DEB_F = 20;
-const _c = new Float64Array(16);
 
 class Bot {
   constructor(id) {
@@ -1630,9 +1636,10 @@ class Bot {
     this.thr = 0; this.steer = 0; this.fire = 0; this.flipB = 0; this.resetB = 0; this.pfire = 0;
     this.ai = { estilo: 0, t: 0, mode: 0, mt: 0, stuck: 0, sx: 0, sz: 0, jit: 0, side: 1, lastHit: 0 };
     this.jd = new Float32Array(4); // dano causado, agressividade, controle, resets
+    this.arng = new Rng(1); this.mid = new Int16Array(12);
     this.reset0();
   }
-  reset0() { this.wspin = 0; this.wa = 0; this.wst = 0; this.wt = 0; this.wcd = 0; this.won = 0; this.grab = 0; this.hitcd = 0; this.imm = 0; this.ax = 0; this.az = 0; this.at = 0; this.flipCd = 0; this.resetCd = 0; this.burn = 0; this.fireOn = 0; this.dead = 0; this.ko = 0; this.sawCd = 0; this.heat = 0; this.air = 0; this.lastHitBy = 0; this.pitted = 0; this.glow = 0; }
+  reset0() { this.wspin = 0; this.wa = 0; this.wst = 0; this.wt = 0; this.wcd = 0; this.won = 0; this.grab = 0; this.hitcd = 0; this.imm = 0; this.ax = 0; this.az = 0; this.at = 0; this.flipCd = 0; this.resetCd = 0; this.burn = 0; this.fireOn = 0; this.dead = 0; this.ko = 0; this.sawCd = 0; this.heat = 0; this.air = 0; this.lastHitBy = 0; this.pitted = 0; this.glow = 0; this.scr = 0; this.scrX = 0; this.scrZ = 0; this.hcon = 0; this.grounded = 0; this.teleport = 0; this.gx = 0; this.gy = 0; this.gz = 0; this.wedge = 0; }
 }
 
 class Sim {
@@ -1640,13 +1647,14 @@ class Sim {
     this.bots = [new Bot(0), new Bot(1)]; this.rng = new Rng(1); this.t = 0; this.frame = 0; this.over = 0; this.winner = -1; this.koBy = '';
     this.deb = new Float64Array(DEB_N * DEB_F); this.debMesh = new Int16Array(DEB_N).fill(-1); this.debNext = 0; this.debInfo = new Float32Array(DEB_N * 8);
     this.ev = new Float32Array(96 * 8); this.nev = 0; this.sawH = new Float32Array(2); this.sawA = 0; this.ahA = 1.25; this.ahSt = 0; this.ahT = 0; this.ahCd = 2; this.flameOn = 0; this.dur = LUTA_T;
-    this.best = 0; this.bestFrame = -1; this.scores = new Float32Array(3 * 2 * 3); this.judgeTot = new Float32Array(6); this.ptsA = 0; this.ptsB = 0;
+    this.best = 0; this.bestFrame = -1; this.noKO = false; this.pitY = 0; this.scores = new Float32Array(3 * 2 * 3); this.judgeTot = new Float32Array(6); this.ptsA = 0; this.ptsB = 0;
   }
-  emit(type, x, y, z, dx, dy, dz, mag) { if (this.nev >= 96) return; const e = this.ev, o = this.nev++ * 8; e[o] = type; e[o + 1] = x; e[o + 2] = y; e[o + 3] = z; e[o + 4] = dx; e[o + 5] = dy; e[o + 6] = dz; e[o + 7] = mag; }
+  emitR(type) { if (this.nev >= 96) return; const e = this.ev, o = this.nev++ * 8, x = _c[48], y = _c[49], z = _c[50], dx = _c[51], dy = _c[52], dz = _c[53], mag = _c[54]; e[o] = type; e[o + 1] = x; e[o + 2] = y; e[o + 3] = z; e[o + 4] = dx; e[o + 5] = dy; e[o + 6] = dz; e[o + 7] = mag; }
   // b: montagem, hp: Float32Array(12) ou null (novo), cfg {nome,cor,num,estilo}
   setupBot(i, build, hp, cfg) {
     const B = this.bots[i]; B.reset0(); B.b[0] = build[0]; B.b[1] = build[1]; B.b[2] = build[2]; B.b[3] = build[3]; layoutOf(build, B.L); statsOf(build, B.S);
-    B.nome = cfg.nome; B.cor = cfg.cor; B.num = cfg.num; B.ai.estilo = cfg.estilo || 0; B.ai.t = 0; B.ai.mode = 0; B.ai.mt = 0; B.ai.stuck = 0; B.ai.side = i ? -1 : 1; B.jd.fill(0);
+    B.nome = cfg.nome; B.cor = cfg.cor; B.num = cfg.num; B.ai.estilo = cfg.estilo || 0; B.ai.t = 0; B.ai.mode = 0; B.ai.mt = 0; B.ai.stuck = 0; B.ai.side = i ? -1 : 1; B.ai.face = 0; B.ai.until = 0; B.ai.lastHit = -9; B.ai.jit = 0; B.ai.sx = START[i][0]; B.ai.sz = START[i][1]; B.jd.fill(0);
+    B.mid[0] = MESH['ch' + build[0]].id; B.mid[1] = MESH['wh' + build[1]].id; for (let p = 0; p < 5; p++) B.mid[2 + p] = MESH[`ar${build[0]}_${build[2]}_${p}`].id; B.mid[7] = MESH[`wb${build[0]}_${build[3]}`].id; B.mid[8] = MESH[`wm${build[0]}_${build[3]}`].id;
     const L = B.L, c = CHASSIS[build[0]], w = RODAS[build[1]], a = BLIND[build[2]], k = ARMAS[build[3]];
     B.ycm = L.hy1 * .36; B.m = B.S.kg; const sx = 2 * L.hx, sy = L.hy1 + L.clear, sz = 2 * L.hz;
     B.Ii[0] = 1 / (B.m / 12 * (sy * sy + sz * sz) * 1.5); B.Ii[1] = 1 / (B.m / 12 * (sx * sx + sz * sz) * 1.25); B.Ii[2] = 1 / (B.m / 12 * (sx * sx + sy * sy) * 1.5);
@@ -1665,18 +1673,20 @@ class Sim {
     const s = B.s; s[0] = START[i][0]; s[1] = L.clear + B.ycm + .01; s[2] = START[i][1]; s[3] = 0; s[4] = i ? 1 : 0; s[5] = 0; s[6] = i ? 0 : 1; for (let q = 7; q < 13; q++) s[q] = 0;
     B.ax = s[0]; B.az = s[2]; this.updR(B);
   }
-  start(seed, dur) { this.rng.seed(seed); this.t = 0; this.frame = 0; this.over = 0; this.winner = -1; this.koBy = ''; this.debMesh.fill(-1); this.debNext = 0; this.nev = 0; this.sawH.fill(0); this.ahA = 1.25; this.ahSt = 0; this.ahCd = 2; this.flameOn = 0; this.dur = dur || LUTA_T; this.best = 0; this.bestFrame = -1; this.pitY = 0; }
+  start(seed, dur) { this.rng.seed(seed); this.bots[0].arng.seed(seed * 7919 + 11); this.bots[1].arng.seed(seed * 104729 + 23); this.t = 0; this.frame = 0; this.over = 0; this.winner = -1; this.koBy = ''; this.debMesh.fill(-1); this.debNext = 0; this.nev = 0; this.sawH.fill(0); this.ahA = 1.25; this.ahSt = 0; this.ahCd = 2; this.flameOn = 0; this.dur = dur || LUTA_T; this.best = 0; this.bestFrame = -1; this.pitY = 0; }
   updR(B) { const s = B.s, x = s[3], y = s[4], z = s[5], w = s[6], R = B.R; R[0] = 1 - 2 * (y * y + z * z); R[1] = 2 * (x * y - w * z); R[2] = 2 * (x * z + w * y); R[3] = 2 * (x * y + w * z); R[4] = 1 - 2 * (x * x + z * z); R[5] = 2 * (y * z - w * x); R[6] = 2 * (x * z - w * y); R[7] = 2 * (y * z + w * x); R[8] = 1 - 2 * (x * x + y * y); }
   // impulso J aplicado no ponto mundial P
-  impulse(B, px, py, pz, jx, jy, jz) {
+  impulseR(B) {
+    const px = _c[36], py = _c[37], pz = _c[38], jx = _c[39], jy = _c[40], jz = _c[41];
     const s = B.s, R = B.R, im = 1 / B.m; s[7] += jx * im; s[8] += jy * im; s[9] += jz * im;
     const rx = px - s[0], ry = py - s[1], rz = pz - s[2], tx = ry * jz - rz * jy, ty = rz * jx - rx * jz, tz = rx * jy - ry * jx;
     const lx = (R[0] * tx + R[3] * ty + R[6] * tz) * B.Ii[0], ly = (R[1] * tx + R[4] * ty + R[7] * tz) * B.Ii[1], lz = (R[2] * tx + R[5] * ty + R[8] * tz) * B.Ii[2];
     s[10] += R[0] * lx + R[1] * ly + R[2] * lz; s[11] += R[3] * lx + R[4] * ly + R[5] * lz; s[12] += R[6] * lx + R[7] * ly + R[8] * lz;
   }
-  force(B, px, py, pz, fx, fy, fz) { const s = B.s; B.F[0] += fx; B.F[1] += fy; B.F[2] += fz; const rx = px - s[0], ry = py - s[1], rz = pz - s[2]; B.T[0] += ry * fz - rz * fy; B.T[1] += rz * fx - rx * fz; B.T[2] += rx * fy - ry * fx; }
+  forceR(B) { const px = _c[36], py = _c[37], pz = _c[38], fx = _c[39], fy = _c[40], fz = _c[41], s = B.s; B.F[0] += fx; B.F[1] += fy; B.F[2] += fz; const rx = px - s[0], ry = py - s[1], rz = pz - s[2]; B.T[0] += ry * fz - rz * fy; B.T[1] += rz * fx - rx * fz; B.T[2] += rx * fy - ry * fx; }
   // contato de um ponto com piso/fosso/paredes. devolve penetracao e normal em _c[0..3]; raio r
-  env(x, y, z, r) {
+  envR() {
+    const x = _c[32], y = _c[33], z = _c[34], r = _c[35];
     let pen = 0, nx = 0, ny = 1, nz = 0;
     const dx = Math.abs(x - PIT.x) - PIT.h, dz = Math.abs(z - PIT.z) - PIT.h;
     if (dx < 0 && dz < 0) { pen = this.pitY - (y - r); if (pen <= 0 && y - r < 0) { // paredes do fosso
@@ -1685,40 +1695,43 @@ class Sim {
     let p2 = Math.abs(x) + r - AR; if (p2 > pen && p2 > 0) { pen = p2; nx = x > 0 ? -1 : 1; ny = 0; nz = 0; }
     p2 = Math.abs(z) + r - AR; if (p2 > pen && p2 > 0) { pen = p2; nz = z > 0 ? -1 : 1; ny = 0; nx = 0; }
     p2 = y + r - (WALL_H + .7); if (p2 > pen && p2 > 0) { pen = p2; nx = 0; ny = -1; nz = 0; }
-    _c[0] = pen; _c[1] = nx; _c[2] = ny; _c[3] = nz; return pen;
+    _c[0] = pen; _c[1] = nx; _c[2] = ny; _c[3] = nz;
   }
   // ponto mundial -> local do casco (relativo ao CM) em _c[4..6]
-  toLocal(B, x, y, z) { const s = B.s, R = B.R, dx = x - s[0], dy = y - s[1], dz = z - s[2]; _c[4] = R[0] * dx + R[3] * dy + R[6] * dz; _c[5] = R[1] * dx + R[4] * dy + R[7] * dz; _c[6] = R[2] * dx + R[5] * dy + R[8] * dz; }
+  toLocalR(B) { const x = _c[42], y = _c[43], z = _c[44], s = B.s, R = B.R, dx = x - s[0], dy = y - s[1], dz = z - s[2]; _c[4] = R[0] * dx + R[3] * dy + R[6] * dz; _c[5] = R[1] * dx + R[4] * dy + R[7] * dz; _c[6] = R[2] * dx + R[5] * dy + R[8] * dz; }
   // ponto do casco de B mais proximo de um ponto mundial -> _c[8..10] mundo, devolve distancia
-  closest(B, x, y, z) { this.toLocal(B, x, y, z); const L = B.L, lx = clamp(_c[4], -L.hx, L.hx), ly = clamp(_c[5], -B.ycm, L.hy1 - B.ycm), lz = clamp(_c[6], -L.hz, L.hz), s = B.s, R = B.R;
+  closestR(B) { const x = _c[42], y = _c[43], z = _c[44]; this.toLocalR(B); const L = B.L, lx = Math.min(Math.max(_c[4], -L.hx), L.hx), ly = Math.min(Math.max(_c[5], -B.ycm), L.hy1 - B.ycm), lz = Math.min(Math.max(_c[6], -L.hz), L.hz), s = B.s, R = B.R;
     _c[8] = s[0] + R[0] * lx + R[1] * ly + R[2] * lz; _c[9] = s[1] + R[3] * lx + R[4] * ly + R[5] * lz; _c[10] = s[2] + R[6] * lx + R[7] * ly + R[8] * lz; _c[11] = lx; _c[12] = ly; _c[13] = lz;
-    return Math.hypot(_c[8] - x, _c[9] - y, _c[10] - z); }
-  wpt(B, lx, ly, lz) { const s = B.s, R = B.R; _c[0] = s[0] + R[0] * lx + R[1] * ly + R[2] * lz; _c[1] = s[1] + R[3] * lx + R[4] * ly + R[5] * lz; _c[2] = s[2] + R[6] * lx + R[7] * ly + R[8] * lz; }
+    _c[14] = Math.sqrt((_c[8] - x) * (_c[8] - x) + (_c[9] - y) * (_c[9] - y) + (_c[10] - z) * (_c[10] - z)); }
+  wptR(B) { const lx = _c[45], ly = _c[46], lz = _c[47], s = B.s, R = B.R; _c[0] = s[0] + R[0] * lx + R[1] * ly + R[2] * lz; _c[1] = s[1] + R[3] * lx + R[4] * ly + R[5] * lz; _c[2] = s[2] + R[6] * lx + R[7] * ly + R[8] * lz; }
 
   // ---------- dano ----------
-  damage(B, lx, ly, lz, amt, mode, by) {
+  damageR(B, mode, by) {
+    const lx = _c[55], ly = _c[56], lz = _c[57], amt = _c[58];
     if (amt <= 0 || this.over) return; const L = B.L, hy = (L.hy1) * .5, fx = lx / L.hx, fz = lz / L.hz, fy = (ly + B.ycm - hy) / hy;
     let face = P_AT; const ax = Math.abs(fx), ay = Math.abs(fy), az = Math.abs(fz);
     if (mode === 1) face = P_AT; else if (mode === 2) face = -1; else if (ax >= ay && ax >= az) face = fx > 0 ? P_AF : P_AR; else if (az >= ay) face = fz > 0 ? P_ARI : P_AL; else face = fy > 0 ? P_AT : -1;
     let rest = amt; const A = this.bots[1 - B.id];
     // rodas expostas na lateral
-    if (face === P_AL || face === P_ARI) { const wi = (lx > (L.wx0 + L.wx1) / 2 ? 2 : 0) + (face === P_ARI ? 1 : 0), wx = lx > (L.wx0 + L.wx1) / 2 ? L.wx1 : L.wx0; if (Math.abs(lx - wx) < L.wr + .09) { this.hurt(B, P_W + wi, amt * .5, by); rest *= .5; } }
-    if (face >= 0 && B.hp[face] > 0) { this.addDent(B, face - P_AF, lx, ly + B.ycm, lz, amt); this.hurt(B, face, rest * .82, by); rest *= .18; }
-    else if (face >= 0) this.addDent(B, 5, lx, ly + B.ycm, lz, amt * .5);
-    if (face === P_AL || face === P_ARI) { const wi = (lx > (L.wx0 + L.wx1) / 2 ? 2 : 0) + (face === P_ARI ? 1 : 0); if (B.hp[P_W + wi] > 0) { this.hurt(B, P_W + wi, rest * .6, by); rest *= .4; } this.hurt(B, P_CH, rest, by); }
-    else if (face === P_AF) { if (B.hp[P_WP] > 0) { this.hurt(B, P_WP, rest * .5, by); rest *= .5; } this.hurt(B, P_CH, rest, by); }
-    else if (face === P_AR) { this.hurt(B, P_BAT, rest * .55, by); this.hurt(B, P_CH, rest * .45, by); }
-    else if (face === P_AT) { if (Math.abs(lx - L.mx) < .16 && B.hp[P_WP] > 0) { this.hurt(B, P_WP, rest * .45, by); rest *= .55; } this.hurt(B, P_BAT, rest * .5, by); this.hurt(B, P_CH, rest * .5, by); }
-    else this.hurt(B, P_CH, rest, by);
+    if (face === P_AL || face === P_ARI) { const wi = (lx > (L.wx0 + L.wx1) / 2 ? 2 : 0) + (face === P_ARI ? 1 : 0), wx = lx > (L.wx0 + L.wx1) / 2 ? L.wx1 : L.wx0; if (Math.abs(lx - wx) < L.wr + .09) { (_c[59] = amt * .5, this.hurtR(B, P_W + wi, by)); rest *= .5; } }
+    if (face >= 0 && B.hp[face] > 0) { (_c[60] = lx, _c[61] = ly + B.ycm, _c[62] = lz, _c[63] = amt, this.addDentR(B, face - P_AF)); (_c[59] = rest * .82, this.hurtR(B, face, by)); rest *= .18; }
+    else if (face >= 0) (_c[60] = lx, _c[61] = ly + B.ycm, _c[62] = lz, _c[63] = amt * .5, this.addDentR(B, 5));
+    if (face === P_AL || face === P_ARI) { const wi = (lx > (L.wx0 + L.wx1) / 2 ? 2 : 0) + (face === P_ARI ? 1 : 0); if (B.hp[P_W + wi] > 0) { (_c[59] = rest * .6, this.hurtR(B, P_W + wi, by)); rest *= .4; } (_c[59] = rest, this.hurtR(B, P_CH, by)); }
+    else if (face === P_AF) { if (B.hp[P_WP] > 0) { (_c[59] = rest * .5, this.hurtR(B, P_WP, by)); rest *= .5; } (_c[59] = rest, this.hurtR(B, P_CH, by)); }
+    else if (face === P_AR) { (_c[59] = rest * .55, this.hurtR(B, P_BAT, by)); (_c[59] = rest * .45, this.hurtR(B, P_CH, by)); }
+    else if (face === P_AT) { if (Math.abs(lx - L.mx) < .16 && B.hp[P_WP] > 0) { (_c[59] = rest * .45, this.hurtR(B, P_WP, by)); rest *= .55; } (_c[59] = rest * .5, this.hurtR(B, P_BAT, by)); (_c[59] = rest * .5, this.hurtR(B, P_CH, by)); }
+    else (_c[59] = rest, this.hurtR(B, P_CH, by));
     B.glow = 1;
   }
-  addDent(B, panel, lx, ly, lz, amt) { // ate 4 mossas por painel; a mais proxima acumula
+  addDentR(B, panel) { // ate 4 mossas por painel; a mais proxima acumula
+    const lx = _c[60], ly = _c[61], lz = _c[62], amt = _c[63];
     const d = B.dent, o = panel * 16; let best = -1, bd = .012;
     for (let k = 0; k < B.dentN[panel]; k++) { const q = o + k * 4, dd = (d[q] - lx) * (d[q] - lx) + (d[q + 1] - ly) * (d[q + 1] - ly) + (d[q + 2] - lz) * (d[q + 2] - lz); if (dd < bd) { bd = dd; best = k; } }
     if (best < 0) { if (B.dentN[panel] < 4) best = B.dentN[panel]++; else { best = 0; for (let k = 1; k < 4; k++) if (d[o + k * 4 + 3] < d[o + best * 4 + 3]) best = k; d[o + best * 4 + 3] = 0; } d[o + best * 4] = lx; d[o + best * 4 + 1] = ly; d[o + best * 4 + 2] = lz; }
     d[o + best * 4 + 3] = Math.min(2, d[o + best * 4 + 3] + amt / 34);
   }
-  hurt(B, part, amt, by) {
+  hurtR(B, part, by) {
+    const amt = _c[59];
     if (B.hp[part] <= 0 || amt <= 0) return; const two = B.L.nw === 2 && part >= 1 && part <= 4; if (two && part > 2) part -= 2;
     const before = B.hp[part]; B.hp[part] = Math.max(0, before - amt); if (two) B.hp[part + 2] = B.hp[part];
     if (by >= 0) this.bots[by].jd[0] += before - B.hp[part];
@@ -1731,30 +1744,30 @@ class Sim {
   }
   detach(B, part) {
     const L = B.L, s = B.s; let lx = 0, ly = L.hy1 * .5, lz = 0, mesh = -1, flat = 1;
-    if (part >= P_W && part <= 4) { const q = part - 1; if (L.nw === 2) { lx = (L.wx0 + L.wx1) / 2; lz = q === 0 ? -L.wz : L.wz; } else { lx = q < 2 ? L.wx0 : L.wx1; lz = (q & 1) ? L.wz : -L.wz; } ly = AXLE_Y; mesh = MESH['wh' + B.b[1]].id; flat = 2; }
-    else if (part === P_WP) { lx = L.px; ly = L.py; mesh = MESH[`wm${B.b[0]}_${B.b[3]}`].id; flat = B.b[3] === 0 ? 1 : 2; }
-    else { const p = part - P_AF; mesh = MESH[`ar${B.b[0]}_${B.b[2]}_${p}`].id; if (p === 0) lx = L.hx; else if (p === 1) lx = -L.hx; else if (p === 2) lz = -L.hz + .1; else if (p === 3) lz = L.hz - .1; else ly = L.hy1; flat = p >= 2 && p < 4 ? 2 : (p === 4 ? 1 : 0); }
-    this.wpt(B, lx, ly - B.ycm, lz); const ox = _c[0] - s[0], oy = _c[1] - s[1], oz = _c[2] - s[2], l = 1 / (Math.hypot(ox, oy, oz) || 1), r = this.rng;
+    if (part >= P_W && part <= 4) { const q = part - 1; if (L.nw === 2) { lx = (L.wx0 + L.wx1) / 2; lz = q === 0 ? -L.wz : L.wz; } else { lx = q < 2 ? L.wx0 : L.wx1; lz = (q & 1) ? L.wz : -L.wz; } ly = AXLE_Y; mesh = B.mid[1]; flat = 2; }
+    else if (part === P_WP) { lx = L.px; ly = L.py; mesh = B.mid[8]; flat = B.b[3] === 0 ? 1 : 2; }
+    else { const p = part - P_AF; mesh = B.mid[2 + p]; if (p === 0) lx = L.hx; else if (p === 1) lx = -L.hx; else if (p === 2) lz = -L.hz + .1; else if (p === 3) lz = L.hz - .1; else ly = L.hy1; flat = p >= 2 && p < 4 ? 2 : (p === 4 ? 1 : 0); }
+    (_c[45] = lx, _c[46] = ly - B.ycm, _c[47] = lz, this.wptR(B)); const ox = _c[0] - s[0], oy = _c[1] - s[1], oz = _c[2] - s[2], l = 1 / (Math.sqrt((ox) * (ox) + (oy) * (oy) + (oz) * (oz)) || 1), r = this.rng;
     const i = this.debNext; this.debNext = (this.debNext + 1) % DEB_N; const d = this.deb, o = i * DEB_F; this.debMesh[i] = mesh;
     const cxw = _c[0], cyw = _c[1], czw = _c[2];
     if (part >= P_AF && part <= P_AT) { // blindagem: malha no referencial do robo
-      this.wpt(B, 0, -B.ycm, 0); d[o] = _c[0]; d[o + 1] = _c[1]; d[o + 2] = _c[2]; d[o + 3] = s[3]; d[o + 4] = s[4]; d[o + 5] = s[5]; d[o + 6] = s[6]; }
+      (_c[45] = 0, _c[46] = -B.ycm, _c[47] = 0, this.wptR(B)); d[o] = _c[0]; d[o + 1] = _c[1]; d[o + 2] = _c[2]; d[o + 3] = s[3]; d[o + 4] = s[4]; d[o + 5] = s[5]; d[o + 6] = s[6]; }
     else { d[o] = cxw; d[o + 1] = cyw; d[o + 2] = czw; if (part <= 4 && lz < 0) { d[o + 3] = -s[5]; d[o + 4] = s[6]; d[o + 5] = s[3]; d[o + 6] = -s[4]; } else { d[o + 3] = s[3]; d[o + 4] = s[4]; d[o + 5] = s[5]; d[o + 6] = s[6]; } lx = 0; ly = 0; lz = 0; }
-    d[o + 7] = s[7] + ox * l * r.r(2, 4.5) + r.s1(); d[o + 8] = s[8] + r.r(2.5, 5); d[o + 9] = s[9] + oz * l * r.r(2, 4.5) + r.s1(); d[o + 10] = r.s1() * 9; d[o + 11] = r.s1() * 9; d[o + 12] = r.s1() * 9;
+    d[o + 7] = s[7] + ox * l * (r.uR(), (2) + ((4.5) - (2)) * _u[0]) + (r.uR(), _u[0] * 2 - 1); d[o + 8] = s[8] + (r.uR(), (2.5) + ((5) - (2.5)) * _u[0]); d[o + 9] = s[9] + oz * l * (r.uR(), (2) + ((4.5) - (2)) * _u[0]) + (r.uR(), _u[0] * 2 - 1); d[o + 10] = (r.uR(), _u[0] * 2 - 1) * 9; d[o + 11] = (r.uR(), _u[0] * 2 - 1) * 9; d[o + 12] = (r.uR(), _u[0] * 2 - 1) * 9;
     d[o + 13] = lx; d[o + 14] = ly; d[o + 15] = lz; d[o + 16] = flat; d[o + 17] = B.id; d[o + 18] = part; d[o + 19] = 0;
-    this.emit(EV.DETACH, cxw, cyw, czw, ox * l, 1, oz * l, part + B.id * 100);
+    (_c[48] = cxw, _c[49] = cyw, _c[50] = czw, _c[51] = ox * l, _c[52] = 1, _c[53] = oz * l, _c[54] = part + B.id * 100, this.emitR(EV.DETACH));
   }
 
   // ---------- IA ----------
   think(B, A) {
-    const ai = B.ai, st = ESTILOS[ai.estilo], s = B.s, R = B.R, as = A.s, r = this.rng; ai.t += DT;
+    const ai = B.ai, st = ESTILOS[ai.estilo], s = B.s, R = B.R, as = A.s, r = B.arng; ai.t += DT;
     let thr = 0, steer = 0, fire = 0; const up = R[4];
     B.flipB = (up < .2 && B.flipCd <= 0) ? 1 : 0; B.resetB = 0;
     if (B.dead) { B.thr = 0; B.steer = 0; B.fire = 0; return; }
-    const dx = as[0] - s[0], dz = as[2] - s[2], dist = Math.hypot(dx, dz) || 1e-3;
+    const dx = as[0] - s[0], dz = as[2] - s[2], dist = Math.sqrt((dx) * (dx) + (dz) * (dz)) || 1e-3;
     // alvo: ponto fraco do adversario (painel com menos vida, evitando a frente armada)
     let tx = as[0], tz = as[2]; ai.mt -= DT;
-    if (ai.mt <= 0) { ai.mt = r.r(.5, 1.1); ai.jit = r.s1();
+    if (ai.mt <= 0) { ai.mt = (r.uR(), (.5) + ((1.1) - (.5)) * _u[0]); ai.jit = (r.uR(), _u[0] * 2 - 1);
       let bestF = 0, bestV = 9; const AR_ = A.R; // 0 frente 1 tras 2 esq 3 dir
       for (let f = 0; f < 4; f++) { let v = A.hp[P_AF + f] / A.hpMax[P_AF + f]; if (f === 0 && A.hp[P_WP] > 0) v += .9; if (f === 1) v -= .12; if (f >= 2) { const w0 = A.hp[P_W + (f - 2)], w1 = A.hp[P_W + 2 + (f - 2)]; v -= .18 * (1 - (w0 + w1) / (2 * A.hpMax[P_W])) + .05; }
         const nx = f === 0 ? AR_[0] : f === 1 ? -AR_[0] : f === 2 ? -AR_[2] : AR_[2], nz = f === 0 ? AR_[6] : f === 1 ? -AR_[6] : f === 2 ? -AR_[8] : AR_[8]; v += (1 - (-(dx * nx + dz * nz) / dist)) * .25 * (1.2 - st.flank); if (v < bestV) { bestV = v; bestF = f; } }
@@ -1764,27 +1777,27 @@ class Sim {
       if (ai.mode === 2 && ai.t < ai.until) { } else if (st.back > .5 && ((ARMAS[B.b[3]].spin && !wpUp && B.hp[P_WP] > 0) || ai.t - ai.lastHit < 1.2 * st.back)) { ai.mode = 1; } else ai.mode = 0;
     }
     const AR_ = A.R, f = ai.face | 0, fnx = f === 0 ? AR_[0] : f === 1 ? -AR_[0] : f === 2 ? -AR_[2] : AR_[2], fnz = f === 0 ? AR_[6] : f === 1 ? -AR_[6] : f === 2 ? -AR_[8] : AR_[8];
-    const off = clamp(dist - .9, 0, 1.6) * st.flank; tx = as[0] + fnx * off; tz = as[2] + fnz * off;
+    const off = Math.min(Math.max(dist - .9, 0), 1.6) * st.flank; tx = as[0] + fnx * off; tz = as[2] + fnz * off;
     // empurrar para a armadilha: se o adversario esta entre mim e uma armadilha, vai reto
     let trapPush = 0;
-    if (st.trap > 0) for (let h = 0; h < 4; h++) { const hx = h === 0 ? PIT.x : h === 1 ? 4.3 : h === 2 ? FLAME.x : AHAM.hx, hz = h === 0 ? PIT.z : h === 1 ? -4.3 : h === 2 ? FLAME.z : AHAM.hz; const ax = hx - as[0], az = hz - as[2], ad = Math.hypot(ax, az) || 1; if ((h !== 0 || this.t > PIT_T) && ad < 5.5 && (ax * dx + az * dz) / (ad * dist) > .8 - st.trap * .25) { trapPush = Math.max(trapPush, st.trap * (h === 0 ? 1 : .7)); tx = as[0] - ax / ad * .3; tz = as[2] - az / ad * .3; } }
+    if (st.trap > 0) for (let h = 0; h < 4; h++) { const hx = h === 0 ? PIT.x : h === 1 ? 4.3 : h === 2 ? FLAME.x : AHAM.hx, hz = h === 0 ? PIT.z : h === 1 ? -4.3 : h === 2 ? FLAME.z : AHAM.hz; const ax = hx - as[0], az = hz - as[2], ad = Math.sqrt((ax) * (ax) + (az) * (az)) || 1; if ((h !== 0 || this.t > PIT_T) && ad < 5.5 && (ax * dx + az * dz) / (ad * dist) > .8 - st.trap * .25) { trapPush = Math.max(trapPush, st.trap * (h === 0 ? 1 : .7)); tx = as[0] - ax / ad * .3; tz = as[2] - az / ad * .3; } }
     if (ai.mode === 1) { // recua / orbita mantendo distancia
-      const want = Math.max(st.dist, 2.6), ox = -dx / dist, oz = -dz / dist, px = -oz * ai.side, pz = ox * ai.side; tx = as[0] + ox * want + px * 1.8; tz = as[2] + oz * want + pz * 1.8; if (Math.abs(tx) > AR - 1.4 || Math.abs(tz) > AR - 1.4) { ai.side = -ai.side; tx = clamp(tx, -AR + 1.6, AR - 1.6); tz = clamp(tz, -AR + 1.6, AR - 1.6); } }
+      const want = Math.max(st.dist, 2.6), ox = -dx / dist, oz = -dz / dist, px = -oz * ai.side, pz = ox * ai.side; tx = as[0] + ox * want + px * 1.8; tz = as[2] + oz * want + pz * 1.8; if (Math.abs(tx) > AR - 1.4 || Math.abs(tz) > AR - 1.4) { ai.side = -ai.side; tx = Math.min(Math.max(tx, -AR + 1.6), AR - 1.6); tz = Math.min(Math.max(tz, -AR + 1.6), AR - 1.6); } }
     // fuga das armadilhas: repulsao
     let pitNear = 0;
-    let gx = tx - s[0], gz = tz - s[2]; const gl = Math.hypot(gx, gz) || 1e-3; gx /= gl; gz /= gl;
-    for (let h = 0; h < 4; h++) { const hx = h === 0 ? PIT.x : h === 1 ? 4.3 : h === 2 ? FLAME.x : AHAM.hx, hz = h === 0 ? PIT.z : h === 1 ? -4.3 : h === 2 ? FLAME.z : AHAM.hz, rad = h === 0 ? (this.t > PIT_T - 4 ? 3.1 : 0) : h === 2 ? (this.flameOn ? 2.2 : 1.3) : 1.9; const ex = s[0] - hx, ez = s[2] - hz, ed = Math.hypot(ex, ez) || 1e-3; if (ed < rad) { const k = (1 - ed / rad) * (h === 0 ? 5.5 : 2.0) * (trapPush > 0 && dist < 1.6 && h !== 0 ? .5 : 1); gx += ex / ed * k; gz += ez / ed * k; if (h === 0 && ed < 2.0) pitNear = 1; } }
+    let gx = tx - s[0], gz = tz - s[2]; const gl = Math.sqrt((gx) * (gx) + (gz) * (gz)) || 1e-3; gx /= gl; gz /= gl;
+    for (let h = 0; h < 4; h++) { const hx = h === 0 ? PIT.x : h === 1 ? 4.3 : h === 2 ? FLAME.x : AHAM.hx, hz = h === 0 ? PIT.z : h === 1 ? -4.3 : h === 2 ? FLAME.z : AHAM.hz, rad = h === 0 ? (this.t > PIT_T - 4 ? 3.1 : 0) : h === 2 ? (this.flameOn ? 2.2 : 1.3) : 1.9; const ex = s[0] - hx, ez = s[2] - hz, ed = Math.sqrt((ex) * (ex) + (ez) * (ez)) || 1e-3; if (ed < rad) { const k = (1 - ed / rad) * (h === 0 ? 5.5 : 2.0) * (trapPush > 0 && dist < 1.6 && h !== 0 ? .5 : 1); gx += ex / ed * k; gz += ez / ed * k; if (h === 0 && ed < 2.0) pitNear = 1; } }
     // paredes
     if (Math.abs(s[0]) > AR - .9) gx -= Math.sign(s[0]) * .6; if (Math.abs(s[2]) > AR - .9) gz -= Math.sign(s[2]) * .6;
     const fwx = R[0], fwz = R[6], rtx = R[2], rtz = R[8], sgnUp = up < 0 ? -1 : 1;
     let ang = Math.atan2(gx * rtx + gz * rtz, gx * fwx + gz * fwz) * sgnUp;
-    let rev = 0; if (Math.abs(ang) > 2.3 && gl < 2.2 && ai.mode === 1) { rev = 1; ang = wrapPi(ang + PI); }
-    steer = clamp(ang * 2.2, -1, 1); thr = clamp(1.15 - Math.abs(ang) * .75, .15, 1) * (.55 + .45 * st.ag) * (rev ? -1 : 1);
+    let rev = 0; if (Math.abs(ang) > 2.3 && gl < 2.2 && ai.mode === 1) { rev = 1; ang = ang > 0 ? ang - PI : ang + PI; }
+    steer = Math.min(Math.max(ang * 2.2, -1), 1); thr = Math.min(Math.max(1.15 - Math.abs(ang) * .75, .15), 1) * (.55 + .45 * st.ag) * (rev ? -1 : 1);
     if (trapPush > 0 && dist < 1.8 && !pitNear) thr = 1; if (pitNear) { const vx = s[7], vz = s[9], px = PIT.x - s[0], pz = PIT.z - s[2]; if (vx * px + vz * pz > .4) thr = Math.min(thr, .25) * (rev ? -1 : 1); }
     // preso: da re girando
-    const mv = Math.hypot(s[0] - ai.sx, s[2] - ai.sz); if (mv > .25) { ai.sx = s[0]; ai.sz = s[2]; ai.stuck = 0; } else ai.stuck += DT;
+    const mv = Math.sqrt((s[0] - ai.sx) * (s[0] - ai.sx) + (s[2] - ai.sz) * (s[2] - ai.sz)); if (mv > .25) { ai.sx = s[0]; ai.sz = s[2]; ai.stuck = 0; } else ai.stuck += DT;
     if (ai.mode === 2) { thr = -.9; steer = ai.side * .8; if (ai.t > ai.until) { ai.mode = 0; ai.stuck = 0; } }
-    else if (ai.stuck > 1.3) { ai.mode = 2; ai.until = ai.t + r.r(.5, .9); ai.side = r.u() < .5 ? -1 : 1; }
+    else if (ai.stuck > 1.3) { ai.mode = 2; ai.until = ai.t + (r.uR(), (.5) + ((.9) - (.5)) * _u[0]); ai.side = (r.uR(), _u[0]) < .5 ? -1 : 1; }
     // arma
     const k = ARMAS[B.b[3]], facing = (dx * fwx + dz * fwz) / dist;
     if (B.hp[P_WP] > 0 && ai.estilo !== 1) { if (k.spin) fire = B.won ? 0 : 1; else if (B.b[3] === 5) fire = (B.wst === 0 && B.wcd <= 0 && dist < B.L.hitx + A.L.hx * .9 + .12 && facing > .86) ? 1 : 0; else fire = (B.wst === 0 && B.wcd <= 0 && dist < B.L.hitx + Math.max(A.L.hx, A.L.hz) * .8 + .05 && facing > .8) ? 1 : 0; }
@@ -1797,23 +1810,23 @@ class Sim {
   step() {
     if (this.over === 2) return; this.nev = 0; const b0 = this.bots[0], b1 = this.bots[1];
     // armadilhas
-    const t = this.t; this.pitY = -PIT.d * sstep(PIT_T, PIT_T + 2.5, t); for (let i = 0; i < 2; i++) { const ph = (t + i * 3.6) % 7.2, up = ph < 2.4 && t > 4 ? 1 : 0; this.sawH[i] += clamp(up - this.sawH[i], -DT * 3.5, DT * 3.5); } this.sawA += DT * 55;
+    const t = this.t; let pq = (t - PIT_T) / 2.5; pq = pq < 0 ? 0 : pq > 1 ? 1 : pq; this.pitY = -PIT.d * pq * pq * (3 - 2 * pq); for (let i = 0; i < 2; i++) { const ph = (t + i * 3.6) % 7.2, up = ph < 2.4 && t > 4 ? 1 : 0; this.sawH[i] += Math.min(Math.max(up - this.sawH[i], -DT * 3.5), DT * 3.5); } this.sawA += DT * 55;
     this.flameOn = ((t + 1.5) % 6.5) < 1.9 && t > 3 ? 1 : 0;
-    this.ahCd -= DT; if (this.ahSt === 0) { this.ahA += clamp(1.25 - this.ahA, -1, DT * 1.2); if (this.ahCd <= 0) for (let i = 0; i < 2; i++) { const s = this.bots[i].s; if (Math.hypot(s[0] - AHAM.hx, s[2] - AHAM.hz) < AHAM.r + .25 && s[1] < .6) { this.ahSt = 1; this.ahT = 0; } } }
-    else if (this.ahSt === 1) { this.ahT += DT; if (this.ahT > .4) { this.ahA -= DT * 14; if (this.ahA <= -.16) { this.ahA = -.16; this.ahSt = 0; this.ahCd = 3.6; this.emit(EV.AHAM, AHAM.hx, .05, AHAM.hz, 0, 1, 0, 1);
-          for (let i = 0; i < 2; i++) { const B = this.bots[i], s = B.s; if (Math.hypot(s[0] - AHAM.hx, s[2] - AHAM.hz) < AHAM.r + B.L.hx * .6 && s[1] < .7) { this.toLocal(B, AHAM.hx, s[1] + .2, AHAM.hz); this.damage(B, clamp(_c[4], -B.L.hx, B.L.hx), B.L.hy1 - B.ycm, clamp(_c[6], -B.L.hz, B.L.hz), 30, 1, -1); this.impulse(B, AHAM.hx, s[1], AHAM.hz, 0, -B.m * 2.5, 0); this.bots[1 - i].jd[2] += 6; this.emit(EV.HIT, AHAM.hx, s[1] + .1, AHAM.hz, 0, 1, 0, 60 + i * 1000); } } } } }
+    this.ahCd -= DT; if (this.ahSt === 0) { this.ahA += Math.min(Math.max(1.25 - this.ahA, -1), DT * 1.2); if (this.ahCd <= 0) for (let i = 0; i < 2; i++) { const s = this.bots[i].s; if (Math.sqrt((s[0] - AHAM.hx) * (s[0] - AHAM.hx) + (s[2] - AHAM.hz) * (s[2] - AHAM.hz)) < AHAM.r + .25 && s[1] < .6) { this.ahSt = 1; this.ahT = 0; } } }
+    else if (this.ahSt === 1) { this.ahT += DT; if (this.ahT > .4) { this.ahA -= DT * 14; if (this.ahA <= -.16) { this.ahA = -.16; this.ahSt = 0; this.ahCd = 3.6; (_c[48] = AHAM.hx, _c[49] = .05, _c[50] = AHAM.hz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 1, this.emitR(EV.AHAM));
+          for (let i = 0; i < 2; i++) { const B = this.bots[i], s = B.s; if (Math.sqrt((s[0] - AHAM.hx) * (s[0] - AHAM.hx) + (s[2] - AHAM.hz) * (s[2] - AHAM.hz)) < AHAM.r + B.L.hx * .6 && s[1] < .7) { (_c[42] = AHAM.hx, _c[43] = s[1] + .2, _c[44] = AHAM.hz, this.toLocalR(B)); (_c[55] = Math.min(Math.max(_c[4], -B.L.hx), B.L.hx), _c[56] = B.L.hy1 - B.ycm, _c[57] = Math.min(Math.max(_c[6], -B.L.hz), B.L.hz), _c[58] = 30, this.damageR(B, 1, -1)); (_c[36] = AHAM.hx, _c[37] = s[1], _c[38] = AHAM.hz, _c[39] = 0, _c[40] = -B.m * 2.5, _c[41] = 0, this.impulseR(B)); this.bots[1 - i].jd[2] += 6; (_c[48] = AHAM.hx, _c[49] = s[1] + .1, _c[50] = AHAM.hz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 60 + i * 1000, this.emitR(EV.HIT)); } } } } }
     for (let i = 0; i < 2; i++) { const B = this.bots[i], A = this.bots[1 - i]; if (B.isAI && !this.over) this.think(B, A); if (this.over) { B.thr = 0; B.steer = 0; B.fire = 0; } }
     for (let sub = 0; sub < SUB; sub++) { this.physics(b0); this.physics(b1); this.pair(b0, b1); this.pair(b1, b0); this.integrate(b0); this.integrate(b1); }
     this.weapon(b0, b1); this.weapon(b1, b0); this.hazards(b0, b1); this.hazards(b1, b0); this.debris();
     // contagem de nocaute, estatisticas dos juizes
     for (let i = 0; i < 2 && !this.over; i++) {
       const B = this.bots[i], A = this.bots[1 - i], s = B.s; B.pfire = B.fire;
-      const noW = B.hp[1] <= 0 && B.hp[2] <= 0 && B.hp[3] <= 0 && B.hp[4] <= 0, moved = Math.hypot(s[0] - B.ax, s[2] - B.az) > .3;
-      if (moved && !B.dead && !noW) { B.ax = s[0]; B.az = s[2]; B.at = 0; B.imm = 0; } else { B.at += DT; if (B.at > 1.5 || B.dead || noW) B.imm += DT; }
-      if (s[1] < -.55 && !B.pitted) { B.pitted = 1; this.emit(EV.KO, s[0], s[1], s[2], 0, 1, 0, i); this.finish(1 - i, 'fosso'); }
-      else if (B.imm >= KO_T) { this.emit(EV.KO, s[0], s[1], s[2], 0, 1, 0, i); this.finish(1 - i, 'nocaute'); }
+      const noW = B.hp[1] <= 0 && B.hp[2] <= 0 && B.hp[3] <= 0 && B.hp[4] <= 0, moved = Math.sqrt((s[0] - B.ax) * (s[0] - B.ax) + (s[2] - B.az) * (s[2] - B.az)) > .3;
+      if (moved && !B.dead && !noW) { B.ax = s[0]; B.az = s[2]; B.at = 0; B.imm = 0; } else { B.at += DT; if (B.at > 1.5 || B.dead || noW) B.imm += DT; } if (this.noKO) B.imm = 0;
+      if (s[1] < -.55 && !B.pitted) { B.pitted = 1; (_c[48] = s[0], _c[49] = s[1], _c[50] = s[2], _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = i, this.emitR(EV.KO)); this.finish(1 - i, 'fosso'); }
+      else if (B.imm >= KO_T) { (_c[48] = s[0], _c[49] = s[1], _c[50] = s[2], _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = i, this.emitR(EV.KO)); this.finish(1 - i, 'nocaute'); }
       // agressividade: aproximando-se; controle: adversario perto de armadilha/parede e eu empurrando
-      const dx = A.s[0] - s[0], dz = A.s[2] - s[2], d = Math.hypot(dx, dz) || 1, vr = (s[7] * dx + s[9] * dz) / d; if (vr > .6 && d < 6) B.jd[1] += DT * (.6 + vr * .15); if (d < 1.6 && vr > .3 && (Math.abs(A.s[0]) > AR - 1.5 || Math.abs(A.s[2]) > AR - 1.5)) B.jd[2] += DT * 1.5; if (A.R[4] < .2) B.jd[2] += DT * .8;
+      const dx = A.s[0] - s[0], dz = A.s[2] - s[2], d = Math.sqrt((dx) * (dx) + (dz) * (dz)) || 1, vr = (s[7] * dx + s[9] * dz) / d; if (vr > .6 && d < 6) B.jd[1] += DT * (.6 + vr * .15); if (d < 1.6 && vr > .3 && (Math.abs(A.s[0]) > AR - 1.5 || Math.abs(A.s[2]) > AR - 1.5)) B.jd[2] += DT * 1.5; if (A.R[4] < .2) B.jd[2] += DT * .8;
     }
     this.t += DT; this.frame++;
     if (!this.over && this.t >= this.dur) this.judge();
@@ -1822,7 +1835,7 @@ class Sim {
   judge() { // tres juizes: dano (5), agressividade (3), controle (3)
     const a = this.bots[0].jd, b = this.bots[1].jd, sc = this.scores; let va = 0, vb = 0; this.ptsA = 0; this.ptsB = 0;
     for (let j = 0; j < 3; j++) { let ta = 0, tb = 0;
-      for (let c = 0; c < 3; c++) { const max = c === 0 ? 5 : 3, bias = 1 + (j - 1) * (c === 0 ? .1 : c === 1 ? -.12 : .08), xa = (a[c] - (c === 2 ? a[3] * 3 : 0)) * bias + .01, xb = (b[c] - (c === 2 ? b[3] * 3 : 0)) / bias + .01; let pa = Math.round(max * Math.max(xa, 0) / (Math.max(xa, 0) + Math.max(xb, 0) + 1e-6)); pa = clamp(pa, 0, max); sc[j * 6 + c] = pa; sc[j * 6 + 3 + c] = max - pa; ta += pa; tb += max - pa; }
+      for (let c = 0; c < 3; c++) { const max = c === 0 ? 5 : 3, bias = 1 + (j - 1) * (c === 0 ? .1 : c === 1 ? -.12 : .08), xa = (a[c] - (c === 2 ? a[3] * 3 : 0)) * bias + .01, xb = (b[c] - (c === 2 ? b[3] * 3 : 0)) / bias + .01; let pa = Math.round(max * Math.max(xa, 0) / (Math.max(xa, 0) + Math.max(xb, 0) + 1e-6)); pa = Math.min(Math.max(pa, 0), max); sc[j * 6 + c] = pa; sc[j * 6 + 3 + c] = max - pa; ta += pa; tb += max - pa; }
       this.judgeTot[j * 2] = ta; this.judgeTot[j * 2 + 1] = tb; if (ta > tb) va++; else vb++; this.ptsA += ta; this.ptsB += tb; }
     this.over = 1; this.winner = va > vb ? 0 : 1; this.koBy = 'juizes';
   }
@@ -1831,15 +1844,15 @@ class Sim {
     const s = B.s, R = B.R, L = B.L, S = B.S, F = B.F, T = B.T, m = B.m; this.updR(B);
     F[0] = 0; F[1] = -GRAV * m; F[2] = 0; T[0] = 0; T[1] = 0; T[2] = 0;
     const up = R[4], sgnUp = up < 0 ? -1 : 1, batt = B.dead ? 0 : (B.hp[P_BAT] < B.hpMax[P_BAT] * .3 ? .6 : 1);
-    let fwx = R[0], fwz = R[6], fl = Math.hypot(fwx, fwz); if (fl > 1e-4) { fwx /= fl; fwz /= fl; }
+    let fwx = R[0], fwz = R[6], fl = Math.sqrt((fwx) * (fwx) + (fwz) * (fwz)); if (fl > 1e-4) { fwx /= fl; fwz /= fl; }
     const sdx = -fwz, sdz = fwx; // lateral no plano
-    const axisY = Math.abs(R[5]), trac = clamp(1.25 - axisY * 2.2, 0, 1) * fl;
+    const axisY = Math.abs(R[5]), trac = Math.min(Math.max(1.25 - axisY * 2.2, 0), 1) * fl;
     const wd = S.giro * 3.7 * B.steer, kw = 420 * m, cw = 14 * m; let nAlive = 0; for (let q = 0; q < 4; q++) if (B.hp[P_W + q] > 0) nAlive++;
     let anyCon = 0;
     for (let q = 0; q < 4; q++) {
       B.wcon[q] = 0; B.wslip[q] = 0; if (B.hp[P_W + q] <= 0) continue;
       const lx = B.wl[q * 3], ly = B.wl[q * 3 + 1], lz = B.wl[q * 3 + 2], rx = R[0] * lx + R[1] * ly + R[2] * lz, ry = R[3] * lx + R[4] * ly + R[5] * lz, rz = R[6] * lx + R[7] * ly + R[8] * lz, px = s[0] + rx, py = s[1] + ry, pz = s[2] + rz;
-      const pen = this.env(px, py, pz, L.wr); const szn = lz > 0 ? 1 : -1, vt = (B.thr * S.vmax * batt - szn * sgnUp * wd * L.wz);
+      const pen = (_c[32] = px, _c[33] = py, _c[34] = pz, _c[35] = L.wr, this.envR(), _c[0]); const szn = lz > 0 ? 1 : -1, vt = (B.thr * S.vmax * batt - szn * sgnUp * wd * L.wz);
       if (pen <= 0) { B.wang[q] += vt / L.wr * HDT * sgnUp; continue; }
       const nx = _c[1], ny = _c[2], nz = _c[3], cx = px - nx * L.wr, cy = py - ny * L.wr, cz = pz - nz * L.wr;
       const vx = s[7] + s[11] * rz - s[12] * ry, vy = s[8] + s[12] * rx - s[10] * rz, vz = s[9] + s[10] * ry - s[11] * rx, vn = vx * nx + vy * ny + vz * nz;
@@ -1847,41 +1860,41 @@ class Sim {
       let fx = nx * fn, fy = ny * fn, fz = nz * fn;
       if (ny > .7) { anyCon = 1; B.wcon[q] = 1;
         const vl = vx * fwx + vz * fwz, vs = vx * sdx + vz * sdz, fmaxW = S.forca / 4 * batt * (nAlive < 4 ? 1.15 : 1);
-        let flong = clamp((vt - vl) * m * 5, -fmaxW, fmaxW) * trac, flat = -vs * m * 9 * trac; const lim = S.mu * fn, mag = Math.hypot(flong, flat);
+        let flong = Math.min(Math.max((vt - vl) * m * 5, -fmaxW), fmaxW) * trac, flat = -vs * m * 9 * trac; const lim = S.mu * fn, mag = Math.sqrt((flong) * (flong) + (flat) * (flat));
         if (mag > lim) { const k = lim / mag; flong *= k; flat *= k; B.wslip[q] = mag - lim; }
         B.wslip[q] = Math.max(B.wslip[q], Math.abs(vs) > 1.6 ? Math.abs(vs) * m : 0) / m;
         fx += fwx * flong + sdx * flat; fz += fwz * flong + sdz * flat; B.wang[q] += vl / L.wr * HDT * sgnUp;
-      } else { const tvx = vx - nx * vn, tvy = vy - ny * vn, tvz = vz - nz * vn, tl = Math.hypot(tvx, tvy, tvz) + .05, k = Math.min(.6 * fn / tl, m * 6); fx -= tvx * k; fy -= tvy * k; fz -= tvz * k; }
-      this.force(B, cx, cy, cz, fx, fy, fz);
+      } else { const tvx = vx - nx * vn, tvy = vy - ny * vn, tvz = vz - nz * vn, tl = Math.sqrt((tvx) * (tvx) + (tvy) * (tvy) + (tvz) * (tvz)) + .05, k = Math.min(.6 * fn / tl, m * 6); fx -= tvx * k; fy -= tvy * k; fz -= tvz * k; }
+      (_c[36] = cx, _c[37] = cy, _c[38] = cz, _c[39] = fx, _c[40] = fy, _c[41] = fz, this.forceR(B));
     }
     B.grounded = anyCon;
     // casco contra piso e paredes
     const kh = 1300 * m, chh = 30 * m, hp = B.hpt; let land = 0, lx_ = 0, ly_ = 0, lz_ = 0, scr = 0, sx_ = 0, sz_ = 0, hcon = 0;
     for (let q = 0; q < B.nhp; q++) {
       const lx = hp[q * 3], ly = hp[q * 3 + 1], lz = hp[q * 3 + 2], rx = R[0] * lx + R[1] * ly + R[2] * lz, ry = R[3] * lx + R[4] * ly + R[5] * lz, rz = R[6] * lx + R[7] * ly + R[8] * lz, px = s[0] + rx, py = s[1] + ry, pz = s[2] + rz;
-      const pen = this.env(px, py, pz, 0); if (pen <= 0) continue; hcon++;
+      const pen = (_c[32] = px, _c[33] = py, _c[34] = pz, _c[35] = 0, this.envR(), _c[0]); if (pen <= 0) continue; hcon++;
       const nx = _c[1], ny = _c[2], nz = _c[3], vx = s[7] + s[11] * rz - s[12] * ry, vy = s[8] + s[12] * rx - s[10] * rz, vz = s[9] + s[10] * ry - s[11] * rx, vn = vx * nx + vy * ny + vz * nz;
       let fn = kh * Math.min(pen, .08) - chh * vn; if (fn < 0) fn = 0; if (fn > m * 400) fn = m * 400;
-      const tvx = vx - nx * vn, tvy = vy - ny * vn, tvz = vz - nz * vn, tl = Math.hypot(tvx, tvy, tvz), k = Math.min(.42 * fn / (tl + .08), m * 8);
-      this.force(B, px, py, pz, nx * fn - tvx * k, ny * fn - tvy * k, nz * fn - tvz * k);
+      const tvx = vx - nx * vn, tvy = vy - ny * vn, tvz = vz - nz * vn, tl = Math.sqrt((tvx) * (tvx) + (tvy) * (tvy) + (tvz) * (tvz)), k = Math.min(.42 * fn / (tl + .08), m * 8);
+      (_c[36] = px, _c[37] = py, _c[38] = pz, _c[39] = nx * fn - tvx * k, _c[40] = ny * fn - tvy * k, _c[41] = nz * fn - tvz * k, this.forceR(B));
       if (-vn > land) { land = -vn; lx_ = lx; ly_ = ly; lz_ = lz; } if (tl > scr && ny > .5) { scr = tl; sx_ = px; sz_ = pz; }
     }
     B.hcon = hcon;
-    if (land > 3.4 && B.hitcd <= 0) { B.hitcd = .15; this.damage(B, lx_, ly_, lz_, (land - 3.4) * 4.5, 0, B.lastHitBy > 0 ? 1 - B.id : -1); this.wpt(B, lx_, ly_, lz_); this.emit(EV.LAND, _c[0], Math.max(_c[1], .02), _c[2], 0, 1, 0, land); }
+    if (land > 3.4 && B.hitcd <= 0) { B.hitcd = .15; (_c[55] = lx_, _c[56] = ly_, _c[57] = lz_, _c[58] = (land - 3.4) * 4.5, this.damageR(B, 0, B.lastHitBy > 0 ? 1 - B.id : -1)); (_c[45] = lx_, _c[46] = ly_, _c[47] = lz_, this.wptR(B)); (_c[48] = _c[0], _c[49] = Math.max(_c[1], .02), _c[50] = _c[2], _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = land, this.emitR(EV.LAND)); }
     if (scr > 1.6) { B.scrX = sx_; B.scrZ = sz_; B.scr = scr; } else B.scr = 0;
     // desvirar (X) e voltar ao canto (B)
     B.flipCd -= HDT; B.resetCd -= HDT; B.hitcd -= HDT; B.sawCd -= HDT;
-    if (B.flipB && B.flipCd <= 0 && up < .35 && !B.dead && (hcon > 0 || anyCon)) { B.flipCd = 2.2; s[8] += 3.4; const k = 7.5; s[10] += R[0] * k; s[11] += R[3] * k; s[12] += R[6] * k; this.emit(EV.FLIP, s[0], s[1], s[2], 0, 1, 0, B.id); }
-    if (B.resetB && B.resetCd <= 0 && !B.dead && !this.over) { B.resetCd = 8; B.jd[3] += 1; s[0] = START[B.id][0]; s[1] = L.clear + B.ycm + .05; s[2] = START[B.id][1]; s[3] = 0; s[4] = B.id ? 1 : 0; s[5] = 0; s[6] = B.id ? 0 : 1; for (let q = 7; q < 13; q++) s[q] = 0; B.grab = 0; this.bots[1 - B.id].grab = 0; this.updR(B); B.teleport = 1; this.emit(EV.RESET, s[0], s[1], s[2], 0, 1, 0, B.id); }
+    if (B.flipB && B.flipCd <= 0 && up < .35 && !B.dead && (hcon > 0 || anyCon)) { B.flipCd = 2.2; s[8] += 3.5; const k = 4.9; s[10] += R[0] * k; s[11] += R[3] * k; s[12] += R[6] * k; (_c[48] = s[0], _c[49] = s[1], _c[50] = s[2], _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = B.id, this.emitR(EV.FLIP)); }
+    if (B.resetB && B.resetCd <= 0 && !B.dead && !this.over) { B.resetCd = 8; B.jd[3] += 1; s[0] = START[B.id][0]; s[1] = L.clear + B.ycm + .05; s[2] = START[B.id][1]; s[3] = 0; s[4] = B.id ? 1 : 0; s[5] = 0; s[6] = B.id ? 0 : 1; for (let q = 7; q < 13; q++) s[q] = 0; B.grab = 0; this.bots[1 - B.id].grab = 0; this.updR(B); B.teleport = 1; (_c[48] = s[0], _c[49] = s[1], _c[50] = s[2], _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = B.id, this.emitR(EV.RESET)); }
   }
   // pontos do casco de A dentro do casco de B
   pair(A, B) {
     const as = A.s, AR_ = A.R, hp = A.hpt, L = B.L, bs = B.s, BR = B.R, mm = (A.m + B.m) * .5, kc = 1000 * mm, cc = 22 * mm, y0 = -B.ycm, y1 = L.hy1 - B.ycm;
-    if (Math.hypot(as[0] - bs[0], as[1] - bs[1], as[2] - bs[2]) > 2.2) return;
+    if (Math.sqrt((as[0] - bs[0]) * (as[0] - bs[0]) + (as[1] - bs[1]) * (as[1] - bs[1]) + (as[2] - bs[2]) * (as[2] - bs[2])) > 2.2) return;
     for (let q = 0; q < A.nhp; q++) {
       const ax = hp[q * 3], ay = hp[q * 3 + 1], az = hp[q * 3 + 2], rx = AR_[0] * ax + AR_[1] * ay + AR_[2] * az, ry = AR_[3] * ax + AR_[4] * ay + AR_[5] * az, rz = AR_[6] * ax + AR_[7] * ay + AR_[8] * az, px = as[0] + rx, py = as[1] + ry, pz = as[2] + rz;
       const dx = px - bs[0], dy = py - bs[1], dz = pz - bs[2], lx = BR[0] * dx + BR[3] * dy + BR[6] * dz, ly = BR[1] * dx + BR[4] * dy + BR[7] * dz, lz = BR[2] * dx + BR[5] * dy + BR[8] * dz;
-      let top = y1, snx = 0, sny = 1; if (B.wedge && lx > .02) { const f = (lx - .02) / (L.hx - .02); top = lerp(y1, .03 - B.ycm, clamp(f, 0, 1)); snx = .262; sny = .965; }
+      let top = y1, snx = 0, sny = 1; if (B.wedge && lx > .02) { const f = (lx - .02) / (L.hx - .02); top = ((y1) + ((.03 - B.ycm) - (y1)) * (Math.min(Math.max(f, 0), 1))); snx = .262; sny = .965; }
       if (lx < -L.hx || lx > L.hx || lz < -L.hz || lz > L.hz || ly < y0 || ly > top) continue;
       // face de menor penetracao
       let pen = top - ly, nx = snx, ny = sny, nz = 0; const wedgeFront = B.wedge && lx > .02 && pen < .1;
@@ -1890,98 +1903,98 @@ class Sim {
       const bx = px - bs[0], by = py - bs[1], bz = pz - bs[2];
       const vx = (as[7] + as[11] * rz - as[12] * ry) - (bs[7] + bs[11] * bz - bs[12] * by), vy = (as[8] + as[12] * rx - as[10] * rz) - (bs[8] + bs[12] * bx - bs[10] * bz), vz = (as[9] + as[10] * ry - as[11] * rx) - (bs[9] + bs[10] * by - bs[11] * bx), vn = vx * wx + vy * wy + vz * wz;
       let fn = kc * Math.min(pen, .06) - cc * vn; if (fn < 0) fn = 0; if (fn > mm * 300) fn = mm * 300;
-      const tvx = vx - wx * vn, tvy = vy - wy * vn, tvz = vz - wz * vn, tl = Math.hypot(tvx, tvy, tvz), k = Math.min(.35 * fn / (tl + .1), mm * 5), fx = wx * fn - tvx * k, fy = wy * fn - tvy * k, fz = wz * fn - tvz * k;
-      this.force(A, px, py, pz, fx, fy, fz); this.force(B, px, py, pz, -fx, -fy, -fz);
+      const tvx = vx - wx * vn, tvy = vy - wy * vn, tvz = vz - wz * vn, tl = Math.sqrt((tvx) * (tvx) + (tvy) * (tvy) + (tvz) * (tvz)), k = Math.min(.35 * fn / (tl + .1), mm * 5), fx = wx * fn - tvx * k, fy = wy * fn - tvy * k, fz = wz * fn - tvz * k;
+      (_c[36] = px, _c[37] = py, _c[38] = pz, _c[39] = fx, _c[40] = fy, _c[41] = fz, this.forceR(A)); (_c[36] = px, _c[37] = py, _c[38] = pz, _c[39] = -fx, _c[40] = -fy, _c[41] = -fz, this.forceR(B));
       if (-vn > 2.2 && A.hitcd <= 0 && B.hitcd <= 0) { // trombada
-        A.hitcd = .2; B.hitcd = .2; const d = (-vn - 2.2) * 3.2 * (1 + (A.m - 80) / 200); this.toLocal(B, px, py, pz); const blx = _c[4], bly = _c[5], blz = _c[6]; this.damage(B, blx, bly, blz, d, 0, A.id); this.damage(A, ax, ay, az, d * .45, 0, B.id); B.lastHitBy = 2; this.emit(EV.HIT, px, py, pz, wx, wy, wz, d * 1.4 + B.id * 1000);
-      } else if (tl > 2 && this.rng.u() < .04) this.emit(EV.GRIND, px, py, pz, wx, wy, wz, tl);
+        A.hitcd = .2; B.hitcd = .2; const d = (-vn - 2.2) * 3.2 * (1 + (A.m - 80) / 200); (_c[42] = px, _c[43] = py, _c[44] = pz, this.toLocalR(B)); const blx = _c[4], bly = _c[5], blz = _c[6]; (_c[55] = blx, _c[56] = bly, _c[57] = blz, _c[58] = d, this.damageR(B, 0, A.id)); (_c[55] = ax, _c[56] = ay, _c[57] = az, _c[58] = d * .45, this.damageR(A, 0, B.id)); B.lastHitBy = 2; (_c[48] = px, _c[49] = py, _c[50] = pz, _c[51] = wx, _c[52] = wy, _c[53] = wz, _c[54] = d * 1.4 + B.id * 1000, this.emitR(EV.HIT));
+      } else if (tl > 2 && (this.rng.uR(), _u[0]) < .04) (_c[48] = px, _c[49] = py, _c[50] = pz, _c[51] = wx, _c[52] = wy, _c[53] = wz, _c[54] = tl, this.emitR(EV.GRIND));
     }
   }
   integrate(B) {
     const s = B.s, R = B.R, F = B.F, T = B.T, im = 1 / B.m; s[7] += F[0] * im * HDT; s[8] += F[1] * im * HDT; s[9] += F[2] * im * HDT;
     const lx = (R[0] * T[0] + R[3] * T[1] + R[6] * T[2]) * B.Ii[0], ly = (R[1] * T[0] + R[4] * T[1] + R[7] * T[2]) * B.Ii[1], lz = (R[2] * T[0] + R[5] * T[1] + R[8] * T[2]) * B.Ii[2];
     s[10] += (R[0] * lx + R[1] * ly + R[2] * lz) * HDT; s[11] += (R[3] * lx + R[4] * ly + R[5] * lz) * HDT; s[12] += (R[6] * lx + R[7] * ly + R[8] * lz) * HDT;
-    const ad = B.grounded ? .9985 : .9995; s[10] *= ad; s[11] *= ad; s[12] *= ad; const wl = Math.hypot(s[10], s[11], s[12]); if (wl > 28) { const k = 28 / wl; s[10] *= k; s[11] *= k; s[12] *= k; }
-    const vl = Math.hypot(s[7], s[8], s[9]); if (vl > 16) { const k = 16 / vl; s[7] *= k; s[8] *= k; s[9] *= k; }
+    const ad = B.grounded ? .9985 : .9995; s[10] *= ad; s[11] *= ad; s[12] *= ad; const wl = Math.sqrt((s[10]) * (s[10]) + (s[11]) * (s[11]) + (s[12]) * (s[12])); if (wl > 28) { const k = 28 / wl; s[10] *= k; s[11] *= k; s[12] *= k; }
+    const vl = Math.sqrt((s[7]) * (s[7]) + (s[8]) * (s[8]) + (s[9]) * (s[9])); if (vl > 16) { const k = 16 / vl; s[7] *= k; s[8] *= k; s[9] *= k; }
     s[0] += s[7] * HDT; s[1] += s[8] * HDT; s[2] += s[9] * HDT;
     const wx = s[10] * HDT * .5, wy = s[11] * HDT * .5, wz = s[12] * HDT * .5, x = s[3], y = s[4], z = s[5], w = s[6];
     s[3] = x + wx * w + wy * z - wz * y; s[4] = y + wy * w + wz * x - wx * z; s[5] = z + wz * w + wx * y - wy * x; s[6] = w - wx * x - wy * y - wz * z;
-    const l = 1 / Math.hypot(s[3], s[4], s[5], s[6]); s[3] *= l; s[4] *= l; s[5] *= l; s[6] *= l;
+    const l = 1 / Math.sqrt((s[3]) * (s[3]) + (s[4]) * (s[4]) + (s[5]) * (s[5]) + (s[6]) * (s[6])); s[3] *= l; s[4] *= l; s[5] *= l; s[6] *= l;
     // trava de seguranca: nunca atravessa a caixa
     const lim = AR - .12; if (s[0] > lim) { s[0] = lim; if (s[7] > 0) s[7] *= -.3; } else if (s[0] < -lim) { s[0] = -lim; if (s[7] < 0) s[7] *= -.3; } if (s[2] > lim) { s[2] = lim; if (s[9] > 0) s[9] *= -.3; } else if (s[2] < -lim) { s[2] = -lim; if (s[9] < 0) s[9] *= -.3; }
     if (s[1] > WALL_H + .5) { s[1] = WALL_H + .5; if (s[8] > 0) s[8] = 0; } if (s[1] < -PIT.d + .05) { s[1] = -PIT.d + .05; s[8] = 0; }
-    if (s[1] < -.25) { const q = PIT.h - .5; s[0] = clamp(s[0], PIT.x - q, PIT.x + q); s[2] = clamp(s[2], PIT.z - q, PIT.z + q); s[7] *= .9; s[9] *= .9; }
+    if (s[1] < -.25) { const q = PIT.h - .5; s[0] = Math.min(Math.max(s[0], PIT.x - q), PIT.x + q); s[2] = Math.min(Math.max(s[2], PIT.z - q), PIT.z + q); s[7] *= .9; s[9] *= .9; }
     this.updR(B);
   }
   weapon(A, B) {
     const k = ARMAS[A.b[3]], ty = A.b[3], L = A.L, s = A.s, R = A.R, r = this.rng; A.wcd -= DT; A.glow = Math.max(0, A.glow - DT * 1.2);
     if (A.hp[P_WP] <= 0) { A.wspin *= .97; A.wa += A.wspin * DT; A.wst = 0; A.grab = 0; return; }
     const press = A.fire && !A.pfire, alive = !A.dead;
-    this.wpt(A, L.hitx, L.hity - A.ycm, 0); const hx = _c[0], hy = _c[1], hz = _c[2];
+    (_c[45] = L.hitx, _c[46] = L.hity - A.ycm, _c[47] = 0, this.wptR(A)); const hx = _c[0], hy = _c[1], hz = _c[2];
     if (k.spin) {
       if (press) A.won = A.won ? 0 : 1; if (!alive) A.won = 0;
       const batt = A.hp[P_BAT] < A.hpMax[P_BAT] * .3 ? .6 : 1;
       if (A.won) A.wspin = Math.min(k.wmax * batt, A.wspin + k.wmax / k.sup * DT); else A.wspin *= .985;
       A.wa += A.wspin * DT;
       if (A.wspin > 8 && A.hitcd <= 0 && !this.over) {
-        const d = this.closest(B, hx, hy, hz), cx = _c[8], cy = _c[9], cz = _c[10], blx = _c[11], bly = _c[12], blz = _c[13];
-        this.toLocal(A, cx, cy, cz); const vx = _c[4] - L.hitx, vy = _c[5] - (L.hity - A.ycm), vz = _c[6];
-        let hit = false; if (ty === 0) hit = Math.hypot(vx, vz) < k.R && Math.abs(vy) < .05; else if (ty === 1) hit = Math.hypot(vx, vy) < k.R && Math.abs(vz) < .045; else hit = Math.hypot(vx, vy) < k.R && Math.abs(vz) < .19;
+        const d = (_c[42] = hx, _c[43] = hy, _c[44] = hz, this.closestR(B), _c[14]), cx = _c[8], cy = _c[9], cz = _c[10], blx = _c[11], bly = _c[12], blz = _c[13];
+        (_c[42] = cx, _c[43] = cy, _c[44] = cz, this.toLocalR(A)); const vx = _c[4] - L.hitx, vy = _c[5] - (L.hity - A.ycm), vz = _c[6];
+        let hit = false; if (ty === 0) hit = Math.sqrt((vx) * (vx) + (vz) * (vz)) < k.R && Math.abs(vy) < .05; else if (ty === 1) hit = Math.sqrt((vx) * (vx) + (vy) * (vy)) < k.R && Math.abs(vz) < .045; else hit = Math.sqrt((vx) * (vx) + (vy) * (vy)) < k.R && Math.abs(vz) < .19;
         // disco contra o piso/parede nao conta
         if (hit) {
           const fr = A.wspin / k.wmax;
           if (fr > .22) {
             // direcao tangencial na borda: eixo x r
-            let tx, ty_, tz; if (ty === 0) { tx = vz; ty_ = 0; tz = -vx; } else { tx = -vy; ty_ = vx; tz = 0; } const tl = Math.hypot(tx, ty_, tz) || 1; tx /= tl; ty_ /= tl; tz /= tl;
+            let tx, ty_, tz; if (ty === 0) { tx = vz; ty_ = 0; tz = -vx; } else { tx = -vy; ty_ = vx; tz = 0; } const tl = Math.sqrt((tx) * (tx) + (ty_) * (ty_) + (tz) * (tz)) || 1; tx /= tl; ty_ /= tl; tz /= tl;
             const wx = R[0] * tx + R[1] * ty_ + R[2] * tz, wy = R[3] * tx + R[4] * ty_ + R[5] * tz, wz = R[6] * tx + R[7] * ty_ + R[8] * tz;
-            const Iw = ty === 2 ? .1 : .2, J = Math.min(Iw * A.wspin / k.R * r.r(.7, 1), 330) * (ty === 2 ? 1.3 : 1);
-            this.impulse(B, cx, cy, cz, wx * J, wy * J + J * (ty === 0 ? .3 : .1), wz * J); this.impulse(A, cx, cy, cz, -wx * J * .8, -wy * J * .5, -wz * J * .8);
+            const Iw = ty === 2 ? .1 : .2, J = Math.min(Iw * A.wspin / k.R * (r.uR(), (.7) + ((1) - (.7)) * _u[0]), 330) * (ty === 2 ? 1.3 : 1);
+            (_c[36] = cx, _c[37] = cy, _c[38] = cz, _c[39] = wx * J, _c[40] = wy * J + J * (ty === 0 ? .3 : .1), _c[41] = wz * J, this.impulseR(B)); (_c[36] = cx, _c[37] = cy, _c[38] = cz, _c[39] = -wx * J * .8, _c[40] = -wy * J * .5, _c[41] = -wz * J * .8, this.impulseR(A));
             if (ty === 0) { const kR = J / B.m * 2.0; B.s[10] += -wz * kR; B.s[12] += wx * kR; }
-            const dmg = k.dano * (.35 + .65 * fr * fr) * r.r(.85, 1.15); this.damage(B, blx, bly, blz, dmg, 0, A.id); this.hurt(A, P_WP, dmg * .05, -1);
+            const dmg = k.dano * (.35 + .65 * fr * fr) * (r.uR(), (.85) + ((1.15) - (.85)) * _u[0]); (_c[55] = blx, _c[56] = bly, _c[57] = blz, _c[58] = dmg, this.damageR(B, 0, A.id)); (_c[59] = dmg * .05, this.hurtR(A, P_WP, -1));
             A.wspin *= ty === 2 ? .45 : .28; A.hitcd = ty === 2 ? .1 : .16; B.lastHitBy = 2; A.ai.lastHit = A.ai.t; A.jd[1] += 2;
-            this.emit(EV.HIT, cx, cy, cz, wx, wy + .3, wz, dmg + B.id * 1000);
-          } else { A.hitcd = .1; this.emit(EV.GRIND, cx, cy, cz, 0, 1, 0, 2); A.wspin *= .9; }
+            (_c[48] = cx, _c[49] = cy, _c[50] = cz, _c[51] = wx, _c[52] = wy + .3, _c[53] = wz, _c[54] = dmg + B.id * 1000, this.emitR(EV.HIT));
+          } else { A.hitcd = .1; (_c[48] = cx, _c[49] = cy, _c[50] = cz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 2, this.emitR(EV.GRIND)); A.wspin *= .9; }
         }
       }
       return;
     }
     if (ty === 3) { // lancador: wa = angulo do braco
       if (A.wst === 0) { A.wa = Math.max(0, A.wa - DT * 2.2); if (press && A.wcd <= 0 && alive && A.wa < .05) { A.wst = 1; A.wt = 0; A.wcd = k.cd;
-          const d = this.closest(B, hx, hy + .1, hz); this.emit(EV.FLIP, hx, hy, hz, 0, 1, 0, A.id + 10);
-          if (d < .26 && !this.over) { const cx = _c[8], cy = _c[9], cz = _c[10], blx = _c[11], bly = _c[12], blz = _c[13], J = B.m * 5.4 * (A.hp[P_BAT] < A.hpMax[P_BAT] * .3 ? .7 : 1); this.impulse(B, cx, cy, cz, R[1] * J * .9 + R[0] * J * .34, R[4] * J * .9 + R[3] * J * .34, R[7] * J * .9 + R[6] * J * .34); this.impulse(A, hx, hy, hz, 0, -J * .25, 0);
-            this.damage(B, blx, bly, blz, k.dano, 2, A.id); B.lastHitBy = 2; A.ai.lastHit = A.ai.t; A.jd[1] += 2; A.jd[2] += 3; this.emit(EV.HIT, cx, cy, cz, 0, 1, 0, 18 + B.id * 1000); } } }
+          const d = (_c[42] = hx, _c[43] = hy + .1, _c[44] = hz, this.closestR(B), _c[14]); (_c[48] = hx, _c[49] = hy, _c[50] = hz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = A.id + 10, this.emitR(EV.FLIP));
+          if (d < .26 && !this.over) { const cx = _c[8], cy = _c[9], cz = _c[10], blx = _c[11], bly = _c[12], blz = _c[13], J = B.m * 5.4 * (A.hp[P_BAT] < A.hpMax[P_BAT] * .3 ? .7 : 1); (_c[36] = cx, _c[37] = cy, _c[38] = cz, _c[39] = R[1] * J * .9 + R[0] * J * .34, _c[40] = R[4] * J * .9 + R[3] * J * .34, _c[41] = R[7] * J * .9 + R[6] * J * .34, this.impulseR(B)); (_c[36] = hx, _c[37] = hy, _c[38] = hz, _c[39] = 0, _c[40] = -J * .25, _c[41] = 0, this.impulseR(A));
+            (_c[55] = blx, _c[56] = bly, _c[57] = blz, _c[58] = k.dano, this.damageR(B, 2, A.id)); B.lastHitBy = 2; A.ai.lastHit = A.ai.t; A.jd[1] += 2; A.jd[2] += 3; (_c[48] = cx, _c[49] = cy, _c[50] = cz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 18 + B.id * 1000, this.emitR(EV.HIT)); } } }
       else { A.wt += DT; A.wa = Math.min(1.15, A.wa + DT * 11); if (A.wt > .45) A.wst = 0; }
       return;
     }
     if (ty === 4) { // martelo: wa = angulo (1.95 repouso -> -.42 golpe)
       if (A.wst === 0) { A.wa = Math.min(1.95, A.wa + DT * 3.4); if (press && A.wcd <= 0 && alive && A.wa > 1.9) { A.wst = 1; A.wcd = k.cd; } }
-      else { A.wa -= DT * 15; const end = -Math.asin(clamp((L.py + L.clear - .05) / .6, 0, .9));
+      else { A.wa -= DT * 15; const end = -Math.asin(Math.min(Math.max((L.py + L.clear - .05) / .6, 0), .9));
         // bate no adversario?
-        this.wpt(A, L.px + Math.cos(A.wa) * .6, L.py - A.ycm + Math.sin(A.wa) * .6 - .08, 0); const mx = _c[0], my = _c[1], mz = _c[2], d = this.closest(B, mx, my, mz);
-        if (d < .07 && A.wa < 1.2 && !this.over) { const cx = _c[8], cy = _c[9], cz = _c[10], blx = _c[11], bly = _c[12], blz = _c[13]; A.wst = 0; const dmg = k.dano * r.r(.9, 1.15); this.damage(B, blx, bly, blz, dmg, 1, A.id); this.impulse(B, cx, cy, cz, R[0] * 40, -150, R[6] * 40); B.lastHitBy = 2; A.ai.lastHit = A.ai.t; A.jd[1] += 2; this.emit(EV.HIT, cx, cy, cz, 0, 1, 0, dmg + B.id * 1000); }
-        else if (A.wa <= end) { A.wa = end; A.wst = 0; this.emit(EV.HAMMER, mx, .02, mz, 0, 1, 0, 6); } }
+        (_c[45] = L.px + Math.cos(A.wa) * .6, _c[46] = L.py - A.ycm + Math.sin(A.wa) * .6 - .08, _c[47] = 0, this.wptR(A)); const mx = _c[0], my = _c[1], mz = _c[2], d = (_c[42] = mx, _c[43] = my, _c[44] = mz, this.closestR(B), _c[14]);
+        if (d < .07 && A.wa < 1.2 && !this.over) { const cx = _c[8], cy = _c[9], cz = _c[10], blx = _c[11], bly = _c[12], blz = _c[13]; A.wst = 0; const dmg = k.dano * (r.uR(), (.9) + ((1.15) - (.9)) * _u[0]); (_c[55] = blx, _c[56] = bly, _c[57] = blz, _c[58] = dmg, this.damageR(B, 1, A.id)); (_c[36] = cx, _c[37] = cy, _c[38] = cz, _c[39] = R[0] * 40, _c[40] = -150, _c[41] = R[6] * 40, this.impulseR(B)); B.lastHitBy = 2; A.ai.lastHit = A.ai.t; A.jd[1] += 2; (_c[48] = cx, _c[49] = cy, _c[50] = cz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = dmg + B.id * 1000, this.emitR(EV.HIT)); }
+        else if (A.wa <= end) { A.wa = end; A.wst = 0; (_c[48] = mx, _c[49] = .02, _c[50] = mz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 6, this.emitR(EV.HAMMER)); } }
       return;
     }
     // garra: wa = abertura (0.75 aberta -> 0 fechada)
     if (A.wst === 0) { A.wa = Math.min(.75, A.wa + DT * 2.5); if (press && A.wcd <= 0 && alive && A.wa > .7) A.wst = 1; }
-    else if (A.wst === 1) { A.wa = Math.max(0, A.wa - DT * 3.2); const d = this.closest(B, hx, hy, hz);
-      if (d < .1 && A.wa < .5 && !this.over) { A.wst = 2; A.wt = 0; A.grab = 1; A.gx = _c[11]; A.gy = _c[12]; A.gz = _c[13]; A.jd[1] += 2; this.emit(EV.GRAB, _c[8], _c[9], _c[10], 0, 1, 0, 10 + B.id * 1000); }
+    else if (A.wst === 1) { A.wa = Math.max(0, A.wa - DT * 3.2); const d = (_c[42] = hx, _c[43] = hy, _c[44] = hz, this.closestR(B), _c[14]);
+      if (d < .1 && A.wa < .5 && !this.over) { A.wst = 2; A.wt = 0; A.grab = 1; A.gx = _c[11]; A.gy = _c[12]; A.gz = _c[13]; A.jd[1] += 2; (_c[48] = _c[8], _c[49] = _c[9], _c[50] = _c[10], _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 10 + B.id * 1000, this.emitR(EV.GRAB)); }
       else if (A.wa <= 0) { A.wst = 0; A.wcd = k.cd * .6; } }
     else { A.wt += DT; // prendendo: mola entre a garra e o ponto agarrado + dano continuo
-      this.wpt(B, A.gx, A.gy, A.gz); const gx = _c[0], gy = _c[1], gz = _c[2], ex = hx - gx, ey = hy - gy, ez = hz - gz, el = Math.hypot(ex, ey, ez);
-      const kk = Math.min(A.m, B.m) * 9; this.impulse(B, gx, gy, gz, ex * kk, ey * kk * .4, ez * kk); this.impulse(A, hx, hy, hz, -ex * kk, -ey * kk * .4, -ez * kk);
-      const rvx = B.s[7] - s[7], rvz = B.s[9] - s[9], km = Math.min(A.m, B.m) * .12; this.impulse(B, gx, gy, gz, -rvx * km, 0, -rvz * km); this.impulse(A, hx, hy, hz, rvx * km, 0, rvz * km);
-      this.damage(B, A.gx, A.gy, A.gz, k.dano * DT, 1, A.id); A.jd[2] += DT * 2; if (this.rng.u() < .25) this.emit(EV.GRIND, gx, gy, gz, 0, 1, 0, 3);
+      (_c[45] = A.gx, _c[46] = A.gy, _c[47] = A.gz, this.wptR(B)); const gx = _c[0], gy = _c[1], gz = _c[2], ex = hx - gx, ey = hy - gy, ez = hz - gz, el = Math.sqrt((ex) * (ex) + (ey) * (ey) + (ez) * (ez));
+      const kk = Math.min(A.m, B.m) * 9; (_c[36] = gx, _c[37] = gy, _c[38] = gz, _c[39] = ex * kk, _c[40] = ey * kk * .4, _c[41] = ez * kk, this.impulseR(B)); (_c[36] = hx, _c[37] = hy, _c[38] = hz, _c[39] = -ex * kk, _c[40] = -ey * kk * .4, _c[41] = -ez * kk, this.impulseR(A));
+      const rvx = B.s[7] - s[7], rvz = B.s[9] - s[9], km = Math.min(A.m, B.m) * .12; (_c[36] = gx, _c[37] = gy, _c[38] = gz, _c[39] = -rvx * km, _c[40] = 0, _c[41] = -rvz * km, this.impulseR(B)); (_c[36] = hx, _c[37] = hy, _c[38] = hz, _c[39] = rvx * km, _c[40] = 0, _c[41] = rvz * km, this.impulseR(A));
+      (_c[55] = A.gx, _c[56] = A.gy, _c[57] = A.gz, _c[58] = k.dano * DT, this.damageR(B, 1, A.id)); A.jd[2] += DT * 2; if ((this.rng.uR(), _u[0]) < .25) (_c[48] = gx, _c[49] = gy, _c[50] = gz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 3, this.emitR(EV.GRIND));
       if (A.wt > 2.6 || el > .45 || press || !alive || this.over) { A.wst = 0; A.grab = 0; A.wcd = k.cd; } }
   }
   hazards(B, A) {
     const s = B.s, L = B.L;
-    for (let i = 0; i < 2; i++) { if (this.sawH[i] < .6 || B.sawCd > 0) continue; const sw = SAWS[i], d = this.closest(B, sw.x, this.sawH[i] * .2 - .08, sw.z); if (d < SAW_R * .75) { B.sawCd = .3; const cx = _c[8], cy = _c[9], cz = _c[10]; this.damage(B, _c[11], _c[12], _c[13], 11, 2, -1); this.impulse(B, cx, cy, cz, B.m * 1.6, B.m * 2.6, 0); A.jd[2] += 4; B.lastHitBy = 2; this.emit(EV.SAW, cx, .05, cz, 1, 1.2, 0, 14 + B.id * 1000); } }
-    if (this.flameOn) { const d = Math.hypot(s[0] - FLAME.x, s[2] - FLAME.z); if (d < FLAME.r + .2 && s[1] < 1.2) { B.burn = Math.min(1, B.burn + DT * .5); this.hurt(B, P_BAT, 7 * DT, -1); this.hurt(B, B.hp[P_AT] > 0 ? P_AT : P_CH, 3 * DT, -1); A.jd[2] += DT * 3; } }
-    if (B.fireOn && !B.dead) this.hurt(B, P_BAT, .8 * DT, -1);
+    for (let i = 0; i < 2; i++) { if (this.sawH[i] < .6 || B.sawCd > 0) continue; const sw = SAWS[i], d = (_c[42] = sw.x, _c[43] = this.sawH[i] * .2 - .08, _c[44] = sw.z, this.closestR(B), _c[14]); if (d < SAW_R * .75) { B.sawCd = .3; const cx = _c[8], cy = _c[9], cz = _c[10]; (_c[55] = _c[11], _c[56] = _c[12], _c[57] = _c[13], _c[58] = 11, this.damageR(B, 2, -1)); (_c[36] = cx, _c[37] = cy, _c[38] = cz, _c[39] = B.m * 1.6, _c[40] = B.m * 2.6, _c[41] = 0, this.impulseR(B)); A.jd[2] += 4; B.lastHitBy = 2; (_c[48] = cx, _c[49] = .05, _c[50] = cz, _c[51] = 1, _c[52] = 1.2, _c[53] = 0, _c[54] = 14 + B.id * 1000, this.emitR(EV.SAW)); } }
+    if (this.flameOn) { const d = Math.sqrt((s[0] - FLAME.x) * (s[0] - FLAME.x) + (s[2] - FLAME.z) * (s[2] - FLAME.z)); if (d < FLAME.r + .2 && s[1] < 1.2) { B.burn = Math.min(1, B.burn + DT * .5); (_c[59] = 7 * DT, this.hurtR(B, P_BAT, -1)); (_c[59] = 3 * DT, this.hurtR(B, B.hp[P_AT] > 0 ? P_AT : P_CH, -1)); A.jd[2] += DT * 3; } }
+    if (B.fireOn && !B.dead) (_c[59] = .8 * DT, this.hurtR(B, P_BAT, -1));
     // marcas e riscos
-    for (let q = 0; q < 4; q++) if (B.wcon[q] && B.wslip[q] > 1.2) { this.wpt(B, B.wl[q * 3], B.wl[q * 3 + 1], B.wl[q * 3 + 2]); this.emit(EV.SKID, _c[0], 0, _c[2], s[7], 0, s[9], RODAS[B.b[1]].w + B.id * 1000 + q * 10); }
-    if (B.scr > 0) this.emit(EV.SCRAPE, B.scrX, .01, B.scrZ, s[7], 0, s[9], B.scr);
+    for (let q = 0; q < 4; q++) if (B.wcon[q] && B.wslip[q] > 1.2) { (_c[45] = B.wl[q * 3], _c[46] = B.wl[q * 3 + 1], _c[47] = B.wl[q * 3 + 2], this.wptR(B)); (_c[48] = _c[0], _c[49] = 0, _c[50] = _c[2], _c[51] = s[7], _c[52] = 0, _c[53] = s[9], _c[54] = RODAS[B.b[1]].w + B.id * 1000 + q * 10, this.emitR(EV.SKID)); }
+    if (B.scr > 0) (_c[48] = B.scrX, _c[49] = .01, _c[50] = B.scrZ, _c[51] = s[7], _c[52] = 0, _c[53] = s[9], _c[54] = B.scr, this.emitR(EV.SCRAPE));
     if (B.lastHitBy > 0) B.lastHitBy -= DT;
   }
   debris() {
@@ -1994,16 +2007,16 @@ class Sim {
       let cx = d[o] + R0 * lx + R1 * ly + R2 * lz, cy = d[o + 1] + R3 * lx + R4 * ly + R5 * lz, cz = d[o + 2] + R6 * lx + R7 * ly + R8 * lz;
       d[o + 8] -= GRAV * DT; let nx = cx + d[o + 7] * DT, ny = cy + d[o + 8] * DT, nz = cz + d[o + 9] * DT;
       const inPit = Math.abs(nx - PIT.x) < PIT.h && Math.abs(nz - PIT.z) < PIT.h, gy = (inPit ? this.pitY : 0) + .03; let rest = false;
-      if (ny < gy) { ny = gy; if (d[o + 8] < -1.2) { d[o + 8] *= -.32; d[o + 10] += this.rng.s1() * 3; d[o + 12] += this.rng.s1() * 3; } else { d[o + 8] = 0; rest = true; } d[o + 7] *= .93; d[o + 9] *= .93;
+      if (ny < gy) { ny = gy; if (d[o + 8] < -1.2) { d[o + 8] *= -.32; d[o + 10] += (this.rng.uR(), _u[0] * 2 - 1) * 3; d[o + 12] += (this.rng.uR(), _u[0] * 2 - 1) * 3; } else { d[o + 8] = 0; rest = true; } d[o + 7] *= .93; d[o + 9] *= .93;
         // deita: alinha o eixo fino com a vertical
         const f = d[o + 16], ax = f === 0 ? R3 : f === 1 ? R4 : R5; // componente y do eixo local f
         const ex = f === 0 ? R0 : f === 1 ? R1 : R2, ez = f === 0 ? R6 : f === 1 ? R7 : R8, sg = ax < 0 ? -1 : 1; // eixo no mundo = (ex, ax, ez); torque = eixo x (0,sg,0)
         const tx = -ez * sg, tz = ex * sg, kk = 14; d[o + 10] = d[o + 10] * .85 + tx * kk * (1 - Math.abs(ax)) ; d[o + 12] = d[o + 12] * .85 + tz * kk * (1 - Math.abs(ax)); d[o + 11] *= .9; if (Math.abs(ax) > .995 && rest) { d[o + 10] = 0; d[o + 12] = 0; d[o + 11] *= .8; } }
-      if (!inPit || ny > 0) { if (Math.abs(nx) > AR - .15) { nx = Math.sign(nx) * (AR - .15); d[o + 7] *= -.4; } if (Math.abs(nz) > AR - .15) { nz = Math.sign(nz) * (AR - .15); d[o + 9] *= -.4; } } else { nx = clamp(nx, PIT.x - PIT.h + .15, PIT.x + PIT.h - .15); nz = clamp(nz, PIT.z - PIT.h + .15, PIT.z + PIT.h - .15); }
+      if (!inPit || ny > 0) { if (Math.abs(nx) > AR - .15) { nx = Math.sign(nx) * (AR - .15); d[o + 7] *= -.4; } if (Math.abs(nz) > AR - .15) { nz = Math.sign(nz) * (AR - .15); d[o + 9] *= -.4; } } else { nx = Math.min(Math.max(nx, PIT.x - PIT.h + .15), PIT.x + PIT.h - .15); nz = Math.min(Math.max(nz, PIT.z - PIT.h + .15), PIT.z + PIT.h - .15); }
       // robos chutam os destrocos
-      for (let b = 0; b < 2; b++) { const B = this.bots[b]; if (d[o + 19] < .4 && d[o + 17] === b) continue; this.toLocal(B, nx, ny, nz); const L = B.L, mgn = .12; if (Math.abs(_c[4]) < L.hx + mgn && Math.abs(_c[6]) < L.hz + mgn && _c[5] > -B.ycm - .1 && _c[5] < L.hy1 - B.ycm + .1) { const ox = nx - B.s[0], oz = nz - B.s[2], ol = Math.hypot(ox, oz) || 1; d[o + 7] = B.s[7] * 1.1 + ox / ol * 1.8; d[o + 9] = B.s[9] * 1.1 + oz / ol * 1.8; d[o + 8] = Math.max(d[o + 8], .8); nx += ox / ol * .03; nz += oz / ol * .03; } }
+      for (let b = 0; b < 2; b++) { const B = this.bots[b]; if (d[o + 19] < .4 && d[o + 17] === b) continue; (_c[42] = nx, _c[43] = ny, _c[44] = nz, this.toLocalR(B)); const L = B.L, mgn = .12; if (Math.abs(_c[4]) < L.hx + mgn && Math.abs(_c[6]) < L.hz + mgn && _c[5] > -B.ycm - .1 && _c[5] < L.hy1 - B.ycm + .1) { const ox = nx - B.s[0], oz = nz - B.s[2], ol = Math.sqrt((ox) * (ox) + (oz) * (oz)) || 1; d[o + 7] = B.s[7] * 1.1 + ox / ol * 1.8; d[o + 9] = B.s[9] * 1.1 + oz / ol * 1.8; d[o + 8] = Math.max(d[o + 8], .8); nx += ox / ol * .03; nz += oz / ol * .03; } }
       // integra rotacao
-      const hx = d[o + 10] * DT * .5, hy = d[o + 11] * DT * .5, hz = d[o + 12] * DT * .5; let qx = x + hx * w + hy * z - hz * y, qy = y + hy * w + hz * x - hx * z, qz = z + hz * w + hx * y - hy * x, qw = w - hx * x - hy * y - hz * z; const l = 1 / Math.hypot(qx, qy, qz, qw); qx *= l; qy *= l; qz *= l; qw *= l;
+      const hx = d[o + 10] * DT * .5, hy = d[o + 11] * DT * .5, hz = d[o + 12] * DT * .5; let qx = x + hx * w + hy * z - hz * y, qy = y + hy * w + hz * x - hx * z, qz = z + hz * w + hx * y - hy * x, qw = w - hx * x - hy * y - hz * z; const l = 1 / Math.sqrt((qx) * (qx) + (qy) * (qy) + (qz) * (qz) + (qw) * (qw)); qx *= l; qy *= l; qz *= l; qw *= l;
       d[o + 3] = qx; d[o + 4] = qy; d[o + 5] = qz; d[o + 6] = qw;
       const S0 = 1 - 2 * (qy * qy + qz * qz), S1 = 2 * (qx * qy - qw * qz), S2 = 2 * (qx * qz + qw * qy), S3 = 2 * (qx * qy + qw * qz), S4 = 1 - 2 * (qx * qx + qz * qz), S5 = 2 * (qy * qz - qw * qx), S6 = 2 * (qx * qz - qw * qy), S7 = 2 * (qy * qz + qw * qx), S8 = 1 - 2 * (qx * qx + qy * qy);
       d[o] = nx - (S0 * lx + S1 * ly + S2 * lz); d[o + 1] = ny - (S3 * lx + S4 * ly + S5 * lz); d[o + 2] = nz - (S6 * lx + S7 * ly + S8 * lz);
@@ -2021,26 +2034,26 @@ const FX = {
   sm: new Float32Array(PMAX_A * 10), // x y z vx vy vz vida max tam semente/rot ; tipo em st
   st: new Uint8Array(PMAX_A), nx: 0, nxs: 0,
   pl: new Float32Array(6 * 9), // luzes de pulso: x y z raio r g b t dur
-  fl: new Float32Array(6 * 7), nfl: 0, shake: 0, pitY: 0,
-  reset() { this.p.fill(0); this.sm.fill(0); this.pl.fill(0); this.nfl = 0; this.shake = 0; this.rng.seed(99); R.nA = 0; R.nB = 0; R.ndl = 0; },
-  sparks(x, y, z, dx, dy, dz, n, sp, spread, kind) {
-    const p = this.p, r = this.rng; n = Math.min(n | 0, 260);
-    for (let i = 0; i < n; i++) { const o = this.nx * 12; this.nx = (this.nx + 1) % this.N; const s = sp * (0.25 + r.u() * r.u() * 1.3);
-      p[o] = x; p[o + 1] = y; p[o + 2] = z; p[o + 3] = (dx + r.s1() * spread) * s; p[o + 4] = (dy + r.s1() * spread) * s + 1; p[o + 5] = (dz + r.s1() * spread) * s;
-      p[o + 7] = kind === 1 ? r.r(.5, 1.4) : r.r(.25, 1.1); p[o + 6] = p[o + 7]; p[o + 8] = kind || 0; p[o + 9] = kind === 1 ? r.r(.004, .011) : r.r(.004, .009); p[o + 10] = r.u(); p[o + 11] = 0; }
+  fl: new Float32Array(6 * 7), nfl: 0, sh: new Float32Array(2),
+  reset() { this.p.fill(0); this.sm.fill(0); this.pl.fill(0); this.nfl = 0; this.sh[0] = 0; this.rng.seed(99); R.nA = 0; R.nB = 0; R.ndl = 0; },
+  sparksR(kind) {
+    const x = _f[0], y = _f[1], z = _f[2], dx = _f[3], dy = _f[4], dz = _f[5], sp = _f[7], spread = _f[8], p = this.p, r = this.rng, n = Math.min(_f[6] | 0, 260);
+    for (let i = 0; i < n; i++) { const o = this.nx * 12; this.nx = (this.nx + 1) % this.N; const s = sp * (0.25 + (r.uR(), _u[0]) * (r.uR(), _u[0]) * 1.3);
+      p[o] = x; p[o + 1] = y; p[o + 2] = z; p[o + 3] = (dx + (r.uR(), _u[0] * 2 - 1) * spread) * s; p[o + 4] = (dy + (r.uR(), _u[0] * 2 - 1) * spread) * s + 1; p[o + 5] = (dz + (r.uR(), _u[0] * 2 - 1) * spread) * s;
+      p[o + 7] = kind === 1 ? (r.uR(), (.5) + ((1.4) - (.5)) * _u[0]) : (r.uR(), (.25) + ((1.1) - (.25)) * _u[0]); p[o + 6] = p[o + 7]; p[o + 8] = kind || 0; p[o + 9] = kind === 1 ? (r.uR(), (.004) + ((.011) - (.004)) * _u[0]) : (r.uR(), (.004) + ((.009) - (.004)) * _u[0]); p[o + 10] = (r.uR(), _u[0]); p[o + 11] = 0; }
   },
-  smoke(x, y, z, n, size, dark, up) { const m = this.sm, r = this.rng; for (let i = 0; i < n; i++) { const k = this.nxs; this.nxs = (this.nxs + 1) % this.NS; const o = k * 10; m[o] = x + r.s1() * .08; m[o + 1] = y + r.s1() * .05; m[o + 2] = z + r.s1() * .08; m[o + 3] = r.s1() * .35; m[o + 4] = (up || .8) * r.r(.6, 1.3); m[o + 5] = r.s1() * .35; m[o + 7] = r.r(1.4, 3.0); m[o + 6] = m[o + 7]; m[o + 8] = size * r.r(.7, 1.3); m[o + 9] = r.u() * 100; this.st[k] = dark ? 1 : 0; } },
-  fire(x, y, z, n, size, up) { const p = this.p, r = this.rng; for (let i = 0; i < n; i++) { const o = this.nx * 12; this.nx = (this.nx + 1) % this.N; p[o] = x + r.s1() * .06; p[o + 1] = y; p[o + 2] = z + r.s1() * .06; p[o + 3] = r.s1() * .5; p[o + 4] = up * r.r(.6, 1.2); p[o + 5] = r.s1() * .5; p[o + 7] = r.r(.25, .55); p[o + 6] = p[o + 7]; p[o + 8] = 3; p[o + 9] = size * r.r(.7, 1.3); p[o + 10] = r.u() * 100; p[o + 11] = r.u() * 6; } },
-  light(x, y, z, rad, r, g, b, dur) { const l = this.pl; let k = 0, bt = 9; for (let i = 0; i < 6; i++) { const rem = l[i * 9 + 8] > 0 ? 1 - l[i * 9 + 7] / l[i * 9 + 8] : -1; if (rem < bt) { bt = rem; k = i; } } const o = k * 9; l[o] = x; l[o + 1] = y; l[o + 2] = z; l[o + 3] = rad; l[o + 4] = r; l[o + 5] = g; l[o + 6] = b; l[o + 7] = 0; l[o + 8] = dur; },
-  flight(x, y, z, rad, r, g, b) { if (this.nfl >= 4) return; const o = this.nfl++ * 7, l = this.fl; l[o] = x; l[o + 1] = y; l[o + 2] = z; l[o + 3] = rad; l[o + 4] = r; l[o + 5] = g; l[o + 6] = b; },
-  mark(x0, z0, x1, z1, w, ch, int) { if (R.nmk >= MARK_MAX) return; const m = R.mk, o = R.nmk++ * 8; m[o] = x0; m[o + 1] = z0; m[o + 2] = x1; m[o + 3] = z1; m[o + 4] = w; m[o + 5] = ch; m[o + 6] = int; m[o + 7] = 0; },
+  smokeR(dark) { const x = _f[0], y = _f[1], z = _f[2], n = _f[3] | 0, size = _f[4], up = _f[5], m = this.sm, r = this.rng; for (let i = 0; i < n; i++) { const k = this.nxs; this.nxs = (this.nxs + 1) % this.NS; const o = k * 10; m[o] = x + (r.uR(), _u[0] * 2 - 1) * .08; m[o + 1] = y + (r.uR(), _u[0] * 2 - 1) * .05; m[o + 2] = z + (r.uR(), _u[0] * 2 - 1) * .08; m[o + 3] = (r.uR(), _u[0] * 2 - 1) * .35; m[o + 4] = (up || .8) * (r.uR(), (.6) + ((1.3) - (.6)) * _u[0]); m[o + 5] = (r.uR(), _u[0] * 2 - 1) * .35; m[o + 7] = (r.uR(), (1.4) + ((3.0) - (1.4)) * _u[0]); m[o + 6] = m[o + 7]; m[o + 8] = size * (r.uR(), (.7) + ((1.3) - (.7)) * _u[0]); m[o + 9] = (r.uR(), _u[0]) * 100; this.st[k] = dark ? 1 : 0; } },
+  fireR() { const x = _f[0], y = _f[1], z = _f[2], n = _f[3] | 0, size = _f[4], up = _f[5], p = this.p, r = this.rng; for (let i = 0; i < n; i++) { const o = this.nx * 12; this.nx = (this.nx + 1) % this.N; p[o] = x + (r.uR(), _u[0] * 2 - 1) * .06; p[o + 1] = y; p[o + 2] = z + (r.uR(), _u[0] * 2 - 1) * .06; p[o + 3] = (r.uR(), _u[0] * 2 - 1) * .5; p[o + 4] = up * (r.uR(), (.6) + ((1.2) - (.6)) * _u[0]); p[o + 5] = (r.uR(), _u[0] * 2 - 1) * .5; p[o + 7] = (r.uR(), (.25) + ((.55) - (.25)) * _u[0]); p[o + 6] = p[o + 7]; p[o + 8] = 3; p[o + 9] = size * (r.uR(), (.7) + ((1.3) - (.7)) * _u[0]); p[o + 10] = (r.uR(), _u[0]) * 100; p[o + 11] = (r.uR(), _u[0]) * 6; } },
+  lightR() { const x = _f[0], y = _f[1], z = _f[2], rad = _f[3], r = _f[4], g = _f[5], b = _f[6], dur = _f[7], l = this.pl; let k = 0, bt = 9; for (let i = 0; i < 6; i++) { const rem = l[i * 9 + 8] > 0 ? 1 - l[i * 9 + 7] / l[i * 9 + 8] : -1; if (rem < bt) { bt = rem; k = i; } } const o = k * 9; l[o] = x; l[o + 1] = y; l[o + 2] = z; l[o + 3] = rad; l[o + 4] = r; l[o + 5] = g; l[o + 6] = b; l[o + 7] = 0; l[o + 8] = dur; },
+  flightR() { const x = _f[0], y = _f[1], z = _f[2], rad = _f[3], r = _f[4], g = _f[5], b = _f[6]; if (this.nfl >= 4) return; const o = this.nfl++ * 7, l = this.fl; l[o] = x; l[o + 1] = y; l[o + 2] = z; l[o + 3] = rad; l[o + 4] = r; l[o + 5] = g; l[o + 6] = b; },
+  markR() { const x0 = _f[0], z0 = _f[1], x1 = _f[2], z1 = _f[3], w = _f[4], ch = _f[5], int = _f[6]; if (R.nmk >= MARK_MAX) return; const m = R.mk, o = R.nmk++ * 8; m[o] = x0; m[o + 1] = z0; m[o + 2] = x1; m[o + 3] = z1; m[o + 4] = w; m[o + 5] = ch; m[o + 6] = int; m[o + 7] = 0; },
   update(dt) {
     const p = this.p, B = R.pB; let nb = 0;
     for (let i = 0; i < this.N; i++) { const o = i * 12; if (p[o + 6] <= 0) continue; p[o + 6] -= dt; const kind = p[o + 8];
       if (kind < 2) { p[o + 4] -= 9.8 * dt * (kind === 1 ? 1 : .85); const dr = 1 - dt * (kind === 1 ? .6 : 1.6); p[o + 3] *= dr; p[o + 5] *= dr; }
       else { p[o + 4] += 2.5 * dt; p[o + 3] *= 1 - dt * 2; p[o + 5] *= 1 - dt * 2; }
       p[o] += p[o + 3] * dt; p[o + 1] += p[o + 4] * dt; p[o + 2] += p[o + 5] * dt;
-      if (kind < 2 && p[o + 1] < .008) { const inPit = this.pitY < -.05 && Math.abs(p[o] - PIT.x) < PIT.h && Math.abs(p[o + 2] - PIT.z) < PIT.h; if (!inPit) { p[o + 1] = .008; p[o + 4] *= -.38; p[o + 3] *= .7; p[o + 5] *= .7; if (kind === 1 && Math.abs(p[o + 4]) < .4) { p[o + 4] = 0; p[o + 3] *= .5; p[o + 5] *= .5; } } }
+      if (kind < 2 && p[o + 1] < .008) { const inPit = this.sh[1] < -.05 && Math.abs(p[o] - PIT.x) < PIT.h && Math.abs(p[o + 2] - PIT.z) < PIT.h; if (!inPit) { p[o + 1] = .008; p[o + 4] *= -.38; p[o + 3] *= .7; p[o + 5] *= .7; if (kind === 1 && Math.abs(p[o + 4]) < .4) { p[o + 4] = 0; p[o + 3] *= .5; p[o + 5] *= .5; } } }
       if (kind < 2) { if (Math.abs(p[o]) > AR - .03) { p[o] = Math.sign(p[o]) * (AR - .03); p[o + 3] *= -.4; } if (Math.abs(p[o + 2]) > AR - .03) { p[o + 2] = Math.sign(p[o + 2]) * (AR - .03); p[o + 5] *= -.4; } }
       if (p[o + 6] <= 0 || nb >= PMAX_B) continue; const q = nb++ * 12, f = p[o + 6] / p[o + 7];
       B[q] = p[o]; B[q + 1] = p[o + 1]; B[q + 2] = p[o + 2]; B[q + 3] = p[o + 9];
@@ -2058,7 +2071,7 @@ const FX = {
     // luzes: primeiro as continuas, depois os pulsos
     const d = R.dl; let n = 0; for (let i = 0; i < this.nfl && n < 6; i++) { const o = i * 7, k = n++ * 8; d[k] = this.fl[o]; d[k + 1] = this.fl[o + 1]; d[k + 2] = this.fl[o + 2]; d[k + 3] = this.fl[o + 3]; d[k + 4] = this.fl[o + 4]; d[k + 5] = this.fl[o + 5]; d[k + 6] = this.fl[o + 6]; }
     const l = this.pl; for (let i = 0; i < 6; i++) { const o = i * 9; if (l[o + 8] <= 0) continue; l[o + 7] += dt; if (l[o + 7] >= l[o + 8]) { l[o + 8] = 0; continue; } if (n >= 6) continue; const f = 1 - l[o + 7] / l[o + 8], k = n++ * 8; d[k] = l[o]; d[k + 1] = l[o + 1]; d[k + 2] = l[o + 2]; d[k + 3] = l[o + 3]; d[k + 4] = l[o + 4] * f * f; d[k + 5] = l[o + 5] * f * f; d[k + 6] = l[o + 6] * f * f; }
-    R.ndl = n; this.nfl = 0; this.shake = Math.max(0, this.shake - dt * 3);
+    R.ndl = n; this.nfl = 0; this.sh[0] = Math.max(0, this.sh[0] - dt * 3);
   },
 };
 
@@ -2068,28 +2081,29 @@ const MESH = {};
 const _m = new Float32Array(16 * 4);
 const DRAW = {
   // escreve uma instancia: matriz ja em R.I[o..o+15]
-  put(slot, mesh, tint, mk, decal, hl, hw, wear, burn, glow, spin, seed) { const I = R.I, o = slot * INST_F; R.im[slot] = mesh; I[o + 32] = tint[0]; I[o + 33] = tint[1]; I[o + 34] = tint[2]; I[o + 35] = mk; I[o + 36] = decal; I[o + 37] = hl; I[o + 38] = hw; I[o + 39] = wear; I[o + 40] = burn; I[o + 41] = glow; I[o + 42] = spin; I[o + 43] = seed; },
+  putR(slot, mesh, tint) { const mk = _d[0], decal = _d[1], hl = _d[2], hw = _d[3], wear = _d[4], burn = _d[5], glow = _d[6], spin = _d[7], seed = _d[8], I = R.I, o = slot * INST_F; R.im[slot] = mesh; I[o + 32] = tint[0]; I[o + 33] = tint[1]; I[o + 34] = tint[2]; I[o + 35] = mk; I[o + 36] = decal; I[o + 37] = hl; I[o + 38] = hw; I[o + 39] = wear; I[o + 40] = burn; I[o + 41] = glow; I[o + 42] = spin; I[o + 43] = seed; },
   dents(slot, src, so) { const I = R.I, o = slot * INST_F + 44; if (!src) { for (let k = 0; k < 16; k++) I[o + k] = 0; return; } for (let k = 0; k < 16; k++) I[o + k] = src[so + k]; },
   hide(base) { for (let k = 0; k < SLOT.ROBOT_N; k++) R.im[base + k] = -1; },
   // B: {b, L, hp, hpMax, dent, wang, wa, cor, burn, glow, ycm}; pose px..qw (CM); an: Float32Array(4) deslocamentos de animacao por encaixe (ou null)
-  bot(base, B, px, py, pz, qx, qy, qz, qw, decal, an) {
+  botR(base, B, decal, an) {
+    const px = _q[0], py = _q[1], pz = _q[2], qx = _q[3], qy = _q[4], qz = _q[5], qw = _q[6];
     const I = R.I, L = B.L, b = B.b, c = CHASSIS[b[0]], mk = BLIND[b[2]].metal, hl = c.L / 2, hw = c.W / 2 + .012, seed = base * 1.7;
-    M4.fromQT(_m, 0, qx, qy, qz, qw, px, py, pz); M4.mulTR(_m, 16, _m, 0, 0, -B.ycm, 0, 1, 0); // _m[16..] = origem do robo
+    (_q[0] = qx, _q[1] = qy, _q[2] = qz, _q[3] = qw, _q[4] = px, _q[5] = py, _q[6] = pz, M4.fromQTr(_m, 0)); (_t[0] = 0, _t[1] = -B.ycm, _t[2] = 0, _t[3] = 0, M4.mulTRr(_m, 16, _m, 0, 1)); // _m[16..] = origem do robo
     const a0 = an ? an[0] : 0, a1 = an ? an[1] : 0, a2 = an ? an[2] : 0, a3 = an ? an[3] : 0, hp = B.hp, hm = B.hpMax, burn = B.burn || 0, glow = B.glow || 0;
-    let s = base; M4.mulTR(I, s * INST_F, _m, 16, 0, a0, 0, 1, 0); this.put(s, MESH['ch' + b[0]].id, B.cor, 0, -1, hl, hw, 1 - hp[0] / hm[0], burn, glow, 0, seed); this.dents(s, B.dent, 80);
+    let s = base; (_t[0] = 0, _t[1] = a0, _t[2] = 0, _t[3] = 0, M4.mulTRr(I, s * INST_F, _m, 16, 1)); (_d[0] = 0, _d[1] = -1, _d[2] = hl, _d[3] = hw, _d[4] = 1 - hp[0] / hm[0], _d[5] = burn, _d[6] = glow, _d[7] = 0, _d[8] = seed, this.putR(s, B.mid[0], B.cor)); this.dents(s, B.dent, 80);
     // rodas
-    const nw = L.nw, wm = MESH['wh' + b[1]].id;
+    const nw = L.nw, wm = B.mid[1];
     for (let q = 0; q < 4; q++) { s = base + 1 + q; if (hp[1 + q] <= 0 || (nw === 2 && q > 1)) { R.im[s] = -1; continue; }
       const zs = (q & 1) ? 1 : -1, x = nw === 2 ? (L.wx0 + L.wx1) / 2 : (q < 2 ? L.wx0 : L.wx1), z = zs * (L.wz + a1);
-      if (zs > 0) M4.mulTR(I, s * INST_F, _m, 16, x, AXLE_Y, z, 2, nw === 2 ? 0 : -B.wang[q]); else { M4.mulTR(_m, 32, _m, 16, x, AXLE_Y, z, 1, PI); M4.mulTR(I, s * INST_F, _m, 32, 0, 0, 0, 2, nw === 2 ? 0 : B.wang[q]); }
-      this.put(s, wm, B.cor, 0, -1, hl, hw, 1 - hp[1 + q] / hm[1 + q], burn, 0, nw === 2 ? B.wang[q] * zs : 0, seed + q); this.dents(s, null, 0); }
+      if (zs > 0) (_t[0] = x, _t[1] = AXLE_Y, _t[2] = z, _t[3] = nw === 2 ? 0 : -B.wang[q], M4.mulTRr(I, s * INST_F, _m, 16, 2)); else { (_t[0] = x, _t[1] = AXLE_Y, _t[2] = z, _t[3] = PI, M4.mulTRr(_m, 32, _m, 16, 1)); (_t[0] = 0, _t[1] = 0, _t[2] = 0, _t[3] = nw === 2 ? 0 : B.wang[q], M4.mulTRr(I, s * INST_F, _m, 32, 2)); }
+      (_d[0] = 0, _d[1] = -1, _d[2] = hl, _d[3] = hw, _d[4] = 1 - hp[1 + q] / hm[1 + q], _d[5] = burn, _d[6] = 0, _d[7] = nw === 2 ? B.wang[q] * zs : 0, _d[8] = seed + q, this.putR(s, wm, B.cor)); this.dents(s, null, 0); }
     // blindagem
     for (let p = 0; p < 5; p++) { s = base + 5 + p; if (hp[5 + p] <= 0) { R.im[s] = -1; continue; }
-      const dx = p === 0 ? a2 : p === 1 ? -a2 : 0, dz = p === 2 ? -a2 : p === 3 ? a2 : 0, dy = p === 4 ? a2 : 0; M4.mulTR(I, s * INST_F, _m, 16, dx, dy, dz, 1, 0);
-      this.put(s, MESH[`ar${b[0]}_${b[2]}_${p}`].id, B.cor, mk, decal, hl, hw, 1 - hp[5 + p] / hm[5 + p], burn, glow, 0, seed + p * 3.1); this.dents(s, B.dent, p * 16); }
+      const dx = p === 0 ? a2 : p === 1 ? -a2 : 0, dz = p === 2 ? -a2 : p === 3 ? a2 : 0, dy = p === 4 ? a2 : 0; (_t[0] = dx, _t[1] = dy, _t[2] = dz, _t[3] = 0, M4.mulTRr(I, s * INST_F, _m, 16, 1));
+      (_d[0] = mk, _d[1] = decal, _d[2] = hl, _d[3] = hw, _d[4] = 1 - hp[5 + p] / hm[5 + p], _d[5] = burn, _d[6] = glow, _d[7] = 0, _d[8] = seed + p * 3.1, this.putR(s, B.mid[2 + p], B.cor)); this.dents(s, B.dent, p * 16); }
     // arma
-    s = base + 10; M4.mulTR(I, s * INST_F, _m, 16, 0, a3, 0, 1, 0); this.put(s, MESH[`wb${b[0]}_${b[3]}`].id, B.cor, 0, -1, hl, hw, 1 - hp[10] / hm[10], burn, 0, 0, seed + 20); this.dents(s, null, 0);
-    s = base + 11; if (hp[10] <= 0) R.im[s] = -1; else { M4.mulTR(I, s * INST_F, _m, 16, L.px, L.py + a3, 0, b[3] === 0 ? 1 : 2, B.wa); this.put(s, MESH[`wm${b[0]}_${b[3]}`].id, B.cor, 0, -1, hl, hw, 1 - hp[10] / hm[10], burn, 0, 0, seed + 21); this.dents(s, null, 0); }
+    s = base + 10; (_t[0] = 0, _t[1] = a3, _t[2] = 0, _t[3] = 0, M4.mulTRr(I, s * INST_F, _m, 16, 1)); (_d[0] = 0, _d[1] = -1, _d[2] = hl, _d[3] = hw, _d[4] = 1 - hp[10] / hm[10], _d[5] = burn, _d[6] = 0, _d[7] = 0, _d[8] = seed + 20, this.putR(s, B.mid[7], B.cor)); this.dents(s, null, 0);
+    s = base + 11; if (hp[10] <= 0) R.im[s] = -1; else { (_t[0] = L.px, _t[1] = L.py + a3, _t[2] = 0, _t[3] = B.wa, M4.mulTRr(I, s * INST_F, _m, 16, b[3] === 0 ? 1 : 2)); (_d[0] = 0, _d[1] = -1, _d[2] = hl, _d[3] = hw, _d[4] = 1 - hp[10] / hm[10], _d[5] = burn, _d[6] = 0, _d[7] = 0, _d[8] = seed + 21, this.putR(s, B.mid[8], B.cor)); this.dents(s, null, 0); }
     for (let k = 12; k < SLOT.ROBOT_N; k++) R.im[base + k] = -1;
   },
 };
@@ -2172,14 +2186,14 @@ const IN = {
     this.gp = gp; let rt = 0, lt = 0, sx = 0, rx = 0;
     if (gp) { const b = gp.buttons; for (let i = 0; i < 17 && i < b.length; i++) n[i] = b[i].pressed ? 1 : 0; rt = b[7] ? b[7].value : 0; lt = b[6] ? b[6].value : 0; sx = this.axis(gp.axes[0] || 0); rx = this.axis(gp.axes[2] || 0); const sy = gp.axes[1] || 0; n[17] = sy < -.6 ? 1 : 0; n[18] = sy > .6 ? 1 : 0; }
     else n.fill(0);
-    this.thr = clamp(rt - lt + (kb[0] ? 1 : 0) - (kb[1] ? 1 : 0), -1, 1); this.steer = clamp(sx + (kb[3] ? 1 : 0) - (kb[2] ? 1 : 0), -1, 1); this.rx = clamp(rx + (kb[16] ? 1 : 0) - (kb[15] ? 1 : 0), -1, 1);
+    this.thr = Math.min(Math.max(rt - lt + (kb[0] ? 1 : 0) - (kb[1] ? 1 : 0), -1), 1); this.steer = Math.min(Math.max(sx + (kb[3] ? 1 : 0) - (kb[2] ? 1 : 0), -1), 1); this.rx = Math.min(Math.max(rx + (kb[16] ? 1 : 0) - (kb[15] ? 1 : 0), -1), 1);
     this.fire = (n[0] || kb[4]) ? 1 : 0; this.flip = (n[2] || kb[5]) ? 1 : 0; this.rst = (n[1] || kb[7]) ? 1 : 0;
     this.pA = n[0] & ~pv[0] & 1; this.pB = n[1] & ~pv[1] & 1; this.pX = n[2] & ~pv[2] & 1; this.pY = n[3] & ~pv[3] & 1; this.pStart = n[9] & ~pv[9] & 1;
     this.pUp = (n[12] & ~pv[12] & 1) | (n[17] & ~pv[17] & 1) | kp[8]; this.pDown = (n[13] & ~pv[13] & 1) | (n[18] & ~pv[18] & 1) | kp[9]; this.pLeft = (n[14] & ~pv[14] & 1) | kp[10]; this.pRight = (n[15] & ~pv[15] & 1) | kp[11];
     this.pOk = this.pA | kp[12]; this.pBack = this.pB | kp[13] | kp[14]; this.pCam = this.pY | kp[6]; this.pPause = this.pStart | kp[13] | kp[17];
     for (let i = 0; i < 20; i++) pv[i] = n[i]; kp.fill(0);
   },
-  rumble(strong, weak, ms) { const gp = this.gp; this.lastRumble = strong; if (!gp || !gp.vibrationActuator) return; const r = this.rum; r.duration = ms; r.strongMagnitude = clamp(strong, 0, 1); r.weakMagnitude = clamp(weak, 0, 1); try { gp.vibrationActuator.playEffect('dual-rumble', r); } catch (e) { } },
+  rumbleR() { const strong = _k[8], weak = _k[9], ms = _k[10], gp = this.gp; this.lastRumble = strong; if (!gp || !gp.vibrationActuator) return; const r = this.rum; r.duration = ms; r.strongMagnitude = Math.min(Math.max(strong, 0), 1); r.weakMagnitude = Math.min(Math.max(weak, 0), 1); try { gp.vibrationActuator.playEffect('dual-rumble', r); } catch (e) { } },
 };
 
 // ==== 78_ui.js ====
@@ -2218,23 +2232,23 @@ const UI = {
     e.rd.textContent = rodada; e.ko.style.display = 'none'; e.rep.style.display = 'none'; this.msg('', '');
     e.hint.textContent = 'RT acelera · LT ré · A arma · X desvira · Y câmera · B canto';
   },
-  setBar(k, el, v, bar) { v = v < 0 ? 0 : v > 100 ? 100 : v | 0; if (this.last[k] === v) return; this.last[k] = v; el.style.transform = SC[v]; if (bar) { bar.classList.toggle('low', v < 34 && v > 0); bar.classList.toggle('dead', v === 0); } },
+  setBar(k, el, v, bar) { v = v | 0; v = v < 0 ? 0 : v > 100 ? 100 : v; if (this.last[k] === v) return; this.last[k] = v; el.style.transform = SC[v]; if (bar) { bar.classList.toggle('low', v < 34 && v > 0); bar.classList.toggle('dead', v === 0); } },
   hud(sim, camIdx) {
     const e = this.el, L = this.last, H = this.he;
     for (let i = 0; i < 2; i++) { const B = sim.bots[i], h = B.hp, m = B.hpMax, o = i * 12, q = H[i];
-      this.setBar(o, q[0], Math.ceil(h[0] / m[0] * 100), q[5]);
-      this.setBar(o + 1, q[1], Math.ceil((h[1] + h[2] + h[3] + h[4]) / (4 * m[1]) * 100), q[6]);
-      this.setBar(o + 2, q[2], Math.ceil((h[5] + h[6] + h[7] + h[8] + h[9]) / (m[5] + m[6] + m[7] + m[8] + m[9]) * 100), q[7]);
-      this.setBar(o + 3, q[3], Math.ceil(h[10] / m[10] * 100), q[8]);
-      this.setBar(o + 4, q[4], Math.ceil(h[11] / m[11] * 100), q[9]);
+      this.setBar(o, q[0], Math.ceil(h[0] / m[0] * 100) | 0, q[5]);
+      this.setBar(o + 1, q[1], Math.ceil((h[1] + h[2] + h[3] + h[4]) / (4 * m[1]) * 100) | 0, q[6]);
+      this.setBar(o + 2, q[2], Math.ceil((h[5] + h[6] + h[7] + h[8] + h[9]) / (m[5] + m[6] + m[7] + m[8] + m[9]) * 100) | 0, q[7]);
+      this.setBar(o + 3, q[3], Math.ceil(h[10] / m[10] * 100) | 0, q[8]);
+      this.setBar(o + 4, q[4], Math.ceil(h[11] / m[11] * 100) | 0, q[9]);
       const k = ARMAS[B.b[3]]; let code = 0, lvl = 0;
-      if (h[10] <= 0) { code = 200; } else if (k.spin) { lvl = Math.round(B.wspin / k.wmax * 20) * 5; code = B.won || lvl > 0 ? lvl : 201; } else if (B.wst === 2) { code = 204; lvl = 100; } else if (B.wst === 1) { code = 203; lvl = 100; } else if (B.wcd > 0) { lvl = Math.round((1 - B.wcd / k.cd) * 20) * 5; code = 300 + lvl; } else { code = 202; lvl = 100; }
+      if (h[10] <= 0) { code = 200; } else if (k.spin) { lvl = (Math.round(B.wspin / k.wmax * 20) | 0) * 5; code = B.won || lvl > 0 ? lvl : 201; } else if (B.wst === 2) { code = 204; lvl = 100; } else if (B.wst === 1) { code = 203; lvl = 100; } else if (B.wcd > 0) { lvl = (Math.round((1 - B.wcd / k.cd) * 20) | 0) * 5; code = 300 + lvl; } else { code = 202; lvl = 100; }
       if (L[o + 5] !== code) { L[o + 5] = code; q[11].textContent = code === 200 ? 'DESTRUÍDA' : code === 201 ? 'DESLIGADA' : code === 202 ? 'PRONTA' : code === 203 ? 'DISPARADA' : code === 204 ? 'PRENDENDO' : code >= 300 ? 'RECARREGANDO' : RPM[code]; }
       this.setBar(o + 6, q[10], lvl, null);
     }
-    const t = Math.max(0, Math.ceil(sim.dur - sim.t)); if (L[30] !== t) { L[30] = t; e.tm.textContent = TM[Math.min(t, 600)]; }
+    const t = Math.max(0, Math.ceil(sim.dur - sim.t) | 0); if (L[30] !== t) { L[30] = t; e.tm.textContent = TM[Math.min(t, 600)]; }
     if (L[31] !== camIdx) { L[31] = camIdx; e.camn.textContent = CAMN[camIdx]; }
-    let ko = -1; for (let i = 0; i < 2; i++) { const B = sim.bots[i]; if (B.imm > 0 && !sim.over) ko = i * 20 + Math.min(10, Math.ceil(KO_T - B.imm)); }
+    let ko = -1; for (let i = 0; i < 2; i++) { const B = sim.bots[i]; if (B.imm > 0 && !sim.over) ko = i * 20 + Math.min(10, Math.ceil(KO_T - B.imm) | 0); }
     if (ko !== this.koShown) { this.koShown = ko; if (ko < 0) e.ko.style.display = 'none'; else { e.ko.style.display = 'block'; e.ko.textContent = this.kos[ko >= 20 ? 1 : 0][ko % 20]; } }
   },
   // ----- garagem -----
@@ -2333,25 +2347,25 @@ const GAR = {
     // bancada giratoria
     if (Math.abs(IN.rx) > .01) { g.ang += IN.rx * dt * 2.6; g.idle = 0; } else { g.idle += dt; if (g.idle > 2.5) g.ang += dt * .22; }
     // animacao de encaixe (mola amortecida)
-    for (let k = 0; k < 4; k++) { if (g.an[k] === 0 && g.anV[k] === 0) continue; const was = g.an[k]; g.anV[k] += (-g.an[k] * 260 - g.anV[k] * 17) * dt; g.an[k] += g.anV[k] * dt; if (g.an[k] < 0) { g.an[k] = 0; if (g.anV[k] < -.5) { g.anV[k] *= -.25; FX.sparks(Math.sin(g.ang) * .1, BENCH_Y + .12 + k * .03, Math.cos(g.ang) * .1, 0, .6, 0, 26, 2.2, 1, 0); FX.light(0, BENCH_Y + .3, 0, 3, 3, 2, .8, .18); } else g.anV[k] = 0; } if (Math.abs(g.an[k]) < .0005 && Math.abs(g.anV[k]) < .01) { g.an[k] = 0; g.anV[k] = 0; } }
+    for (let k = 0; k < 4; k++) { if (g.an[k] === 0 && g.anV[k] === 0) continue; const was = g.an[k]; g.anV[k] += (-g.an[k] * 260 - g.anV[k] * 17) * dt; g.an[k] += g.anV[k] * dt; if (g.an[k] < 0) { g.an[k] = 0; if (g.anV[k] < -.5) { g.anV[k] *= -.25; (_f[0] = Math.sin(g.ang) * .1, _f[1] = BENCH_Y + .12 + k * .03, _f[2] = Math.cos(g.ang) * .1, _f[3] = 0, _f[4] = .6, _f[5] = 0, _f[6] = 26, _f[7] = 2.2, _f[8] = 1, FX.sparksR(0)); (_f[0] = 0, _f[1] = BENCH_Y + .3, _f[2] = 0, _f[3] = 3, _f[4] = 3, _f[5] = 2, _f[6] = .8, _f[7] = .18, FX.lightR()); } else g.anV[k] = 0; } if (Math.abs(g.an[k]) < .0005 && Math.abs(g.anV[k]) < .01) { g.an[k] = 0; g.anV[k] = 0; } }
   },
   go() { const st = statsOf(this.pre); if (this.mode === 1) return; if (!st.ok) { UI.toast(`PESO ACIMA DO LIMITE (${st.kg} / ${PESO_MAX} kg)`); this.warn = 1; return false; } this.com = this.pre.slice(); G.save(); if (!TOR || !TOR.ativo) G.newTournament(); else TOR.ent[0].b = this.com.slice(); if (this.repair) G.startIntro(); else G.toBracket('PRÓXIMA LUTA'); return true; },
   draw() {
     const B = this.bot, L = B.L, a = this.ang, I = R.I;
-    R.im[SLOT.AUX0] = MESH.bench.id; M4.ident(_m, 48); M4.mulTR(I, SLOT.AUX0 * INST_F, _m, 48, 0, BENCH_Y, 0, 1, a); DRAW.put(SLOT.AUX0, MESH.bench.id, B.cor, 0, -1, 1, 1, 0, 0, 0, 0, 3); DRAW.dents(SLOT.AUX0, null, 0);
-    DRAW.bot(SLOT.ROBOT, B, 0, BENCH_Y + L.clear + B.ycm, 0, 0, Math.sin(a / 2), 0, Math.cos(a / 2), 0, this.an);
-    if (G.camFix) { const c = G.camFix; R.eye[0] = c[0]; R.eye[1] = c[1]; R.eye[2] = c[2]; R.tgt[0] = c[3]; R.tgt[1] = c[4]; R.tgt[2] = c[5]; R.fov = c[6]; return; }
-    R.eye[0] = 1.5; R.eye[1] = 1.42; R.eye[2] = 2.15; R.tgt[0] = -.38; R.tgt[1] = .8; R.tgt[2] = 0; R.up[0] = 0; R.up[1] = 1; R.up[2] = 0; R.fov = .62;
+    R.im[SLOT.AUX0] = MESH.bench.id; M4.ident(_m, 48); (_t[0] = 0, _t[1] = BENCH_Y, _t[2] = 0, _t[3] = a, M4.mulTRr(I, SLOT.AUX0 * INST_F, _m, 48, 1)); (_d[0] = 0, _d[1] = -1, _d[2] = 1, _d[3] = 1, _d[4] = 0, _d[5] = 0, _d[6] = 0, _d[7] = 0, _d[8] = 3, DRAW.putR(SLOT.AUX0, MESH.bench.id, B.cor)); DRAW.dents(SLOT.AUX0, null, 0);
+    (_q[0] = 0, _q[1] = BENCH_Y + L.clear + B.ycm, _q[2] = 0, _q[3] = 0, _q[4] = Math.sin(a / 2), _q[5] = 0, _q[6] = Math.cos(a / 2), DRAW.botR(SLOT.ROBOT, B, 0, this.an));
+    if (G.camFix) { const c = G.camFix; R.eye[0] = c[0]; R.eye[1] = c[1]; R.eye[2] = c[2]; R.tgt[0] = c[3]; R.tgt[1] = c[4]; R.tgt[2] = c[5]; R.cp[0] = c[6]; return; }
+    R.eye[0] = 1.5; R.eye[1] = 1.42; R.eye[2] = 2.15; R.tgt[0] = -.38; R.tgt[1] = .8; R.tgt[2] = 0; R.up[0] = 0; R.up[1] = 1; R.up[2] = 0; R.cp[0] = .62;
   },
 };
 
 const G = {
-  st: 'boot', t: 0, cam: 0, camT: 0, ce: new Float32Array(3), ct: new Float32Array(3), first: 1, round: '', intro: 0, introT: 0, endT: 0, paused: 0, prev: '',
-  auto: false, fast: 1, skipRender: false, script: null, sf: 0, rec: null, lastSk: new Float32Array(2 * 4 * 3).fill(-9), frameLog: null, nlog: 0, lastT: 0, acc: 0, hits: 0, detached: 0, maxPen: 0, rumbleLog: null,
+  st: 'boot', ft: new Float64Array(12), pr: new Float32Array(8), cam: 0, ce: new Float32Array(3), ct: new Float32Array(3), first: 1, round: '', intro: 0, paused: 0, prev: '',
+  auto: false, fast: 1, dbg: 0, skipRender: false, camFix: null, notes: null, entA: null, entB: null, curMatch: null, cnt: 0, clipFor: -2, rk: 0, rpx: .5, rpy: .5, rpz: .5, rqx: .5, rqy: .5, rqz: .5, script: null, sf: 0, rec: null, lastSk: new Float32Array(2 * 4 * 3).fill(-9), frameLog: null, nlog: 0, lastT: 0, acc: 0, hits: 0, detached: 0, maxPen: 0, rumbleLog: null,
   // replay
-  REC_F: 28 + 5 + DEB_N * 8, ring: null, clip: null, clipN: 0, clipHit: 0, cev: new Float32Array(32 * 9), ncev: 0, rev: new Float32Array(64 * 9), nrev: 0, bestAt: -1, rp: null, rt: 0,
+  REC_F: 28 + 5 + DEB_N * 8, ring: null, clip: null, clipN: 0, clipHit: 0, cev: new Float32Array(32 * 9), ncev: 0, rev: new Float32Array(64 * 9), nrev: 0, bestAt: -1, rp: null,
   save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ b: GAR.com, cor: GAR.cor, num: GAR.num, nome: GAR.nome, tor: TOR })); } catch (e) { } },
-  load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return; if (Array.isArray(s.b) && s.b.length === 4) GAR.com = s.b.map((v, i) => clamp(v | 0, 0, [2, 2, 2, 5][i])); GAR.cor = clamp(s.cor | 0, 0, CORES.length - 1); GAR.num = clamp(s.num | 0, 0, 99); GAR.nome = String(s.nome || 'Fagulha').slice(0, 14); if (s.tor && s.tor.ent && s.tor.ent.length === 8) TOR = s.tor; } catch (e) { } },
+  load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return; if (Array.isArray(s.b) && s.b.length === 4) GAR.com = s.b.map((v, i) => Math.min(Math.max(v | 0, 0), [2, 2, 2, 5][i])); GAR.cor = Math.min(Math.max(s.cor | 0, 0), CORES.length - 1); GAR.num = Math.min(Math.max(s.num | 0, 0), 99); GAR.nome = String(s.nome || 'Fagulha').slice(0, 14); if (s.tor && s.tor.ent && s.tor.ent.length === 8) TOR = s.tor; } catch (e) { } },
   newTournament(seed) {
     const ent = [{ nome: GAR.nome, b: GAR.com.slice(), cor: CORES[GAR.cor], num: GAR.num, estilo: -1, hp: null, v: 0, d: 0 }];
     for (const r of RIVAIS) ent.push({ nome: r.nome, b: r.b.slice(), cor: CORES[r.cor], num: r.num, estilo: r.estilo, hp: null, v: 0, d: 0 });
@@ -2388,7 +2402,7 @@ const G = {
   },
   enterArena() {
     if (R.scene !== 0) { R.im[SLOT.GLASS] = MESH.glass.id; R.im[SLOT.AUX0] = MESH.saw.id; R.im[SLOT.AUX1] = MESH.saw.id; R.im[SLOT.AUX2] = MESH.ahammer.id; R.bake(0, MESH.arena.id, ARENA_LIGHTS, [0, 1.2, 0]); }
-    R.exposure = .2; R.fog = .0042; R.mblur = 1; R.amb = 1; R.fov = .9;
+    R.exposure = .2; R.fog = .0042; R.mblur = 1; R.amb = 1; R.cp[0] = .9;
   },
   // prepara a luta do jogador (ou uma luta avulsa para teste/roteiro)
   setupFight(ia, ib, seed, dur, ea, eb) {
@@ -2398,36 +2412,36 @@ const G = {
     Atlas.robot(0, A.nome, A.num, A.cor); Atlas.robot(1, B.nome, B.num, B.cor); Atlas.score(A.nome.toUpperCase(), B.nome.toUpperCase(), this.round, 'AO VIVO', A.cor, B.cor);
     this.enterArena(); R.clearMarks(); FX.reset(); this.lastSk.fill(-9); this.hits = 0; this.hitsB = 0; this.detB = 0; this.detached = 0; this.maxPen = -9; this.bestAt = -1; this.clipN = 0; this.ncev = 0; this.nrev = 0; this.sf = 0;
     if (!this.ring) { this.ring = new Float32Array(300 * this.REC_F); this.clip = new Float32Array(240 * this.REC_F); this.rp = [0, 1].map(() => ({ hp: new Float32Array(NPART), wang: new Float32Array(4), wa: 0, burn: 0, glow: 0 })); }
-    UI.hudInit(SIM.bots[0], SIM.bots[1], this.round); this.clipFor = -2;
+    UI.hudInit(SIM.bots[0], SIM.bots[1], this.round); this.clipFor = -2; this.notes = SIM.bots.map(B => ['O CHASSI', 'UMA RODA', 'UMA RODA', 'UMA RODA', 'UMA RODA', 'A BLINDAGEM DA FRENTE', 'A BLINDAGEM DE TRÁS', 'A BLINDAGEM ESQUERDA', 'A BLINDAGEM DIREITA', 'A BLINDAGEM DO TETO', 'A ARMA', 'A BATERIA'].map(p => B.nome + ' PERDEU ' + p));
     for (let i = 0; i < SLOT.DEBRIS_N; i++) R.im[SLOT.DEBRIS + i] = -1;
     this.cam = 0; this.first = 1; this.drawFight(0); R.reset = 1;
   },
   startIntro() {
     const j = this.myMatch(); if (!j) { this.toBracket(''); return; } const o = j.a === 0 ? j.b : j.a; this.round = RODADAS[TOR.rodada];
     this.setupFight(0, o, TOR.seed + TOR.rodada * 100 + 50, LUTA_T); this.curMatch = j;
-    this.st = 'intro'; this.intro = 0; this.introT = 0; R.keyDim = .45; UI.show('intro'); this.showIntro();
+    this.st = 'intro'; this.intro = 0; this.ft[7] = 0; R.keyDim = .45; UI.show('intro'); this.showIntro();
   },
   showIntro() { const e = this.intro ? this.entB : this.entA, h = e.v + e.d === 0 ? 'ESTREIA' : `${e.v} VITÓRIA${e.v === 1 ? '' : 'S'}`; UI.intro(e, this.intro, SIM.bots[this.intro].S, h); },
   startFight() { this.st = 'luta'; UI.show('hud'); UI.msg('', ''); R.keyDim = 1; },
   // ---------- quadro ----------
   tick(dt) {
-    IN.poll(dt); UI.tick(dt); this.t += dt; const st = this.st;
+    IN.poll(dt); UI.tick(dt); this.ft[0] += dt; const st = this.st;
     if (st === 'garagem') { GAR.tick(dt); GAR.draw(); FX.update(dt); }
     else if (st === 'chave') { if (IN.pOk || IN.pStart) { if (TOR.campeao >= 0) { TOR = null; this.save(); GAR.com = GAR.com.slice(); GAR.enter(false); } else if (!TOR.vivo) { this.finishRound(); this.toBracket(''); } else if (TOR.lutas === 0) this.startIntro(); else GAR.enter(true); }
-      else { this.camT += dt; const a = this.camT * .12; R.eye[0] = Math.cos(a) * 11.5; R.eye[1] = 6.6; R.eye[2] = Math.sin(a) * 11.5; R.tgt[0] = 0; R.tgt[1] = .4; R.tgt[2] = 0; R.fov = .8; FX.update(dt); this.drawProps(); } }
-    else if (st === 'intro') { this.introT += dt; const B = SIM.bots[this.intro], s = B.s, a = this.introT * .9 + (this.intro ? PI : 0) + .6, r = 2.3;
-      R.eye[0] = clamp(s[0] + Math.cos(a) * r, -AR + .5, AR - .5); R.eye[1] = .75 + Math.sin(this.introT * .7) * .12; R.eye[2] = s[2] + Math.sin(a) * r; R.tgt[0] = s[0]; R.tgt[1] = .2; R.tgt[2] = s[2]; R.fov = .7;
+      else { this.ft[8] += dt; const a = this.ft[8] * .12; R.eye[0] = Math.cos(a) * 11.5; R.eye[1] = 6.6; R.eye[2] = Math.sin(a) * 11.5; R.tgt[0] = 0; R.tgt[1] = .4; R.tgt[2] = 0; R.cp[0] = .8; FX.update(dt); { const P = this.pr, S = SIM; P[0] = S.sawH[0]; P[1] = S.sawH[1]; P[2] = S.sawA; P[3] = S.ahA; P[4] = S.pitY; } this.drawProps(); } }
+    else if (st === 'intro') { this.ft[7] += dt; const B = SIM.bots[this.intro], s = B.s, a = this.ft[7] * .9 + (this.intro ? PI : 0) + .6, r = 2.3;
+      R.eye[0] = Math.min(Math.max(s[0] + Math.cos(a) * r, -AR + .5), AR - .5); R.eye[1] = .75 + Math.sin(this.ft[7] * .7) * .12; R.eye[2] = s[2] + Math.sin(a) * r; R.tgt[0] = s[0]; R.tgt[1] = .2; R.tgt[2] = s[2]; R.cp[0] = .7;
       this.drawFight(0); FX.update(dt);
-      if (this.introT > 3.6 || IN.pOk || IN.pStart) { if (this.intro === 0) { this.intro = 1; this.introT = 0; this.showIntro(); } else { this.st = 'contagem'; this.introT = 0; UI.show('hud'); this.cam = 0; this.first = 1; this.cnt = -1; } } }
-    else if (st === 'contagem') { this.introT += dt; const n = Math.floor(this.introT / .8); if (n !== this.cnt) { this.cnt = n; if (n < 3) { UI.msg(String(3 - n), 'PREPARAR'); const c = n === 0 ? [9, .6, .3] : n === 1 ? [9, 6, .5] : [9, 8, 2]; FX.light(0, 3.2, 0, 16, c[0] * 6, c[1] * 6, c[2] * 6, .7); R.keyDim = .45 + n * .15; } else { UI.msg('LUTA!', ''); FX.light(0, 3.2, 0, 18, 10, 60, 14, .9); R.keyDim = 1; } }
-      this.camera(dt); this.drawFight(0); FX.update(dt); if (this.introT > 3.1) this.startFight(); }
+      if (this.ft[7] > 3.6 || IN.pOk || IN.pStart) { if (this.intro === 0) { this.intro = 1; this.ft[7] = 0; this.showIntro(); } else { this.st = 'contagem'; this.ft[7] = 0; UI.show('hud'); this.cam = 0; this.first = 1; this.cnt = -1; } } }
+    else if (st === 'contagem') { this.ft[7] += dt; const n = Math.floor(this.ft[7] / .8); if (n !== this.cnt) { this.cnt = n; if (n < 3) { UI.msg(String(3 - n), 'PREPARAR'); const c = n === 0 ? [9, .6, .3] : n === 1 ? [9, 6, .5] : [9, 8, 2]; (_f[0] = 0, _f[1] = 3.2, _f[2] = 0, _f[3] = 16, _f[4] = c[0] * 6, _f[5] = c[1] * 6, _f[6] = c[2] * 6, _f[7] = .7, FX.lightR()); R.keyDim = .45 + n * .15; } else { UI.msg('LUTA!', ''); (_f[0] = 0, _f[1] = 3.2, _f[2] = 0, _f[3] = 18, _f[4] = 10, _f[5] = 60, _f[6] = 14, _f[7] = .9, FX.lightR()); R.keyDim = 1; } }
+      this.camera(dt); this.drawFight(0); FX.update(dt); if (this.ft[7] > 3.1) this.startFight(); }
     else if (st === 'luta' || st === 'fim') {
       if (IN.pPause && st === 'luta' && !this.script) { this.prev = st; this.st = 'pausa'; UI.show('hud', 'pausa'); return; }
-      if (this.msgT > 0) { this.msgT -= dt; if (this.msgT <= 0 && st === 'luta') UI.msg('', ''); }
+      if (this.ft[2] > 0) { this.ft[2] -= dt; if (this.ft[2] <= 0 && st === 'luta') UI.msg('', ''); }
       const n = this.fast; for (let k = 0; k < n; k++) this.fightStep();
-      if (!this.skipRender || this.st !== 'luta') { this.camera(dt); this.drawFight(1); FX.update(dt); UI.hud(SIM, this.cam); }
-      if (this.st === 'fim') { this.endT += dt * (this.fast > 1 ? 30 : 1); if (this.endT > 3) this.afterFight(); } }
-    else if (st === 'juizes') { this.endT += dt * (this.fast > 1 ? 30 : 1); this.camera(dt); this.drawFight(1); FX.update(dt); if (this.endT > 6 || IN.pOk) this.toReplay(); }
+      if (!this.skipRender || this.st !== 'luta') { const dbg = this.dbg; if (!(dbg & 1)) this.camera(dt); if (!(dbg & 2)) this.drawFight(1); if (!(dbg & 4)) FX.update(dt); if (!(dbg & 8)) UI.hud(SIM, this.cam); }
+      if (this.st === 'fim') { this.ft[1] += dt * (this.fast > 1 ? 30 : 1); if (this.ft[1] > 3) this.afterFight(); } }
+    else if (st === 'juizes') { this.ft[1] += dt * (this.fast > 1 ? 30 : 1); this.camera(dt); this.drawFight(1); FX.update(dt); if (this.ft[1] > 6 || IN.pOk) this.toReplay(); }
     else if (st === 'replay') { this.replayTick(dt); }
     else if (st === 'pausa') { if (IN.pPause || IN.pOk) { this.st = this.prev; UI.show('hud'); } }
   },
@@ -2435,38 +2449,40 @@ const G = {
     const S = SIM, A = S.bots[0];
     if (this.script) { const f = this.sf, d = this.script; if (f * 3 + 2 < d.length) { A.thr = d[f * 3] / 100; A.steer = d[f * 3 + 1] / 100; const b = d[f * 3 + 2]; A.fire = b & 1; A.flipB = (b >> 1) & 1; A.resetB = (b >> 2) & 1; if (b & 8) this.cam = (this.cam + 1) % 3; } else { A.thr = 0; A.steer = 0; A.fire = 0; } }
     else if (!A.isAI) { A.thr = IN.thr; A.steer = IN.steer; A.fire = IN.fire; A.flipB = IN.flip; A.resetB = IN.rst; if (IN.pCam) this.cam = (this.cam + 1) % 3; }
-    S.step(); this.sf++;
+    if (this.rec && A.isAI) { // gravacao: o piloto automatico decide, os comandos sao quantizados e so entao aplicados (o replay fica identico)
+      if (!S.over) S.think(A, S.bots[1]); A.thr = Math.round(A.thr * 100) / 100; A.steer = Math.round(A.steer * 100) / 100; A.isAI = false; S.step(); A.isAI = true; } else S.step();
+    this.sf++;
     if (this.rec && S.frame <= this.rec.length / 3) { const o = (S.frame - 1) * 3; this.rec[o] = Math.round(A.thr * 100); this.rec[o + 1] = Math.round(A.steer * 100); this.rec[o + 2] = (A.fire ? 1 : 0) | (A.flipB ? 2 : 0) | (A.resetB ? 4 : 0); }
     this.events(); this.recFrame();
     for (let i = 0; i < 2; i++) { const B = S.bots[i], s = B.s, h = B.hpt, Rm = B.R; let p = -9; for (let q = 0; q < B.nhp; q++) { const lx = h[q * 3], ly = h[q * 3 + 1], lz = h[q * 3 + 2], x = s[0] + Rm[0] * lx + Rm[1] * ly + Rm[2] * lz, z = s[2] + Rm[6] * lx + Rm[7] * ly + Rm[8] * lz, e = Math.max(Math.abs(x), Math.abs(z)) - AR; if (e > p) p = e; } if (p > this.maxPen) this.maxPen = p; if (S.bots[i].teleport) { S.bots[i].teleport = 0; this.first = 1; } }
-    if (S.over && this.st === 'luta') { this.st = 'fim'; this.endT = 0; const w = S.bots[S.winner].nome; if (S.koBy === 'juizes') UI.msg('FIM DO TEMPO', 'A DECISÃO VAI PARA OS JUÍZES'); else UI.msg(S.koBy === 'fosso' ? 'NO FOSSO!' : 'NOCAUTE!', 'VITÓRIA DE ' + w); if (this.curMatch) Atlas.score(this.entA.nome.toUpperCase(), this.entB.nome.toUpperCase(), this.round, 'VITÓRIA: ' + w.toUpperCase(), this.entA.cor, this.entB.cor); }
+    if (S.over && this.st === 'luta') { this.st = 'fim'; this.ft[1] = 0; const w = S.bots[S.winner].nome; if (S.koBy === 'juizes') UI.msg('FIM DO TEMPO', 'A DECISÃO VAI PARA OS JUÍZES'); else UI.msg(S.koBy === 'fosso' ? 'NO FOSSO!' : 'NOCAUTE!', 'VITÓRIA DE ' + w); if (this.curMatch) Atlas.score(this.entA.nome.toUpperCase(), this.entB.nome.toUpperCase(), this.round, 'VITÓRIA: ' + w.toUpperCase(), this.entA.cor, this.entB.cor); }
   },
   events() {
     const S = SIM, e = S.ev;
     for (let k = 0; k < S.nev; k++) { const o = k * 8, ty = e[o], x = e[o + 1], y = e[o + 2], z = e[o + 3], dx = e[o + 4], dy = e[o + 5], dz = e[o + 6], mag = e[o + 7];
-      if (ty === EV.HIT) { const dmg = mag % 1000; this.hits++; if (mag >= 1000) this.hitsB++; FX.sparks(x, y, z, dx, dy, dz, 24 + dmg * 6, 4 + dmg * .22, .75, 0); FX.sparks(x, y, z, dx, dy + .5, dz, 4 + dmg * .5, 3.5, .9, 1); FX.light(x, y + .25, z, 4 + dmg * .12, 26 + dmg * 2.2, 15 + dmg * 1.1, 4, .22); FX.smoke(x, y, z, 2, .22, 0, .7); FX.mark(x - dz * .2, z + dx * .2, x + dz * .2, z - dx * .2, .012, 1, .6);
-        FX.shake = Math.min(1, FX.shake + dmg * .03); const st = clamp(.2 + dmg / 34, 0, 1); IN.rumble(st, st * .7, 120 + dmg * 7); if (this.rumbleLog && this.rumbleLog.length < 400) this.rumbleLog.push(dmg, st);
-        if (dmg > S.best) { S.best = dmg; this.bestAt = S.frame; } this.pushEv(1, x, y, z, dx, dy, dz, dmg); }
-      else if (ty === EV.DETACH) { this.detached++; if (mag >= 100) this.detB++; FX.sparks(x, y, z, dx, 1, dz, 70, 5, .9, 0); FX.sparks(x, y, z, dx, 1, dz, 14, 4, 1, 1); FX.smoke(x, y, z, 4, .3, 1, .9); FX.light(x, y + .3, z, 5, 40, 22, 6, .3); IN.rumble(.9, .6, 260); FX.shake = Math.min(1, FX.shake + .5); this.pushEv(2, x, y, z, dx, 1, dz, 30); const who = mag >= 100 ? 1 : 0; this.note(S.bots[who].nome + ' PERDEU ' + ['O CHASSI', 'UMA RODA', 'UMA RODA', 'UMA RODA', 'UMA RODA', 'A BLINDAGEM DA FRENTE', 'A BLINDAGEM DE TRÁS', 'A BLINDAGEM ESQUERDA', 'A BLINDAGEM DIREITA', 'A BLINDAGEM DO TETO', 'A ARMA', 'A BATERIA'][mag % 100]); }
-      else if (ty === EV.GRIND) { FX.sparks(x, y, z, dx * .3, .8, dz * .3, 5, 3, .9, 0); }
-      else if (ty === EV.SAW) { FX.sparks(x, y, z, 1, .9, 0, 46, 6, .5, 0); FX.light(x, .4, z, 4, 30, 18, 5, .2); IN.rumble(.6, .5, 160); FX.shake = Math.min(1, FX.shake + .3); this.pushEv(1, x, y, z, 1, .9, 0, 12); }
-      else if (ty === EV.AHAM) { FX.sparks(x, y, z, 0, 1, 0, 40, 4.5, 1, 0); FX.smoke(x, .1, z, 3, .4, 0, .5); FX.light(x, .5, z, 5, 30, 20, 8, .25); FX.shake = Math.min(1, FX.shake + .45); FX.mark(x - .15, z - .15, x + .15, z + .15, .16, 1, .8); }
-      else if (ty === EV.LAND) { FX.sparks(x, y, z, 0, 1, 0, 6 + mag * 2, 2.5, 1, 0); IN.rumble(clamp(mag / 10, .15, .7), .3, 110); }
-      else if (ty === EV.HAMMER) { FX.sparks(x, y, z, 0, 1, 0, 16, 3.5, 1, 0); FX.light(x, .3, z, 3, 14, 9, 3, .15); FX.mark(x - .04, z, x + .04, z, .05, 1, .9); }
-      else if (ty === EV.FLIP) { FX.smoke(x, y + .05, z, 3, .25, 0, .4); }
-      else if (ty === EV.GRAB) { FX.sparks(x, y, z, 0, 1, 0, 20, 3, 1, 0); IN.rumble(.5, .4, 140); }
-      else if (ty === EV.SCRAPE) { const l = this.lastSk, o2 = 0; FX.mark(x - dx * .016, z - dz * .016, x, z, .008, 1, .55); if (FX.rng.u() < .5) FX.sparks(x, .02, z, -dx * .12, .5, -dz * .12, 2, 2.2, .7, 0); }
-      else if (ty === EV.SKID) { const id = mag >= 1000 ? 1 : 0, q = Math.floor((mag % 1000) / 10), w = mag % 10, l = this.lastSk, o2 = (id * 4 + q) * 3; if (l[o2 + 2] === S.frame - 1 && Math.hypot(l[o2] - x, l[o2 + 1] - z) < .5) FX.mark(l[o2], l[o2 + 1], x, z, w * .5, 0, .34); l[o2] = x; l[o2 + 1] = z; l[o2 + 2] = S.frame; }
-      else if (ty === EV.KO) { FX.shake = .6; }
+      if (ty === EV.HIT) { const dmg = mag % 1000; this.hits++; if (mag >= 1000) this.hitsB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy, _f[5] = dz, _f[6] = 24 + dmg * 6, _f[7] = 4 + dmg * .22, _f[8] = .75, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy + .5, _f[5] = dz, _f[6] = 4 + dmg * .5, _f[7] = 3.5, _f[8] = .9, FX.sparksR(1)); (_f[0] = x, _f[1] = y + .25, _f[2] = z, _f[3] = 4 + dmg * .12, _f[4] = 26 + dmg * 2.2, _f[5] = 15 + dmg * 1.1, _f[6] = 4, _f[7] = .22, FX.lightR()); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 2, _f[4] = .22, _f[5] = .7, FX.smokeR(0)); (_f[0] = x - dz * .2, _f[1] = z + dx * .2, _f[2] = x + dz * .2, _f[3] = z - dx * .2, _f[4] = .012, _f[5] = 1, _f[6] = .6, FX.markR());
+        FX.sh[0] = Math.min(1, FX.sh[0] + dmg * .03); const st = Math.min(Math.max(.12 + dmg / 60, 0), 1); (_k[8] = st, _k[9] = st * .7, _k[10] = 120 + dmg * 7, IN.rumbleR()); if (this.rumbleLog && this.rumbleLog.length < 400) this.rumbleLog.push(dmg, st);
+        if (dmg > S.best) { S.best = dmg; this.bestAt = S.frame; } _k[11] = dmg; this.pushEv(1, o); }
+      else if (ty === EV.DETACH) { this.detached++; if (mag >= 100) this.detB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 70, _f[7] = 5, _f[8] = .9, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 14, _f[7] = 4, _f[8] = 1, FX.sparksR(1)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 4, _f[4] = .3, _f[5] = .9, FX.smokeR(1)); (_f[0] = x, _f[1] = y + .3, _f[2] = z, _f[3] = 5, _f[4] = 40, _f[5] = 22, _f[6] = 6, _f[7] = .3, FX.lightR()); (_k[8] = .9, _k[9] = .6, _k[10] = 260, IN.rumbleR()); FX.sh[0] = Math.min(1, FX.sh[0] + .5); _k[11] = 30; this.pushEv(2, o); this.note(this.notes[mag >= 100 ? 1 : 0][mag % 100 | 0]); }
+      else if (ty === EV.GRIND) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx * .3, _f[4] = .8, _f[5] = dz * .3, _f[6] = 5, _f[7] = 3, _f[8] = .9, FX.sparksR(0)); }
+      else if (ty === EV.SAW) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 1, _f[4] = .9, _f[5] = 0, _f[6] = 46, _f[7] = 6, _f[8] = .5, FX.sparksR(0)); (_f[0] = x, _f[1] = .4, _f[2] = z, _f[3] = 4, _f[4] = 30, _f[5] = 18, _f[6] = 5, _f[7] = .2, FX.lightR()); (_k[8] = .6, _k[9] = .5, _k[10] = 160, IN.rumbleR()); FX.sh[0] = Math.min(1, FX.sh[0] + .3); _k[11] = 12; this.pushEv(1, o); }
+      else if (ty === EV.AHAM) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 0, _f[4] = 1, _f[5] = 0, _f[6] = 40, _f[7] = 4.5, _f[8] = 1, FX.sparksR(0)); (_f[0] = x, _f[1] = .1, _f[2] = z, _f[3] = 3, _f[4] = .4, _f[5] = .5, FX.smokeR(0)); (_f[0] = x, _f[1] = .5, _f[2] = z, _f[3] = 5, _f[4] = 30, _f[5] = 20, _f[6] = 8, _f[7] = .25, FX.lightR()); FX.sh[0] = Math.min(1, FX.sh[0] + .45); (_f[0] = x - .15, _f[1] = z - .15, _f[2] = x + .15, _f[3] = z + .15, _f[4] = .16, _f[5] = 1, _f[6] = .8, FX.markR()); }
+      else if (ty === EV.LAND) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 0, _f[4] = 1, _f[5] = 0, _f[6] = 6 + mag * 2, _f[7] = 2.5, _f[8] = 1, FX.sparksR(0)); (_k[8] = Math.min(Math.max(mag / 10, .15), .7), _k[9] = .3, _k[10] = 110, IN.rumbleR()); }
+      else if (ty === EV.HAMMER) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 0, _f[4] = 1, _f[5] = 0, _f[6] = 16, _f[7] = 3.5, _f[8] = 1, FX.sparksR(0)); (_f[0] = x, _f[1] = .3, _f[2] = z, _f[3] = 3, _f[4] = 14, _f[5] = 9, _f[6] = 3, _f[7] = .15, FX.lightR()); (_f[0] = x - .04, _f[1] = z, _f[2] = x + .04, _f[3] = z, _f[4] = .05, _f[5] = 1, _f[6] = .9, FX.markR()); }
+      else if (ty === EV.FLIP) { (_f[0] = x, _f[1] = y + .05, _f[2] = z, _f[3] = 3, _f[4] = .25, _f[5] = .4, FX.smokeR(0)); }
+      else if (ty === EV.GRAB) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 0, _f[4] = 1, _f[5] = 0, _f[6] = 20, _f[7] = 3, _f[8] = 1, FX.sparksR(0)); (_k[8] = .5, _k[9] = .4, _k[10] = 140, IN.rumbleR()); }
+      else if (ty === EV.SCRAPE) { const l = this.lastSk, o2 = 0; (_f[0] = x - dx * .016, _f[1] = z - dz * .016, _f[2] = x, _f[3] = z, _f[4] = .008, _f[5] = 1, _f[6] = .55, FX.markR()); if ((FX.rng.uR(), _u[0]) < .5) (_f[0] = x, _f[1] = .02, _f[2] = z, _f[3] = -dx * .12, _f[4] = .5, _f[5] = -dz * .12, _f[6] = 2, _f[7] = 2.2, _f[8] = .7, FX.sparksR(0)); }
+      else if (ty === EV.SKID) { const id = mag >= 1000 ? 1 : 0, q = Math.floor((mag % 1000) / 10), w = mag % 10, l = this.lastSk, o2 = (id * 4 + q) * 3; if (l[o2 + 2] === S.frame - 1 && Math.sqrt((l[o2] - x) * (l[o2] - x) + (l[o2 + 1] - z) * (l[o2 + 1] - z)) < .5) (_f[0] = l[o2], _f[1] = l[o2 + 1], _f[2] = x, _f[3] = z, _f[4] = w * .5, _f[5] = 0, _f[6] = .34, FX.markR()); l[o2] = x; l[o2 + 1] = z; l[o2 + 2] = S.frame; }
+      else if (ty === EV.KO) { FX.sh[0] = .6; }
     }
     // fogo das armadilhas e das baterias
-    if (S.flameOn) { for (let i = 0; i < 3; i++) { const n = FLAME.n[i]; FX.fire(n[0], .06, n[1], 3, .3, 5.5); if ((S.frame + i) % 6 === 0) FX.mark(n[0] - .3, n[1], n[0] + .3, n[1], .35, 2, .1); } FX.flight(FLAME.x, .9, FLAME.z, 7, 60 + 20 * Math.sin(S.t * 31), 26, 5); if (S.frame % 9 === 0) FX.smoke(FLAME.x + FX.rng.s1() * .6, 1.6, FLAME.z, 1, .5, 1, 1.2); }
-    for (let i = 0; i < 2; i++) { const B = S.bots[i], s = B.s; if (B.fireOn) { const c = CHASSIS[B.b[0]]; S.wpt(B, (c.win[0] + c.win[1]) / 2, B.L.hy1 - B.ycm, 0); FX.fire(_c[0], _c[1], _c[2], 1, .16, 2.2); if (S.frame % 3 === 0) FX.smoke(_c[0], _c[1] + .25, _c[2], 1, .3, 1, 1.3); FX.flight(_c[0], _c[1] + .3, _c[2], 4, 22 + 8 * Math.sin(S.t * 27 + i), 9, 2); B.burn = Math.min(1, B.burn + DT * .08); }
-      else if (B.hp[P_BAT] < B.hpMax[P_BAT] * .6 && S.frame % 7 === 0) { const c = CHASSIS[B.b[0]]; S.wpt(B, (c.win[0] + c.win[1]) / 2, B.L.hy1 - B.ycm, 0); FX.smoke(_c[0], _c[1] + .05, _c[2], 1, .2, 0, .8); }
+    if (S.flameOn) { for (let i = 0; i < 3; i++) { const n = FLAME.n[i]; (_f[0] = n[0], _f[1] = .06, _f[2] = n[1], _f[3] = 3, _f[4] = .3, _f[5] = 5.5, FX.fireR()); if ((S.frame + i) % 6 === 0) (_f[0] = n[0] - .3, _f[1] = n[1], _f[2] = n[0] + .3, _f[3] = n[1], _f[4] = .35, _f[5] = 2, _f[6] = .1, FX.markR()); } (_f[0] = FLAME.x, _f[1] = .9, _f[2] = FLAME.z, _f[3] = 7, _f[4] = 60 + 20 * Math.sin(S.t * 31), _f[5] = 26, _f[6] = 5, FX.flightR()); if (S.frame % 9 === 0) (_f[0] = FLAME.x + (FX.rng.uR(), _u[0] * 2 - 1) * .6, _f[1] = 1.6, _f[2] = FLAME.z, _f[3] = 1, _f[4] = .5, _f[5] = 1.2, FX.smokeR(1)); }
+    for (let i = 0; i < 2; i++) { const B = S.bots[i], s = B.s; if (B.fireOn) { const c = CHASSIS[B.b[0]]; (_c[45] = (c.win[0] + c.win[1]) / 2, _c[46] = B.L.hy1 - B.ycm, _c[47] = 0, S.wptR(B)); (_f[0] = _c[0], _f[1] = _c[1], _f[2] = _c[2], _f[3] = 1, _f[4] = .16, _f[5] = 2.2, FX.fireR()); if (S.frame % 3 === 0) (_f[0] = _c[0], _f[1] = _c[1] + .25, _f[2] = _c[2], _f[3] = 1, _f[4] = .3, _f[5] = 1.3, FX.smokeR(1)); (_f[0] = _c[0], _f[1] = _c[1] + .3, _f[2] = _c[2], _f[3] = 4, _f[4] = 22 + 8 * Math.sin(S.t * 27 + i), _f[5] = 9, _f[6] = 2, FX.flightR()); B.burn = Math.min(1, B.burn + DT * .08); }
+      else if (B.hp[P_BAT] < B.hpMax[P_BAT] * .6 && S.frame % 7 === 0) { const c = CHASSIS[B.b[0]]; (_c[45] = (c.win[0] + c.win[1]) / 2, _c[46] = B.L.hy1 - B.ycm, _c[47] = 0, S.wptR(B)); (_f[0] = _c[0], _f[1] = _c[1] + .05, _f[2] = _c[2], _f[3] = 1, _f[4] = .2, _f[5] = .8, FX.smokeR(0)); }
       const k = ARMAS[B.b[3]]; if (k.spin && B.wspin > k.wmax * .5 && B.hp[P_WP] > 0 && S.frame % 4 === 0) { /* brilho sutil do disco: nada */ } }
   },
-  note(t) { UI.msg('', t); this.msgT = 2.2; },
-  pushEv(ty, x, y, z, dx, dy, dz, mag) { if (this.nrev >= 64) { this.rev.copyWithin(0, 9, 64 * 9); this.nrev = 63; } const o = this.nrev++ * 9, e = this.rev; e[o] = SIM.frame; e[o + 1] = ty; e[o + 2] = x; e[o + 3] = y; e[o + 4] = z; e[o + 5] = dx; e[o + 6] = dy; e[o + 7] = dz; e[o + 8] = mag; },
+  note(t) { UI.msg('', t); this.ft[2] = 2.2; },
+  pushEv(ty, k) { const q = SIM.ev, x = q[k + 1], y = q[k + 2], z = q[k + 3], dx = q[k + 4], dy = q[k + 5], dz = q[k + 6], mag = _k[11]; if (this.nrev >= 64) { this.rev.copyWithin(0, 9, 64 * 9); this.nrev = 63; } const o = this.nrev++ * 9, e = this.rev; e[o] = SIM.frame; e[o + 1] = ty; e[o + 2] = x; e[o + 3] = y; e[o + 4] = z; e[o + 5] = dx; e[o + 6] = dy; e[o + 7] = dz; e[o + 8] = mag; },
   recFrame() { // grava o estado visual num anel; ao redor do melhor golpe, copia para o clipe
     const S = SIM, F = this.REC_F, o = (S.frame % 300) * F, r = this.ring;
     for (let i = 0; i < 2; i++) { const B = S.bots[i], s = B.s, q = o + i * 14; for (let k = 0; k < 7; k++) r[q + k] = s[k]; r[q + 7] = B.wa; for (let k = 0; k < 4; k++) r[q + 8 + k] = B.wang[k]; let m = 0; for (let k = 0; k < NPART; k++) if (B.hp[k] > 0) m |= 1 << k; r[q + 12] = m; r[q + 13] = B.burn; }
@@ -2477,59 +2493,59 @@ const G = {
   cutClip() { const S = SIM, F = this.REC_F, a = Math.max(0, this.bestAt - 100, S.frame - 299), b = S.frame, n = Math.min(240, b - a + 1); for (let k = 0; k < n; k++) { const src = ((a + k) % 300) * F; this.clip.set(this.ring.subarray(src, src + F), k * F); } this.clipN = n; this.clipHit = this.bestAt - a; this.clipFor = this.bestAt; this.ncev = 0; for (let k = 0; k < this.nrev && this.ncev < 32; k++) { const f = this.rev[k * 9]; if (f >= a && f <= b) { const o = this.ncev++ * 9; for (let q = 0; q < 9; q++) this.cev[o + q] = this.rev[k * 9 + q]; this.cev[o] = f - a; } } },
   afterFight() {
     const S = SIM; if (this.bestAt >= 0 && this.clipFor !== this.bestAt) this.cutClip();
-    if (S.koBy === 'juizes') { this.st = 'juizes'; this.endT = 0; UI.judges(S, S.bots[0], S.bots[1]); UI.show('hud', 'juizes'); UI.msg('', ''); } else this.toReplay();
+    if (S.koBy === 'juizes') { this.st = 'juizes'; this.ft[1] = 0; UI.judges(S, S.bots[0], S.bots[1]); UI.show('hud', 'juizes'); UI.msg('', ''); } else this.toReplay();
   },
-  toReplay() { if (this.clipN > 20 && this.fast === 1) { this.st = 'replay'; this.rt = Math.max(0, this.clipHit - 70); this.rk = 0; UI.show('hud'); UI.msg('', ''); UI.el.rep.style.display = 'block'; FX.reset(); this.first = 1; } else this.endFight(); },
+  toReplay() { if (this.clipN > 20 && this.fast === 1) { this.st = 'replay'; this.ft[9] = Math.max(0, this.clipHit - 70); this.rk = 0; UI.show('hud'); UI.msg('', ''); UI.el.rep.style.display = 'block'; FX.reset(); this.first = 1; } else this.endFight(); },
   endFight() {
     UI.el.rep.style.display = 'none'; const S = SIM;
     if (this.curMatch) { const j = this.curMatch; this.curMatch = null; if (j.a !== 0) { /* jogador sempre e o lado a */ } this.record(j, S); this.finishRound(); this.toBracket(S.winner === 0 ? 'VITÓRIA!' : ''); }
     else { this.st = 'livre'; UI.show('hud'); }
   },
   replayTick(dt) {
-    const F = this.REC_F, c = this.clip; this.rt += dt * 60 * .25; if (this.rt >= this.clipN - 1 || IN.pOk || IN.pStart) { this.endFight(); return; }
-    const f0 = Math.floor(this.rt), fr = this.rt - f0, o0 = f0 * F, o1 = Math.min(f0 + 1, this.clipN - 1) * F, S = SIM;
-    for (let i = 0; i < 2; i++) { const B = S.bots[i], P = this.rp[i], q0 = o0 + i * 14, q1 = o1 + i * 14; P.b = B.b; P.L = B.L; P.cor = B.cor; P.dent = B.dent; P.hpMax = B.hpMax; P.ycm = B.ycm;
-      const px = lerp(c[q0], c[q1], fr), py = lerp(c[q0 + 1], c[q1 + 1], fr), pz = lerp(c[q0 + 2], c[q1 + 2], fr); let d = c[q0 + 3] * c[q1 + 3] + c[q0 + 4] * c[q1 + 4] + c[q0 + 5] * c[q1 + 5] + c[q0 + 6] * c[q1 + 6]; const sg = d < 0 ? -1 : 1;
-      let qx = lerp(c[q0 + 3], c[q1 + 3] * sg, fr), qy = lerp(c[q0 + 4], c[q1 + 4] * sg, fr), qz = lerp(c[q0 + 5], c[q1 + 5] * sg, fr), qw = lerp(c[q0 + 6], c[q1 + 6] * sg, fr); const l = 1 / Math.hypot(qx, qy, qz, qw); qx *= l; qy *= l; qz *= l; qw *= l;
-      P.wa = lerp(c[q0 + 7], c[q1 + 7], fr); for (let k = 0; k < 4; k++) P.wang[k] = lerp(c[q0 + 8 + k], c[q1 + 8 + k], fr); const m = c[q0 + 12]; for (let k = 0; k < NPART; k++) P.hp[k] = (m >> k) & 1 ? B.hpMax[k] : 0; P.burn = c[q0 + 13]; P.glow = 0;
-      DRAW.bot(SLOT.ROBOT + i * SLOT.ROBOT_N, P, px, py, pz, qx, qy, qz, qw, i, null); if (i === 0) { this.rpx = px; this.rpy = py; this.rpz = pz; } else { this.rqx = px; this.rqy = py; this.rqz = pz; } }
-    this.drawProps(c[o0 + 28], c[o0 + 29], c[o0 + 30], c[o0 + 31], c[o0 + 32]);
-    for (let i = 0; i < DEB_N; i++) { const q = o0 + 33 + i * 8, sl = SLOT.DEBRIS + i, m = c[q]; if (m < 0) { R.im[sl] = -1; continue; } M4.fromQT(R.I, sl * INST_F, c[q + 4], c[q + 5], c[q + 6], c[q + 7], c[q + 1], c[q + 2], c[q + 3]); R.im[sl] = m; }
-    while (this.rk < this.ncev && this.cev[this.rk * 9] <= this.rt) { const o = this.rk++ * 9, e = this.cev, dmg = e[o + 8]; FX.sparks(e[o + 2], e[o + 3], e[o + 4], e[o + 5], e[o + 6], e[o + 7], 30 + dmg * 6, 4 + dmg * .22, .75, 0); FX.sparks(e[o + 2], e[o + 3], e[o + 4], e[o + 5], e[o + 6] + .5, e[o + 7], 6, 3.5, .9, 1); FX.light(e[o + 2], e[o + 3] + .25, e[o + 4], 5, 26 + dmg * 2.2, 15 + dmg * 1.1, 4, .5); }
+    const F = this.REC_F, c = this.clip; this.ft[9] += dt * 60 * .25; if (this.ft[9] >= this.clipN - 1 || IN.pOk || IN.pStart) { this.endFight(); return; }
+    const f0 = Math.floor(this.ft[9]), fr = this.ft[9] - f0, o0 = f0 * F, o1 = Math.min(f0 + 1, this.clipN - 1) * F, S = SIM;
+    for (let i = 0; i < 2; i++) { const B = S.bots[i], P = this.rp[i], q0 = o0 + i * 14, q1 = o1 + i * 14; P.b = B.b; P.L = B.L; P.mid = B.mid; P.cor = B.cor; P.dent = B.dent; P.hpMax = B.hpMax; P.ycm = B.ycm;
+      const px = ((c[q0]) + ((c[q1]) - (c[q0])) * (fr)), py = ((c[q0 + 1]) + ((c[q1 + 1]) - (c[q0 + 1])) * (fr)), pz = ((c[q0 + 2]) + ((c[q1 + 2]) - (c[q0 + 2])) * (fr)); let d = c[q0 + 3] * c[q1 + 3] + c[q0 + 4] * c[q1 + 4] + c[q0 + 5] * c[q1 + 5] + c[q0 + 6] * c[q1 + 6]; const sg = d < 0 ? -1 : 1;
+      let qx = ((c[q0 + 3]) + ((c[q1 + 3] * sg) - (c[q0 + 3])) * (fr)), qy = ((c[q0 + 4]) + ((c[q1 + 4] * sg) - (c[q0 + 4])) * (fr)), qz = ((c[q0 + 5]) + ((c[q1 + 5] * sg) - (c[q0 + 5])) * (fr)), qw = ((c[q0 + 6]) + ((c[q1 + 6] * sg) - (c[q0 + 6])) * (fr)); const l = 1 / Math.sqrt((qx) * (qx) + (qy) * (qy) + (qz) * (qz) + (qw) * (qw)); qx *= l; qy *= l; qz *= l; qw *= l;
+      P.wa = ((c[q0 + 7]) + ((c[q1 + 7]) - (c[q0 + 7])) * (fr)); for (let k = 0; k < 4; k++) P.wang[k] = ((c[q0 + 8 + k]) + ((c[q1 + 8 + k]) - (c[q0 + 8 + k])) * (fr)); const m = c[q0 + 12]; for (let k = 0; k < NPART; k++) P.hp[k] = (m >> k) & 1 ? B.hpMax[k] : 0; P.burn = c[q0 + 13]; P.glow = 0;
+      (_q[0] = px, _q[1] = py, _q[2] = pz, _q[3] = qx, _q[4] = qy, _q[5] = qz, _q[6] = qw, DRAW.botR(SLOT.ROBOT + i * SLOT.ROBOT_N, P, i, null)); if (i === 0) { this.rpx = px; this.rpy = py; this.rpz = pz; } else { this.rqx = px; this.rqy = py; this.rqz = pz; } }
+    { const P = this.pr; P[0] = c[o0 + 28]; P[1] = c[o0 + 29]; P[2] = c[o0 + 30]; P[3] = c[o0 + 31]; P[4] = c[o0 + 32]; this.drawProps(); }
+    for (let i = 0; i < DEB_N; i++) { const q = o0 + 33 + i * 8, sl = SLOT.DEBRIS + i, m = c[q]; if (m < 0) { R.im[sl] = -1; continue; } (_q[0] = c[q + 4], _q[1] = c[q + 5], _q[2] = c[q + 6], _q[3] = c[q + 7], _q[4] = c[q + 1], _q[5] = c[q + 2], _q[6] = c[q + 3], M4.fromQTr(R.I, sl * INST_F)); R.im[sl] = m; }
+    while (this.rk < this.ncev && this.cev[this.rk * 9] <= this.ft[9]) { const o = this.rk++ * 9, e = this.cev, dmg = e[o + 8]; (_f[0] = e[o + 2], _f[1] = e[o + 3], _f[2] = e[o + 4], _f[3] = e[o + 5], _f[4] = e[o + 6], _f[5] = e[o + 7], _f[6] = 30 + dmg * 6, _f[7] = 4 + dmg * .22, _f[8] = .75, FX.sparksR(0)); (_f[0] = e[o + 2], _f[1] = e[o + 3], _f[2] = e[o + 4], _f[3] = e[o + 5], _f[4] = e[o + 6] + .5, _f[5] = e[o + 7], _f[6] = 6, _f[7] = 3.5, _f[8] = .9, FX.sparksR(1)); (_f[0] = e[o + 2], _f[1] = e[o + 3] + .25, _f[2] = e[o + 4], _f[3] = 5, _f[4] = 26 + dmg * 2.2, _f[5] = 15 + dmg * 1.1, _f[6] = 4, _f[7] = .5, FX.lightR()); }
     // camera do replay: orbita lenta em volta do golpe
-    const mx = (this.rpx + this.rqx) / 2, mz = (this.rpz + this.rqz) / 2, a = this.rt * .012 + 1, rr = 2.6;
-    this.setCam(clamp(mx + Math.cos(a) * rr, -AR + .4, AR - .4), .85, clamp(mz + Math.sin(a) * rr, -AR + .4, AR - .4), mx, .25, mz, dt, .62);
+    const mx = (this.rpx + this.rqx) / 2, mz = (this.rpz + this.rqz) / 2, a = this.ft[9] * .012 + 1, rr = 2.6;
+    (_k[0] = Math.min(Math.max(mx + Math.cos(a) * rr, -AR + .4), AR - .4), _k[1] = .85, _k[2] = Math.min(Math.max(mz + Math.sin(a) * rr, -AR + .4), AR - .4), _k[3] = mx, _k[4] = .25, _k[5] = mz, _k[6] = dt, _k[7] = .62, this.setCamR());
     FX.update(dt * .25);
   },
-  setCam(ex, ey, ez, tx, ty, tz, dt, fov) { const k = this.first ? 1 : 1 - Math.exp(-dt * 7), e = R.eye, t = R.tgt; e[0] += (ex - e[0]) * k; e[1] += (ey - e[1]) * k; e[2] += (ez - e[2]) * k; t[0] += (tx - t[0]) * k; t[1] += (ty - t[1]) * k; t[2] += (tz - t[2]) * k; R.fov += (fov - R.fov) * k; R.up[0] = 0; R.up[1] = 1; R.up[2] = 0; if (this.first) { this.first = 0; R.reset = 1; } },
+  setCamR() { const ex = _k[0], ey = _k[1], ez = _k[2], tx = _k[3], ty = _k[4], tz = _k[5], dt = _k[6], fov = _k[7], k = this.first ? 1 : 1 - Math.exp(-dt * 7), e = R.eye, t = R.tgt; e[0] += (ex - e[0]) * k; e[1] += (ey - e[1]) * k; e[2] += (ez - e[2]) * k; t[0] += (tx - t[0]) * k; t[1] += (ty - t[1]) * k; t[2] += (tz - t[2]) * k; R.cp[0] += (fov - R.cp[0]) * k; R.up[0] = 0; R.up[1] = 1; R.up[2] = 0; if (this.first) { this.first = 0; R.reset = 1; } },
   camera(dt) {
-    if (this.camFix) { const c = this.camFix; R.eye[0] = c[0]; R.eye[1] = c[1]; R.eye[2] = c[2]; R.tgt[0] = c[3]; R.tgt[1] = c[4]; R.tgt[2] = c[5]; R.fov = c[6]; R.up[0] = 0; R.up[1] = 1; R.up[2] = 0; if (this.first) { this.first = 0; R.reset = 1; } return; }
-    const A = SIM.bots[0], B = SIM.bots[1], s = A.s, R_ = A.R, e = R.eye, t = R.tgt; const sh = FX.shake * FX.shake * .05, jx = Math.sin(this.t * 71) * sh, jy = Math.sin(this.t * 93 + 1) * sh;
-    if (this.cam === 0) { let fx = R_[0], fz = R_[6]; const l = Math.hypot(fx, fz); if (l > .3) { fx /= l; fz /= l; this.cfx = fx; this.cfz = fz; } else { fx = this.cfx || 1; fz = this.cfz || 0; }
-      const kk = this.first ? 1 : 1 - Math.exp(-dt * 3.2); this.sfx = (this.sfx || fx) + (fx - (this.sfx || fx)) * kk; this.sfz = (this.sfz || 0) + (fz - (this.sfz || 0)) * kk; if (this.first) { this.sfx = fx; this.sfz = fz; }
-      const n = Math.hypot(this.sfx, this.sfz) || 1, ux = this.sfx / n, uz = this.sfz / n;
-      this.setCam(clamp(s[0] - ux * 2.5, -AR + .25, AR - .25) + jx, clamp(s[1] + 1.05, .5, 3) + jy, clamp(s[2] - uz * 2.5, -AR + .25, AR - .25), s[0] + ux * 1.1, Math.max(s[1], 0) + .2, s[2] + uz * 1.1, dt, .95); }
-    else if (this.cam === 1) { const L = A.L, y = L.hy1 - A.ycm + .2, x = -L.hx * .55; SIM.wpt(A, x, y, 0); e[0] = _c[0] + jx; e[1] = _c[1] + jy; e[2] = _c[2]; SIM.wpt(A, x + 3, y - .55, 0); t[0] = _c[0]; t[1] = _c[1]; t[2] = _c[2]; R.up[0] = R_[1]; R.up[1] = R_[4]; R.up[2] = R_[7]; R.fov = 1.2; if (this.first) { this.first = 0; R.reset = 1; } }
-    else { const mx = (s[0] + B.s[0]) / 2, mz = (s[2] + B.s[2]) / 2, d = Math.hypot(s[0] - B.s[0], s[2] - B.s[2]); this.setCam(mx * .25 + jx, 6.4 + jy, -8.1, mx, .2, mz, dt, clamp(.3 + d * .045, .34, .78)); }
+    if (this.camFix) { const c = this.camFix; R.eye[0] = c[0]; R.eye[1] = c[1]; R.eye[2] = c[2]; R.tgt[0] = c[3]; R.tgt[1] = c[4]; R.tgt[2] = c[5]; R.cp[0] = c[6]; R.up[0] = 0; R.up[1] = 1; R.up[2] = 0; if (this.first) { this.first = 0; R.reset = 1; } return; }
+    const A = SIM.bots[0], B = SIM.bots[1], s = A.s, R_ = A.R, e = R.eye, t = R.tgt; const sh = FX.sh[0] * FX.sh[0] * .05, jx = Math.sin(this.ft[0] * 71) * sh, jy = Math.sin(this.ft[0] * 93 + 1) * sh;
+    if (this.cam === 0) { let fx = R_[0], fz = R_[6]; const l = Math.sqrt((fx) * (fx) + (fz) * (fz)); if (l > .3) { fx /= l; fz /= l; this.ft[5] = fx; this.ft[6] = fz; } else { fx = this.ft[5] || 1; fz = this.ft[6] || 0; }
+      const kk = this.first ? 1 : 1 - Math.exp(-dt * 3.2); this.ft[3] = (this.ft[3] || fx) + (fx - (this.ft[3] || fx)) * kk; this.ft[4] = (this.ft[4] || 0) + (fz - (this.ft[4] || 0)) * kk; if (this.first) { this.ft[3] = fx; this.ft[4] = fz; }
+      const n = Math.sqrt((this.ft[3]) * (this.ft[3]) + (this.ft[4]) * (this.ft[4])) || 1, ux = this.ft[3] / n, uz = this.ft[4] / n;
+      (_k[0] = Math.min(Math.max(s[0] - ux * 2.5, -AR + .25), AR - .25) + jx, _k[1] = Math.min(Math.max(s[1] + 1.05, .5), 3) + jy, _k[2] = Math.min(Math.max(s[2] - uz * 2.5, -AR + .25), AR - .25), _k[3] = s[0] + ux * 1.1, _k[4] = Math.max(s[1], 0) + .2, _k[5] = s[2] + uz * 1.1, _k[6] = dt, _k[7] = .95, this.setCamR()); }
+    else if (this.cam === 1) { const L = A.L, y = L.hy1 - A.ycm + .2, x = -L.hx * .55; (_c[45] = x, _c[46] = y, _c[47] = 0, SIM.wptR(A)); e[0] = _c[0] + jx; e[1] = _c[1] + jy; e[2] = _c[2]; (_c[45] = x + 3, _c[46] = y - .55, _c[47] = 0, SIM.wptR(A)); t[0] = _c[0]; t[1] = _c[1]; t[2] = _c[2]; R.up[0] = R_[1]; R.up[1] = R_[4]; R.up[2] = R_[7]; R.cp[0] = 1.2; if (this.first) { this.first = 0; R.reset = 1; } }
+    else { const mx = (s[0] + B.s[0]) / 2, mz = (s[2] + B.s[2]) / 2, d = Math.sqrt((s[0] - B.s[0]) * (s[0] - B.s[0]) + (s[2] - B.s[2]) * (s[2] - B.s[2])); (_k[0] = mx * .25 + jx, _k[1] = 6.4 + jy, _k[2] = -8.1, _k[3] = mx, _k[4] = .2, _k[5] = mz, _k[6] = dt, _k[7] = Math.min(Math.max(.3 + d * .045, .34), .78), this.setCamR()); }
   },
-  drawProps(h0, h1, sa, ah, py) {
-    const S = SIM, I = R.I; if (h0 === undefined) { h0 = S.sawH[0]; h1 = S.sawH[1]; sa = S.sawA; ah = S.ahA; py = S.pitY; }
-    M4.ident(_m, 48); M4.mulTR(I, SLOT.AUX3 * INST_F, _m, 48, PIT.x, py - .002, PIT.z, 1, 0); DRAW.put(SLOT.AUX3, MESH.pitlid.id, CORES[4], 0, -1, 1, 1, .3, 0, 0, 0, 11); DRAW.dents(SLOT.AUX3, null, 0); FX.pitY = py;
-    for (let i = 0; i < 2; i++) { const sl = i ? SLOT.AUX1 : SLOT.AUX0, h = i ? h1 : h0; M4.ident(_m, 48); M4.mulTR(I, sl * INST_F, _m, 48, SAWS[i].x, -SAW_R - .03 + h * (SAW_R * .78), SAWS[i].z, 2, -sa * Math.min(1, h * 3 + .05)); DRAW.put(sl, MESH.saw.id, CORES[4], 0, -1, 1, 1, .3, 0, 0, 0, 5 + i); DRAW.dents(sl, null, 0); }
-    M4.ident(_m, 48); M4.mulTR(_m, 32, _m, 48, AHAM.x, AHAM.y + .1, AHAM.z, 1, PI * .75); M4.mulTR(I, SLOT.AUX2 * INST_F, _m, 32, 0, 0, 0, 2, ah); DRAW.put(SLOT.AUX2, MESH.ahammer.id, CORES[4], 0, -1, 1, 1, .4, 0, 0, 0, 9); DRAW.dents(SLOT.AUX2, null, 0);
+  drawProps() { // le serras, martelo e tampa do fosso de this.pr (sawH0, sawH1, sawA, ahA, pitY)
+    const S = SIM, I = R.I, P = this.pr, h0 = P[0], h1 = P[1], sa = P[2], ah = P[3], py = P[4];
+    M4.ident(_m, 48); (_t[0] = PIT.x, _t[1] = py - .002, _t[2] = PIT.z, _t[3] = 0, M4.mulTRr(I, SLOT.AUX3 * INST_F, _m, 48, 1)); (_d[0] = 0, _d[1] = -1, _d[2] = 1, _d[3] = 1, _d[4] = .3, _d[5] = 0, _d[6] = 0, _d[7] = 0, _d[8] = 11, DRAW.putR(SLOT.AUX3, MESH.pitlid.id, CORES[4])); DRAW.dents(SLOT.AUX3, null, 0); FX.sh[1] = py;
+    for (let i = 0; i < 2; i++) { const sl = i ? SLOT.AUX1 : SLOT.AUX0, h = i ? h1 : h0; M4.ident(_m, 48); (_t[0] = SAWS[i].x, _t[1] = -SAW_R - .03 + h * (SAW_R * .78), _t[2] = SAWS[i].z, _t[3] = -sa * Math.min(1, h * 3 + .05), M4.mulTRr(I, sl * INST_F, _m, 48, 2)); (_d[0] = 0, _d[1] = -1, _d[2] = 1, _d[3] = 1, _d[4] = .3, _d[5] = 0, _d[6] = 0, _d[7] = 0, _d[8] = 5 + i, DRAW.putR(sl, MESH.saw.id, CORES[4])); DRAW.dents(sl, null, 0); }
+    M4.ident(_m, 48); (_t[0] = AHAM.x, _t[1] = AHAM.y + .1, _t[2] = AHAM.z, _t[3] = PI * .75, M4.mulTRr(_m, 32, _m, 48, 1)); (_t[0] = 0, _t[1] = 0, _t[2] = 0, _t[3] = ah, M4.mulTRr(I, SLOT.AUX2 * INST_F, _m, 32, 2)); (_d[0] = 0, _d[1] = -1, _d[2] = 1, _d[3] = 1, _d[4] = .4, _d[5] = 0, _d[6] = 0, _d[7] = 0, _d[8] = 9, DRAW.putR(SLOT.AUX2, MESH.ahammer.id, CORES[4])); DRAW.dents(SLOT.AUX2, null, 0);
   },
   drawFight() {
     const S = SIM;
-    for (let i = 0; i < 2; i++) { const B = S.bots[i], s = B.s; DRAW.bot(SLOT.ROBOT + i * SLOT.ROBOT_N, B, s[0], s[1], s[2], s[3], s[4], s[5], s[6], i, null); if (this.first) for (let k = 0; k < SLOT.ROBOT_N; k++) R.snap(SLOT.ROBOT + i * SLOT.ROBOT_N + k); }
-    this.drawProps();
-    const d = S.deb; for (let i = 0; i < DEB_N; i++) { const sl = SLOT.DEBRIS + i, m = S.debMesh[i]; if (m < 0) { R.im[sl] = -1; continue; } const o = i * DEB_F, was = R.im[sl]; M4.fromQT(R.I, sl * INST_F, d[o + 3], d[o + 4], d[o + 5], d[o + 6], d[o], d[o + 1], d[o + 2]); const B = S.bots[d[o + 17] | 0], part = d[o + 18] | 0, c = CHASSIS[B.b[0]];
-      DRAW.put(sl, m, B.cor, BLIND[B.b[2]].metal, part >= P_AF && part <= P_AT ? d[o + 17] : -1, c.L / 2, c.W / 2 + .012, 1, B.burn, 0, 0, sl * 1.3); if (part >= P_AF && part <= P_AT) DRAW.dents(sl, B.dent, (part - P_AF) * 16); else DRAW.dents(sl, null, 0); if (was !== m) R.snap(sl); }
+    for (let i = 0; i < 2; i++) { const B = S.bots[i], s = B.s; (_q[0] = s[0], _q[1] = s[1], _q[2] = s[2], _q[3] = s[3], _q[4] = s[4], _q[5] = s[5], _q[6] = s[6], DRAW.botR(SLOT.ROBOT + i * SLOT.ROBOT_N, B, i, null)); if (this.first) for (let k = 0; k < SLOT.ROBOT_N; k++) R.snap(SLOT.ROBOT + i * SLOT.ROBOT_N + k); }
+    const P = this.pr; P[0] = S.sawH[0]; P[1] = S.sawH[1]; P[2] = S.sawA; P[3] = S.ahA; P[4] = S.pitY; this.drawProps();
+    const d = S.deb; for (let i = 0; i < DEB_N; i++) { const sl = SLOT.DEBRIS + i, m = S.debMesh[i]; if (m < 0) { R.im[sl] = -1; continue; } const o = i * DEB_F, was = R.im[sl]; (_q[0] = d[o + 3], _q[1] = d[o + 4], _q[2] = d[o + 5], _q[3] = d[o + 6], _q[4] = d[o], _q[5] = d[o + 1], _q[6] = d[o + 2], M4.fromQTr(R.I, sl * INST_F)); const B = S.bots[d[o + 17] | 0], part = d[o + 18] | 0, c = CHASSIS[B.b[0]];
+      (_d[0] = BLIND[B.b[2]].metal, _d[1] = part >= P_AF && part <= P_AT ? d[o + 17] : -1, _d[2] = c.L / 2, _d[3] = c.W / 2 + .012, _d[4] = 1, _d[5] = B.burn, _d[6] = 0, _d[7] = 0, _d[8] = sl * 1.3, DRAW.putR(sl, m, B.cor)); if (part >= P_AF && part <= P_AT) DRAW.dents(sl, B.dent, (part - P_AF) * 16); else DRAW.dents(sl, null, 0); if (was !== m) R.snap(sl); }
   },
 };
 
 // ==== 85_roteiro.js ====
 // comandos gravados da luta roteirizada (gerado por trabalho/gravar_roteiro.py)
-const ROTEIRO = {"a": [1, 1, 1, 0], "b": [1, 2, 0, 3], "seed": 36, "eb": 2, "nb": "Catapimba", "cb": 1, "hash": 486717260, "dados": "ZAUBZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAYAZAYAZAYAZAYAZAYAZAYAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAQAZAQAZAQAZAQAZAMAZAMAZAMAZAIAZAIAZAEAZAEAZAAAZAAAZP8AZP4AZP4AZP0AZP0AZPwAZPwAZPsAZPoAZPoAZPkAZPgAZPgAZPcAZPYAZPUAZPQAZPMAZPIAZPEAZPAAZO4AZO0AZOwAZOoAZOkAZOcAZOUAZOMAZOEAZN8AZN0AZOUAZOMAZOAAZN0AZNoAZNcAZNMAYs8AYcoAZMUAZL8AZLkAZLEAZKkAZJ8AZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwASpwAS5wATJwATJwAS5wATZwATpwAT5wAUJwAUZwAUZ0AUp8AUqAAV64AWK8AWLEAWLIAWbMAWbQAWbUAWbUAWrYAVqoAUqAAT5wATZwASpwASZwAR5wARpwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwALpwALpwALZwALJwAK5wAK5wAKpwAKZwAKJwAKJwAJ5wAJ5wAJpwAJpwAJZwAJZwAJZwAJJwAJJwAJJwAJJwAJZwAJZwAJZwAJZwAJZwAJpwAJpwAJ5wAJ5wAKJwAKJwAKZwAKZwAKpwAK5wALJwALZwALpwAL5wAMJwAMZwAMpwAM5wANJwANZwANpwAN5wAOJwAOZwAOpwAO5wAPJwAPZwAPZwAPpwAP5wAP5wAQJwAQZwAQZwAQpwAQpwAQ5wAQ5wARJwARJwARJwARZwARZwARZwARpwARpwAR5wAR5wAR5wAR5wASJwASJwASJwASZwASZwASZwASZwASZwASZwASZwASpwASpwASpwASpwAS5wAS5wATJwATJwATZwATpwATpwAT5wAUJwAUZwAUp4AU6EAU6MAVKYAVagAVqsAV60AV68AWLEAWbMAWbQAWrYAWrgAW7kAW7oAXLsAXLwAXL0AXL4AXb4AXb8AXb8AXb8AXcAAXcAAXb8AXb8AXb8AXb8AXb4AXL4AXL0AXLwAXLwAXLsAXLsAW7sAW7sAW7oAW7oAW7kAW7kAW7kAWrgAWrcAWrYAWrUAS5wAPZwAL5wAJJwAH5wAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAEZwAEpwAE5wAFZwAFpwAF5wAGZwAGpwAHJwAHZwAHpwAH5wAIZwAIpwAI5wAJJwAJZwAJZwAJpwAJ5wAKJwAKJwAKZwAMZwAMpwAMpwAM5wAM5wANJwANJwANZwANZwANZwANpwANpwAN5wAN5wAN5wAOJwAOJwAOZwAOZwAOZwAOpwAOpwAOpwAO5wAO5wAO5wAPJwAPJwAPZwAPZwAPZwAPpwAPpwAPpwAP5wAP5wAP5wAP5wAQJwAQJwAQJwAQZwAQZwAQZwAQpwAQpwAQpwAQ5wAQ5wAQ5wARJwARJwARJwARJwARZwARZwARZwARpwARpwARpwAR5wAR5wAR5wASJwASJwASJwASJwASZwASZwASZwASpwASpwASpwAS5wAS5wAS5wATJwATJwATJwATZwATZwATZwATZwATpwATpwATpwATpwATpwATpwAT5wAT5wAT5wAUJwAUZwAUZ0AUp8AU6EAU6QAVKYAVakAVqsAV60AV68AWLEAWbMAWbUAWrYAWrgAW7oAXLsAXL0AXL4AXb8AXcAAZK8AZK4AZK4AZK0AZK0AZKwAZKwAZKsAZKsAZKsAZKsAZKsAZKoAZKoAZKoAY9IAZNQAZNQAVakAR5wAOZwALJwAKZwAJ5wAJpwAJJwAI5wAIpwAIZwAIZwAIJwAIJwAH5wAH5wAH5wAH5wAH5wAIJwAIJwAIZwAIZwAIZwAIpwAIpwAIpwAIpwAIpwAIpwAI5wAI5wAJJwAJJwAJZwAJpwAJpwAJ5wAKJwAKZwAKpwAK5wALJwAL5wAMJwAMZwAMZwAMpwAM5wAM5wANJwANJwANZwANZwANpwANpwAN5wAN5wAOJwAOJwAOJwAOZwAOZwAOpwAOpwAOpwAO5wAO5wAO5wAO5wAPJwAPJwAPJwAPZwAPZwAPZwAPZwAPpwAPpwAPpwAPpwAP5wAP5wAP5wAQJwAQJwAQJwAQJwAQZwAQZwAQZwATZwATZwATpwATpwATpwATpwATpwATpwATpwATpwATZwATZwATZwATZwATZwATZwATJwATJwATJwATJwAS5wAS5wAS5wATJwATJwATJwATJwATZwATpwATpwAT5wAUJwAUZwAUZ4AUqAAU6MAVKUAVagAVqoAV6wAV68AWLEAWbIAWbQAWrUAWrcAWrcAWrgAW7gAW7kAW7kAW7gASZwAOJwAKJwAH5wAGJwAEZwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAEJwAEJwAEZwAEpwAEZwAEZwAEpwAE5wAFJwAFJwAFZwAFpwAF5wAGJwAGJwAGZwAGpwAG5wAG5wAHJwAHJwAHZwAHZwAHpwAHpwAH5wAH5wAIJwAIJwAIJwAIZwAIZwAIpwAIpwAIpwAIpwAI5wAI5wAI5wAJJwAJJwAJJwAJZwIJZwAJZwAJZwAJpwAJpwAJpwAJpwAJ5wAJ5wAJ5wAJ5wAKJwAKJwAKJwAKZwAKZwAKZwAM5wAM5wAM5wAM5wAMpwAMpwAMpwAMZwAMZwAMZwAMJwAMJwAMJwAMJwAMJwAL5wAL5wAL5wAL5wAL5wAL5wAL5wAL5wAL5wAL5wAL5wAL5wAMJwAMJwAMJwAMJwAMZwAMZwAMZwAMpwAMpwAM5wANJwANZwANpwAN5wAOJwAOZwAO5wAPJwAPZwAPpwAP5wAQZwAQpwAQ5wARZwARpwAR5wASJwASpwAS5wATJwATpwAT5wAUZwAUqEAVKUAVqoAV64AWbMAWrgAXL0AXsEAX8YAZLkAZLsAZL4AZMAAZMIAZJwAUqAASJwAQJwAOJwAMpwALZwAKJwAJZwAIpwAIJwAHZwAGJwAE5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAEZwAFJwAFpwAGZwAHJwAH5wAIZwAI5wAJZwAJ5wAKZwAK5wALJwALZwALpwAL5wAMJwAMZwAMZwAMpwAMpwAMpwAMpwAMpwAMpwAMpwAMZwAMZwAMJwAL5wALpwALZwALJwAK5wAKZwAKJwAJpwAJJwAIpwAIJwAHpwAG5wAGZwAF5wAFZwAE5wAEJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAEZwAEpwAFJwAFpwAGJwAGpwAG5wAHZwAH5wAIZwAI5wAJJwAJpwAKJwAKZwAK5wALJwALpwAL5wAMJwAMpwAM5wANZwANpwAN5wAOZwAOpwAPJwAPZwAP5wAQJwAQpwAQ5wARZwARpwASJwASZwAS5wATJwATpwAUJwAUZ0AU6EAVKYAVqsAWK8AWbQAW7gAXL0AXsEAX8YAYcsAY9AAZNUAZNsAZOEAZOcAZO0AZPQAZPsAZAIAZAgAZA8AZBYAZB0AZCUAZCwAYTQAXzsAXEMAWUsAV1QAVFwAUGQATWQASmQAR2QARGQAQGQAPWQAOmQANmQAM2QAMGQALWQAKmQAJ2QAJWQAImQAZGQAZGQAZGQAZGQAZGQAZGQAFmQAFGQAEWQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEWQAE2QAFGQAFWQAFmQAF2QAGWQAGmQAG2QAHGQAHWQAHmQAH2QAIGQAIWQAImQAI2QAI2QAJGQAJWQAJWQAJmQAJ2QAJ2QAKGQAKGQAKWQAKWQAKmQAKmQAK2QAK2QAK2QALGQALGQALWQALWQALWQALmQALmQAPGQAPWQAPWQAPWQAPGQAPGQAPGQAPGQAPGQAPGQAPGQAO2QAO2QAO2QAO2QAO2QAO2QAO2QAO2QAO2QAOmQAOmQAOmQAOmQAOmQAOmQAOmQAOmQAOWQAOWQAOWQAOWQAOWQAOWQAOGQAOGQAOGQAOGQAN2QAN2QAN2QANmQANmQANmQANWQANmQANmQAN2QAOGQAOWQAOmQAOmQAO2QAPGQAPGQAPWQAPmQAPmQAP2QAQGQAQGQARGQAR2QASmQATWQAUGQAUmAAVFoAVlUAV1EAWE4AWUwAWkoAZGIAZGEAZGEAZGEAZGMAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAWFAAWU4AWUsAWkgAW0UAXUIAXj4IXzoAYTUAYzAAYy4AZCoAZCYAZCMAZCAAZB0AZBoAZBkAZBcAZBYAZBUAZBUAZBUAZBUAZBYAZBcAZBgAZBkAZBoAZBwAZB0AZB8AZCAAZCIAZCMAZCQAZCUAZCcAZCgAYy8AYTYAXj0AXEQAWkoAWE8AV1IAVlYAVVkAU10AUmEAUWQAUGQAUGQAUGQAUGQAUGQAUGQAUGQAUWQAUWMAUmIAUmAAU10AVFsAVVgAVlUAV1IAWE8AWUwAWkgAXEQAXUAAXzwAYDgAYTYAYTQAYjMAZCwAZCcAZCIAZB4AZBwAZBsAZBoAZBoAZBkAZBkAZBkAZBkAZBkAZBgAZBgAZBgAZBgAZBgAZBgAZBgAZBgAZBcAZBcAZBcAZBcAZBcAZBcAZBcAZBcAZBcAZBYAZBYAZBYAZBYAZBYAZPoAZPkAZPkAZAMAZAsAZBIAZBYAZBgAZBgAZBgAZBgAZBcAZBcAZBYAZBYAZBYAZBUAZBUAZBQAZBQAZBMAZBMAZBMAZBIAZBIAZBEAZBEAZBEAZBAAZBAAZA8AZA8AZA8AZA4AZA4AZA4AZA0AZA0AZA0AZAwAZAwAZAsAZAsAZAoAZAoAZAoAZAkAZAkAZAkAZAgAZAgAZAgAZAcAZAcAZAcAZAcAZAYAZAYAZAYAZAUAZAUAZAUAZAUAZAQAZAQAZAQAZAQAZAMAZAMAZAMAZAMAZAIAZAIAZAIAZAIAZAEAZAEAZAEAZAEAZAYAZAgAZAoAZAsAZAsAZAsAZAsAZAsAZAsAZAsAZAoAZAoAZAoAZAoAZAkAZAkAZAkAZAgAZAgAZAgAZAgAZAcAZAcAZAcAZAcAZAcAZAYAZAYAZAYAZAYAZAUAZAUAZAUAZAUAZAUAZAQAZAQAZAQAZAAAZP0AZPsAZPoAZPkAZPkAZPkAZPkAZPkAZPkAZPgAZPgAZPgAZPgAZPgAZPgAZPgAZPcAZPcAZPcAZPcAZPcAZPcAZPcAZPcAZPYAZPYAZPYAZPYAZPYAZPYAZPYAZPYAZPYAZPYAZPUAZPUAZPUAZPUAZPUAZPUAZPUAZPUAZPQAZPMAZPIAZPIAZPIAZPIAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPAAZO8AZO8AZO8AZO8AZO8AZO8AprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAZB4AZCAAZCIAZCMAZCQAZCUAZCYAZCYAZCUAZCUAZCQAZCMAZCEAZB8AZB0AZBsAZBkAZBYAZBQAZBEAZA8AZAwAZAkAZAYAZAQAZAAAZP0AZO0AZN0AYs0AXb4AWLAAU6EATpwASZwARpwARpwARpwARZwARZwARZwARZwARZwARZwARpwARpwAR5wAR5wASJwASZwASZwASpwAS5wATZwAT5wAUJwAUZ0AUqAAU6IAU6IAU6EAUqAAUqAAUp8AUp8AUp8AUp8AUp8AUp8AUp8AUp8AUp8AUp8AUp8AUp8AUp8AUp8AZNMAZNMAZNIAZNIAZNIAZNEAZNEAZNAAZNAAZNAAZM8AZM8AZM4AZMYAZMEAZL4AZLwAZLwAZL0AZL4AZMAAZMEAZMMAZMQAZMUAZMYAZMYAZMUAZMQAZMQAZMMAZMMAZMIAZMEAZMEAZMAAZL8AZL8AZL4AZL0AZL0AZLwAZLsAZLsAZLoAZLkAZLkAZLgAZLcAZLYAZLYAZLgAZLcAZLYAZLUAZLQAZLMAZLIAZLEAZLAAZK8AZK4AZK0AZK0AZKwAZKsAZKsAZKoAZKoAZKkAZKgAZKcAZKcAZKYAZKUAZKUAZKQAZKMAZKMAZKIAZKEAZKEAZKAAZJ8AZJ8AZJ4AZJ0AZJ0AZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwATJwATZwATpwAT5wAUJwAUZwAUp4AUqAAU6EAU6IAU6MAVKQAVKUAVKYAVKYAVacAVagAVakAVqoAVqsAVqwAVqwAV60AV64AV68AWK8AWLAAWLEAWLIAWLIAWLAAWLAAWLAAWLAAWLIAWrYAW7oAXb8AXsMAYMcAYcsAYs8AZNMAZNcAZNsAZN8AZOMAZOcAZOoAZO4AZPIAZPYAZPoAZP4AZAIAZAYAZAsAZA8AZBQAZBgAZB0AZCEAZCYAZCsAYzAAYTUAXzoAXUAAW0YAWUwAV1IAVVgAU14AUWMAT2QATWQAS2QASWQAR2QARWQAQ2QAQWQAP2QAPWQAO2QAOWQAN2QANWQANGQAMmQAMWQAMGQALmQALWQALGQAK2QAKmQAKWQAKGQAKGQAKGQAKGQAKGQAKGQAKWQAKWQAKWQAKWQAKmQAKmQAKmQAKmQAK2QAK2QAK2QAK2QAK2QAK2QAK2QAK2QAK2QAK2QAK2QAK2QALGQALGQALGQALGQALGQALGQALGQALGQALGQALGQALGQALGQALWQALWQALWQALWQALWQALWQALWQALWQALWQALWQALWQALmQALmQAL2QAL2QAL2QAL2QAL2QAL2QAL2QAMGQAMGQAMGQAMGQAMGQAMGQAMWQAMWQAMWQAMWQANmQAOmQAPWQAQGQAQmQARGQAR2QASWQATGQATmQAUmEAVlQAXj8AZCAAZPAAU6ICLpwCD5wCD2QCD2QCD2QCD2QCD2QCD2QCD2QCD2QCD2QCD2QCD2QCD2QCD2QCD2QCD2QCH2QCUGQCSWQAR2QAR2QAR2QAR2QAR2QAR2QAR2QAR2QAR2QARmQARWQAQ2QAQGQAPGQANmQALWQAIWQAD2QCD2QCD5wCD5wCD5wCD5wCD5wCD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEWQAEmQAFGQAFWQAF2QAGGQAGWQAGmQAHGQAHWQAHmQAH2QAIGQAImQAI2QAJGQAJWQAJmQAJ2QAKWQAKmQAK2QANGQANWQANWQAMmQAL2QAJ2QAJWQAJGQAI2QAImQAIWQAIGQAH2QAHmQAHWQAHGQAG2QAGmQAGmQAGmQAGmQAGmQAGmQAGmQAGmQAGmQAG2QAG2QAG2QAG2QAG2QAG2QAG2QAG2QAG2QAG2QAG2QAG2QAHGQAHGQAHGQAHGQAHGQAHGQAHWQAHWQAHWQAHWQAHWQAHWQAHWQAHWQAHWQAHWQAHWQAHWQAHWQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQAHmQIHmQAHmQAHmQAHmQAHmQAHmQAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAH2QAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIGQAIWQAIWQAIWQAIWQAIWQAIWQAImQAImQAImQAImQAImQAI2QAI2QAI2QAI2QAJGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAGWQAF2QAFWQAE2QAEWQAEGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QCD5wCD5wCD5wCD5wCD2QCD2QCD2QCD2QCD2QCD2QCD2QCD5wCD5wAD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD2QCD5wCD5wCD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QCD2QCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD2QCD2QCD2QCD2QCD2QCD5wCD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEGQAEWQAEmQAEmQAE2QAE2QAE2QAE2QAFGQAFGQAFGQAFGQAE2QAE2QAE2QAE2QAE2QAEmQAEmQAEmQAEWQAEWQAEWQAEGQAEGQAEGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEGQAEWQAEWQAEmQAE2QAFGQAFWQAFmQAF2QAGGQAGmQAG2QAHGQAHmQAH2QAIWQAImQAJGQAJmQAJ2QAKWQAK2QALWQAL2QAMWQAM2QANWQAN2QAOWQAO2QAPmQAQGQAQmQARGQAR2QASWQAVlQAZC0AZAcAZO8AZPEAZPMAZPUAZPkAZP0AZAEAZAEAZAIAZAEAZAEAZAAAZAAAZP4AZP0AZPsAZPoAZPgAZPYAZPMAZPAAZO0AZOkAZOQAZN8AZNkAZNMAYcsAYMkAYcoAYs0AYs8AY9EAY9IAY9EAYs8AYs4AYcwAY9EAY9IAZNMAZNMAY9IAY9AAYs4AYs4AYs8AYs8AY9AAY9EAY9EAY9EAYs8AYs4AYcwAYcoAYMkAYMgAX8cAYMcAYMgAYMgAYMkAYMkAYcoAYcoAYcsAYcsAYcwAYcwAYs0AYs0AYs4AYs4AYs8AYs8AZNUAZNoAZN8AZOIAZOQAZOYAZOYAZOcAZOcAZOcAZOgAZOgAZOgAZOgAZOkAZOkAZOkAZOkAZOkAZOoAZOoAZOoAZOoAZOoAZOsAZOsAZOsAZOsAZOsAZOsAZOwAZOwAZOwAZOwAZOwAZOwAZO0AZO0AZO4AZO8AZPAAZPAAZPAAZPAAZPAAZPAAZPAAZPEAZPEAZPEAZPEAZPEAZPEAZPEAZPIAZPIAZPIAZPIAZPIAZPIAZPIAZPMAZPMAZPMAZPMAZPMAZPMAZPMAZPMAZPMAZPQAZPQAZPQAZPQAZPQAZPQAZPoAZP8AZAEAZAEAZAAAZAAAZAEAZAEAZAEAZAEAZAEAZAEAZAEAZAIAZAIAZAIAZAIAZAEAZAEAZAEAZAEAZAEAZAIAZAIAZAIAZAIAZAIAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAZPsAZAEAZAYAZAwAZBEAZBYAZBoAZB8AZCMAZCcAZCoAYy4AYjEAYTQAYDYAYDkAXzsAXj0AXj4AXT8AXUEAXUIAXEUAW0UAW0YAW0YAW0YAW0YAW0UAXEUAXEQAXEMAXUIAXUAAXj8AXj0AXzsAYDkAYTYAYjMAZC0AZCoAZCYAZCEAZB0AZBgAZBMAZA0AZAcAZAAAZPoAZPIAZOoAZOIAZNkAYs8AX8QAW7oAWK8AV68AWLEAWbMAWrYAW7gAW7sAXL0AXb8AXsEAXsMAX8UAX8YAX8YAX8cAZMcAZMYAZMQAZMIAZL8AZJwAVqsAT5wASpwARZwAR5wASJwASZwASpwAS5wATZwATZwATpwATpwATpwATpwATpwATpwATpwATZwATZwATZwATJwATJwAS5wAS5wASpwASpwASpwASpwASpwAS5wATJwATZwATpwAT5wAUZ0AU6MAVakAV68AWbUAWrgAWrcAWrYAWrYAWrUAWbQAWbMAWLEAV68AZPYAZPMAZPEAZO4AZOsAZOcAZOMAZN4AZNgAZNEAZMkAZL8AZLYAZKsAZJ4AZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wA"};
+const ROTEIRO = {"a": [1, 1, 1, 0], "b": [1, 2, 0, 3], "seed": 11, "eb": 2, "nb": "Catapimba", "cb": 1, "hash": -1521826810, "dados": "ZAUBZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAUAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAYAZAUAZAUAZAUAZAQAZAQAZAQAZAMAZAMAZAMAZAIAZAIAZAIAZAIAZAEAZAEAZAEAZAEAZAAAZAAAZAAAZAAAZP8AZP8AZP8AZP4AZP4AZP4AZP0AZP0AZP0AZPwAZPwAZPsAZPsAZPoAZPkAZPgAZPYAZPMAZO8AZOwAZOgAZOMAZN4AZPAAZNYAZLsAZKIAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAZMQAZNgAZPEAZBIAZD4AZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZJwAZJwAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QCD2QCFZwCOJwCSpwCVKUCW7sCYcwCZNsCZOgCZPUCZAECZA0CZBoCZCYCYjMCXUACWU0CVFsCT2QCS2QCRmQCQWQCPWQAOGQANGQAMGQAK5wAJpwAIJwAG5wAFJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wID5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEmQAFWQAF2QAGWQAGmQAGmQAG2QAG2QAG2QAHGQAHGQAHWQAHWQAHmQAHmQAH2QAH2QAH2QAIGQAIGQAIGQAIWQAIWQAIWQAIWQAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAJpwAJpwAJpwAJpwAJpwAJpwAJpwAJ5wAJ5wAJ5wAKJwAKJwAKZwAKZwAKpwAKpwAK5wAK5wALJwALZwALZwALpwAL5wAL5wAMJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAEJwAEpwAFJwAFpwAGJwAGpwAHZwAH5wAIZwAI5wAJpwAKJwAKpwALJwALpwAMZwAM5wANZwAOJwAOpwAPJwAP5wAQZwAQ5wARpwASJwAS5wATZwAT5wAUp8AVKYAV60AWbQAUZ0ASZwAQ5wARZwASZwATZwAUJwAU6QAV60AWrYAX8YAZNYAZOUAZPUAZAUAZBQAZCQAYTMAXEMAV1MAUWMATGQARmQAQWQAPGQAOWQANWQAM2QAMmQAMWQAMWQAMGQAMGQAMWQAMWQAMmQAMmQAM2QAM2QANGQANGQANWQANWQANWQANmQAN2QAN2QAOGQAOGQAOGQAOGQAOGQAOGQAN2QAF2QAFmQAFmQAFWQAFWQAFmQAFmQAF2QAGGQAGGQAGWQAGmQAG2QAHWQAH2QAIGQAIWQAImQAImQAImQAImQAImQAImQAImQAImQAImQAI2QAI2QAI2QAI2QAI2QAI2QAJGQAJGQAJGQAJGQAJGQAJWQAJWQAJWQAJWQAJWQAJmQAKGQAKWQAKmQAK2QAK2QAK2QAK2QAK2QAKmQAKmQAKmQAKmQAKmQAKmQAK2QAK2QAK2QAK2QAK2QALGQALGQALGQALGQALGQAK2QAK2QAK2QAK2QAKmQAKmQAKmQAKmQAKWQAKWQAKWQAKGQAKGQAKGQAKWQAKmQAKmQAKmQAKmQAKmQAKmQAKWQAKWQAKWQAKGQAKGQAKGQAKGQAKGQAKGQAKGQAKWQAKWQAKWQAKmQAKmQAK2QAK2QALGQALGQALWQALWQALmQAL2QAL2QAMGQAMGQAMWQAMmQAMmQAM2QANGQANGQANWQANWQANmQAN2QAN2QAOGQAPmQAPmQAPmQAPmQAPmQAPmQAP2QAP2QAP2QAP2QAQGQAQGQAQGQAQWQAQmQAQmQAQ2QAQ2QARGQARWQARWQARmQAR2QASGQASGQASWQASmQAS2QAS2QATGQATGQATWQATWQATmQATmQATmQATmQATmQAV1IAYDkAZCEAZAkAZPoAZPYAZPMAZPEAZO8AZO4AZPQAZPkAZP8AZAQAZAoAZA8AZBUAZBoAZB4AZCIAZCUAZCcAZCkAZCoAZCsAZC0AYy4AYzAAZC0AZCkAZCsAZCsAZCwAYy4AYzAAYjIAYTUAYDgAXzsAXT8AXEQAWkoAWFAAVlYAVFwAUmIAUGQATmQAS2QASWQASGQASGQAR2QAR2QARmQARmQARmQARmQARmQARmQARWQARWQARWQARWQARWQARmQARmQAR2QAR2QAR2QARmQARmQARmQAR2QAR2QAR2QAR2QAR2QAR2QAR2QAR2QAR2QAR2QARmQARmQARWQARWQARGQARGQARGQARGQARGQAQ2QAQ2QAQ2QAQmQAQmQAQmQAQWQAQWQAQWQAQGQAQGQAP2QAPmQAPmQAPWQAPGQAO2QAOmQAOWQAOGQAOGQAN2QANmQANmQANWQANWQANWQANGQAM2QAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAM2QAM2QAM2QANGQANGQANGQANGQANGQANWQANWQANWQIZDgAZDcAZDgAZDgAZDkAZDoAZDsAZDwAZD4AZEAAZEIAZEUAZEgAZFgAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD2QAD2QAD2QAD2QAD2QAD2QAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAprAAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEmQAFGQAFmQAGGQAGGQAGGQAF2QAF2QAF2QAFmQAFWQAFGQAE2QAE2QAEmQAEmQAEmQAEmQAEmQAEmQAEWQAEWQAEWQAEWQAEWQAEWQAEGQAEGQAEGQAEGQAEGQAEGQAEGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEmQAFmQAGWQAHGQAH2QAImQAJWQAKGQAKmQALWQAMGQAM2QANWQAOGQAOmQAPGQAPmQAP2QAQGQAQmQAQmQAQ2QARGQARGQARGQARGQARGQAQ2QAQmQAQWQAQGQAP2QAPWQAO2QAOWQAN2QANGQAMWQAL2QALGQAKWQAJmQAImQAH2QAHWQAGmQAF2QAFGQAEmQAEGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAZGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QCD2QCD5wCD5wCD5wCEJwCGJwCIJwCJ5wCLpwCNZwCO5wCQJwCRZwCSZwCTJwCUJwCUqACVacCV60CWLICW7oAXb8AXsMAX8UAX8UAX8YAYMcAYMcAX8UAXsEAW7oAVqoATZwAPpwAJ5wAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAQpwAQJwAP5wAPZwAPJwAO5wAOpwAOZwAOJwAN5wAN5wAN5wAOJwAOpwAPJwAO5wAOZwANpwANJwAMpwAMJwALpwALZwAK5wAKZwAKJwAJpwAJZwAJZwAJJwAJJwAI5wAI5wAJJwAJJwAJJwAJZwAJZwAJZwAJpwAJpwAJpwAJ5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAEZwAFpwAGpwIIJwAJpwALJwCMpwCOGQCPmQCRGQCSWQCTWQCUWQCVFoCV1MCWU0CWkkCW0cCW0YCW0YCWkgCWUsCWFACVlUCVFwCUWMCT2QCTGQCSWQCRmQCQmQCPmQCPGQAO2QAOWQAN2QANWQAM2QAMGQALGQAKGQAI2QAHWQAFmQAD2QAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAIGQARmQAZBAATGQAPGQAM2QALWQAKmQAJmQAI2QAIGQAHWQAG2QAGWQAF2QAFWQAFGQAEmQAEGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEGQAEWQAEmQAE2QAFGQAFWQAFWQAFWQAFmQAFmQAFmQAFmQAF2QAF2QAGGQAGGQAGWQAGWQAGmQAGmQAG2QAHGQAHWQAHWQAHmQAH2QAIGQAIWQAImQAI2QAJGQAJWQAJmQAJ2QAKGQAKWQAKmQAK2QALGQALWQALmQAL2QAMGQAMGQAMWQAMmQAM2QANGQANWQANmQANmQAN2QAOGQAOWQAOWQAOmQAO2QAPGQAPGQAPWQAPmQAP2QATmQATmQATmQATWQATWQATWQATGQATGQATGQAS2QAS2QAS2QAS2QAS2QASmQASmQASmQASmQASWQASWQASWQASGQAVlUAXj4AZCwAZBoAZAkAZPkAZOoAZNsAYcwAXL0AVKUATZwARpwAP5wAOZwAM5wALZwAKJwAIpwAHZwAGZwAFZwAEZwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAEJwAEZwAE5wAFJwAFZwAFpwAF5wAGJwAGZwAGZwAGpwAGpwAG5wAG5wAHJwAHJwAHJwAHZwAHZwAHZwAHJwAHJwAHJwAG5wAGpwAGpwAGJwAF5wAFpwAFJwAEpwAEJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAEJwAEZwAEpwAE5wAFJwAFZwAFpwAF5wAGJwAGZwAGpwAGpwAG5wAHJwAHZwAHZwAHpwAHpwAH5wAH5wAH5wAIJwAIJwAIZwAIZwAIZwAIZwAIpwAIpwAIpwAIpwAI5wAI5wAI5wAI5wAI5wAI5wAI5wAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAJJwAI5wAI5wAI5wAI5wAI5wAI5wAI5wAI5wAI5wAI5wAI5wAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAZJwAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD5wAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAplAAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QCD2QCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCD5wCEpwCGZwCZJwCZJwCZJwCZJwCZJwCZJwCZJwCZJwCZKkAZNMAZPgAZBYAZC8AZEEAZLEAZKgAZKIAZJ8AZJ8AZKAAZKQAZKoAZLIAZLsAZMUAZNEAZN4AZOwAZPkAZAcAZBQAZCEAZCkAZCwAYy4AYy8AYjEAYjEAYjMAYDgAXT8AWkkAVlUAUWIATGQAR2QAQmQAPGQANmQAMGQAKmQAJWQAIGQAG2QAJGQAIGQAHGQAGWQAFmQAFGQAE2QAEmQAEmQAEmQAEmQAEmQAEWQAEWQAEGQAEGQAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAD2QAEGQAEWQAEWQAEmQAE2QAE2QAFGQAFWQAFmQAFmQAF2QAGGQAGGQAGWQAGmQAGmQAG2QAHGQAHGQAHWQAHWQAHmQAHmQAH2QAH2QAIGQAIWQAIWQAIWQAImQAImQAI2QAI2QAJGQAJGQAJWQAJWQAJWQAJmQAJmQAJmQAJ2QAJ2QAJ2QAJ2QAJmQAJmQAJWQAJGQAI2QAImQAImQAImQAImQAImQAImQAImQAImQAI2QAI2QAJGQAJGQAJGQAJWQAJWQAJWQAJmQAJmQAJmQAJmQAJmQAJ2QAJ2QAJ2QAJ2QAKGQAKGQAKWQAK2QALWQAMGQAMmQANGQANmQANmQANmQANmQANmQANWQANGQANGQAM2QAMmQAMGQAL2QALmQALWQALGQALGQAK2QAK2QAK2QAK2QAKmQAKmQAKmQAKmQAKmQAKmQAKmQAKmQAKmQAK2QAK2QALGQALGQALWQALWQALWQALmQALmQALmQAL2QAL2QAL2QAL2QAMGQAMGQAMGQAMWQAMWQAMWQAMWQAMWQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMmQAMWQAMWQAMWQAMWQAMWQAMWQAMWQAMWQAMmQAMmQA"};
 
 // ==== 99_main.js ====
 // ---------- inicializacao, laco principal e ganchos de teste ----------
@@ -2539,7 +2555,7 @@ const CR = window.CR = { G, GAR, SIM, BG, R, IN, UI, FX, Atlas, MESH, DRAW, stat
   // avanca n quadros de 1/60 s sem desenhar na GPU
   advance(n) { for (let i = 0; i < n; i++) G.tick(DT); },
   // avanca 1 quadro e desenha; devolve promise quando os pixels estao no canvas
-  async frame(n) { for (let i = 0; i < (n || 1); i++) { G.tick(DT); R.time += DT; Atlas.flush(); R.frame(); } if (R.capture) await R.grab(); else await R.dev.queue.onSubmittedWorkDone(); return R.lastError || 'ok'; },
+  async frame(n) { for (let i = 0; i < (n || 1); i++) { G.tick(DT); R.tm[0] += DT; Atlas.flush(); R.frame(); } if (R.capture) await R.grab(); else await R.dev.queue.onSubmittedWorkDone(); return R.lastError || 'ok'; },
   // luta avulsa (roteirizada ou automatica): montagens e semente fixas
   duel(ba, bb, seed, dur, opts) { opts = opts || {}; G.round = opts.round || 'LUTA ROTEIRIZADA'; G.auto = !!opts.auto; G.curMatch = null; const ea = { nome: opts.na || 'Fagulha', b: ba, cor: CORES[opts.ca === undefined ? 0 : opts.ca], num: 7, estilo: opts.ea === undefined ? 0 : opts.ea, hp: null, v: 0, d: 0 }, eb = { nome: opts.nb || 'Vespa 9', b: bb, cor: CORES[opts.cb === undefined ? 2 : opts.cb], num: 9, estilo: opts.eb === undefined ? 2 : opts.eb, hp: null, v: 0, d: 0 };
     G.setupFight(0, 1, seed, dur, ea, eb); G.script = opts.script || null; G.rec = opts.rec ? new Int8Array(opts.rec * 3) : null; G.startFight(); },
@@ -2586,7 +2602,11 @@ async function boot() {
   if (QS.get('q') === '0') R.quality = 0;
   R.perf = !!QS.get('perf'); Atlas.flush();
   G.load(); GAR.pre = GAR.com.slice();
-  if (TOR && TOR.ativo && TOR.lutas > 0 && TOR.vivo) GAR.enter(true); else if (TOR && TOR.ativo && TOR.lutas === 0) { GAR.enter(false); } else { if (TOR && !TOR.ativo) TOR = null; GAR.enter(false); }
+  if (TOR && !TOR.ativo) TOR = null;
+  // ensaio oculto: aquece o JIT e fixa a forma dos objetos antes da primeira luta (sem isso o V8 aloca numeros
+  // encaixotados nos primeiros segundos, enquanto o codigo ainda roda no interpretador)
+  if (!QS.get('frio')) { const sv = [G.auto, R.keyDim]; for (const [a, b_, n] of [[[1, 1, 1, 0], [1, 2, 0, 3], 5400], [[0, 0, 0, 1], [2, 1, 2, 4], 1500], [[1, 0, 2, 2], [2, 2, 1, 5], 1500]]) { CR.duel(a, b_, 3, 600, { auto: true, eb: 1 }); SIM.noKO = true; for (let i = 0; i < n && G.st === 'luta'; i++) G.tick(DT); } if (ROTEIRO.dados) { CR.roteiro(); for (let i = 0; i < 1500 && G.st === 'luta'; i++) G.tick(DT); G.script = null; } SIM.noKO = false; G.auto = sv[0]; R.nmk = 0; FX.reset(); UI.msg('', ''); }
+  if (TOR && TOR.ativo && TOR.lutas > 0 && TOR.vivo) GAR.enter(true); else GAR.enter(false);
   $('carga').remove(); CR.pronto = true; document.title = 'Copa Rebite';
   if (QS.get('roteiro')) CR.roteiro();
   if (QS.get('cap')) return;
@@ -2594,7 +2614,7 @@ async function boot() {
   const loop = now => { requestAnimationFrame(loop); let dt = (now - last) / 1000; last = now; if (G.frameLog && G.nlog < G.frameLog.length) G.frameLog[G.nlog++] = dt * 1000; if (dt > .1) dt = .1;
     // passo fixo de simulacao (1/60 s); em telas de 60 Hz e exatamente 1 passo por quadro
     G.acc += dt; let n = Math.abs(dt - DT) < .004 ? 1 : Math.floor(G.acc / DT); if (n > 3) n = 3; if (n < 1 && G.st !== 'luta' && G.st !== 'fim') n = 1; G.acc = Math.max(0, Math.min(G.acc - n * DT, DT));
-    for (let i = 0; i < n; i++) G.tick(DT); R.time += dt; Atlas.flush(); if (!G.skipRender) R.frame(); };
+    for (let i = 0; i < n; i++) G.tick(DT); R.tm[0] += dt; Atlas.flush(); if (!G.skipRender) R.frame(); };
   requestAnimationFrame(loop);
 }
 boot().catch(e => { console.error(e); CR.erro = String(e && e.message || e); UI.fatal('Não foi possível iniciar: ' + CR.erro + ' — este jogo precisa de um navegador com WebGPU (Chrome atualizado).'); });
