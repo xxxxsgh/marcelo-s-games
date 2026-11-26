@@ -7,13 +7,14 @@ A máquina-alvo (Windows 11, RTX 3050) e a pasta `referencia/` não estavam disp
 
 | item | estado |
 |---|---|
-| `index.html` | 313 049 bytes (≈ 306 KB), autocontido, montado por `node build.mjs` a partir de `source/` |
+| `index.html` | 340 213 bytes (≈ 332 KB), autocontido, montado por `node build.mjs` a partir de `source/` |
 | Montagem (162 combinações) | **passa** — `trabalho/relatorio_montagem.json` |
 | Controles e torneio | **passa**, 54/54 — `trabalho/relatorio_controles.json` |
 | Laço real (requestAnimationFrame) | **passa** — `trabalho/teste_laco.py` |
 | Desempenho na RTX 3050 | **não medido** (sem GPU aqui) — rodar `python trabalho/medir_desempenho.py` na máquina-alvo |
-| Crítico visual | **não convergiu**: 3 rodadas, a última com 15 defeitos acima de "menor" |
-| `luta.mp4` | **parcial**: 25 dos 60 s, 1920×1080 a 60 qps, com render interno em 960×540 ampliado |
+| Modos extras | **passa** — `trabalho/teste_modos.py` |
+| Crítico visual | **não convergiu**: 15 rodadas, a última com 13 defeitos acima de "menor" (melhor: 11) |
+| `luta.mp4` | **parcial e desatualizado**: 25 dos 60 s, 1920×1080 a 60 qps, render interno em 960×540 ampliado, gravado na versão da rodada 3 |
 
 ## Montagem
 162 combinações montadas; 136 legais e 26 barradas pelo limite de 110 kg (pesos de 62 a 130 kg). Para cada uma:
@@ -29,6 +30,8 @@ maior avanço do casco além da parede 0,030 m (tolerância do contato; o centro
 idêntica em duas execuções e igual à gravada. Torneio acelerado completo (quartas → semifinal → final) com chave,
 decisão dos juízes numa das lutas, conserto/troca limitados a duas ações e salvamento conferido após recarregar.
 
+Com o som ligado, a atualização dos parâmetros de áudio (10 vezes por segundo) passa números à API do navegador, o que fica fora desta medida.
+
 Alocação: 58 janelas de 60 quadros da luta roteirizada (simulação, IA, efeitos, montagem das instâncias e HUD)
 com exatamente 0 byte de heap JS. Fora dessa medida ficam os objetos da própria API (comandos e passes do WebGPU,
 a view da textura do canvas, o array de `navigator.getGamepads()`), que o navegador cria a cada quadro.
@@ -40,26 +43,42 @@ o que não diz nada sobre a GPU-alvo. As consultas `timestamp-query` e o log de 
 
 ## Crítico visual
 Subagente novo a cada rodada, vendo só os renders; sem referências, comparou com o próprio conhecimento.
+Cada rodada: 6 poses em 1080p, a luta roteirizada em 960×540 (um quadro a cada 2 s, a partir da rodada 2) e 3 rajadas de 8 quadros.
 
-| rodada | material | acima de "menor" |
+| rodada | acima de "menor" | o que mudou antes dela |
 |---|---|---|
-| 1 | 6 poses 1080p + luta em 960×540 (1 quadro/s) + 3 rajadas (as rajadas saíram repetidas por um erro de captura, corrigido) | 19 |
-| 2 | 6 poses 1080p + luta em 960×540 (1 quadro/2 s) + 3 rajadas | 15 |
-| 3 | 6 poses 1080p + primeiros 25 s do vídeo (1 quadro/0,5 s) + 1 rajada | 15 |
+| 1 | 19 | primeira versão |
+| 2 | 15 | câmera de TV, plateia, desfoque, policarbonato |
+| 3 | 15 | luz mais uniforme, colisão, materiais (quadros do vídeo ampliado) |
+| 4 | 16 | colisão com mais pontos, disco, pintura |
+| 5 | 18 | exposição (passou do ponto: arena lavada) |
+| 6 | 14 | contraste, disco borrado, policarbonato limpo |
+| 7 | 15 | cones dos refletores, penumbra da plateia |
+| 8 | 13 | piso, perseguição mais próxima, grão |
+| 9 | 14 | desgaste, reflexo do piso, arma colide com a parede |
+| 10 | 14 | riscos do piso, alumínio, rodas maciças, lançador |
+| 11 | 13 | base do martelo colide, câmera de perseguição |
+| 12 | 11 | estrutura do chassi, fogo, mureta, altas luzes |
+| 13 | 14 | chassi em treliça, fogo, placas arrancadas |
+| 14 | 14 | fogo alongado, disco, colisão mais firme |
+| 15 | 13 | contraste, rodas pequenas, luz de impacto |
 
-Corrigido entre rodadas: câmera de TV atrás da estrutura, luz irregular (poças estouradas e áreas pretas),
-desfoque de movimento exagerado, câmera a bordo dentro da carcaça, policarbonato enevoado, plateia de blocos,
-barras de LED soltas, faíscas gigantes em primeiro plano.
+**Não convergiu.** A contagem caiu de 19 para a faixa de 11 a 15 e ficou oscilando: cada crítico novo acha um conjunto
+parecido de problemas de fundo. Os que se repetem em quase todas as rodadas e continuam em aberto:
+- os robôs ainda leem como caixas pintadas na arena (a garagem é apontada como a melhor parte);
+- interpenetração no contato (a colisão é por caixa e pontos, sem deformação);
+- plateia de bonecos simples;
+- disco em giro sem borrão de rotação convincente;
+- piso que alterna entre realce estourado e sombra chapada;
+- falta de sombra de contato sob os robôs.
 
-Em aberto na rodada 3 (resumo; texto integral em `trabalho/critico/r3_revisao.md`):
-1. grave — imagem mole nos quadros da luta (em boa parte porque o vídeo foi renderizado em 960×540 e ampliado);
-2. grave — robôs se interpenetrando no contato (a colisão usa caixas; braço do lançador e armas não colidem);
-3. grave — plateia ainda lida como bonecos;
-4. grave — na arena a pintura dos robôs ainda parece plástico (na garagem foi considerada bem melhor);
-5. grave — disco em giro sem borrão de rotação (efeito estroboscópico);
-6–15. médios — realces estourados no piso, ruído em sombra/reflexo, faíscas uniformes, destroços pouco legíveis,
-   mureta sem detalhe, névoa lavando os pretos, placas borradas, adesivos espelhados, enquadramento/HUD,
-   peças da câmera a bordo.
+Texto da última rodada em `trabalho/critico/r15_revisao.md`; os pacotes de imagens de todas as rodadas estão em `trabalho/critico/rN/`.
+
+## Conteúdo acrescentado depois da primeira entrega
+Carreira em temporadas (14 rivais, quatro arenas, rivais mais resistentes a cada temporada), amistoso, sobrevivência,
+nove desafios (incluindo o chefão Rei Rebite), oficina de melhorias com sucata, 12 conquistas, quatro pinturas
+desbloqueáveis, três dificuldades, retrospecto contra cada rival e som procedural (Web Audio).
+Coberto por `trabalho/teste_modos.py`.
 
 ## Vídeo
 `luta.mp4` tem os primeiros 25 s (1500 quadros), capturados quadro a quadro com passo fixo de 1/60 s.

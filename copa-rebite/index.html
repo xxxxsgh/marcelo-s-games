@@ -2293,7 +2293,7 @@ const UI = {
     }
     const t = Math.max(0, Math.ceil(sim.dur - sim.t) | 0); if (L[30] !== t) { L[30] = t; e.tm.textContent = TM[Math.min(t, 600)]; }
     if (L[31] !== camIdx) { L[31] = camIdx; e.camn.textContent = CAMN[camIdx]; }
-    let ko = -1; for (let i = 0; i < 2; i++) { const B = sim.bots[i]; if (B.imm > 0 && !sim.over) ko = i * 20 + Math.min(10, Math.ceil(KO_T - B.imm) | 0); }
+    let ko = -1; for (let i = 0; i < 2; i++) { const B = sim.bots[i]; if (B.imm > .6 && !sim.over) ko = i * 20 + Math.min(10, Math.ceil(KO_T - B.imm) | 0); }
     if (ko !== this.koShown) { this.koShown = ko; if (ko < 0) e.ko.style.display = 'none'; else { e.ko.style.display = 'block'; e.ko.textContent = this.kos[ko >= 20 ? 1 : 0][ko % 20]; } }
   },
   // ----- garagem -----
