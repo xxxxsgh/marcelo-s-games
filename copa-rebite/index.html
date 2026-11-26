@@ -508,7 +508,7 @@ function buildRobotMeshes(mb) {
         mb.set(MAT.ARMOR, 1, 1, 1, .12); mb.push().tr(0, th / 2, 0).box(len, th, wid, Math.min(.003, th * .3), sub); mb.pop();
         const ex = len / 2 - .022, ez = wid / 2 - .022;
         if (ai === 0) { // rebites + nervuras
-          const n = Math.max(2, Math.round(len / .05)), m = Math.max(2, Math.round(wid / .05));
+          const n = Math.max(2, Math.round(len / .1)), m = Math.max(2, Math.round(wid / .1));
           mb.set(MAT.ALU, .8, .8, .82, .2);
           for (let i = 0; i <= n; i++) for (const s of [-1, 1]) mb.cy(lerp(-ex, ex, i / n), th + .0015, s * ez, .0055, .003, 6, 1, { bev: .0012 });
           for (let i = 1; i < m; i++) for (const s of [-1, 1]) mb.cy(s * ex, th + .0015, lerp(-ez, ez, i / m), .0055, .003, 6, 1, { bev: .0012 });
@@ -608,6 +608,8 @@ function buildRobotMeshes(mb) {
         const te = c.tops[0][1], kx = te + .06 - g.px, ky = 0, tx = nose + .1 - g.px, ty = .03 - g.py;
         mb.set(MAT.PAINT, 1, 1, 1, .3); beam(.0, ky, kx, ky, 0, .36, .014); beam(kx, ky, tx, ty, 0, .36, .014);
         mb.set(MAT.STEEL, .55, .55, .57, .6); beam(tx - .03, ty + .008, tx + .012, ty - .006, 0, .38, .01);
+        mb.set(MAT.STEEL, .4, .4, .42, .5); for (const f of [.3, .62, .9]) { const bxp = kx + (tx - kx) * f, byp = ky + (ty - ky) * f, an = Math.atan2(ty - ky, tx - kx); mb.push().tr(bxp, byp, 0).rz(an).tr(0, .011, 0).box(.022, .012, .34, .003); mb.pop(); for (const s of [-1, 0, 1]) { mb.push().tr(bxp, byp, s * .14).rz(an); mb.bolt(0, .017, 0, .007, 1, 1); mb.pop(); } }
+        for (const s of [-1, 1]) for (const f of [.25, .75]) mb.bolt(kx * f, ky + .008, s * .16, .007, 1, 1);
         mb.set(MAT.PAINT, 1, 1, 1, .5); for (const s of [-1, 1]) { beam(0, ky + .016, kx, ky + .016, s * .12, .016, .02); mb.bolt(kx * .5, ky + .028, s * .12, .007, 1, 1); }
         mb.end(`wm${ci}_3`);
       } else if (k === 4) { // martelo
@@ -659,7 +661,7 @@ function buildRobotMeshes(mb) {
     mb.set(MAT.RUBBER, .03, .03, .03, 0); mb.push().rx(PI / 2).ring(w.r - .016, w.r * .6, w.w, 32, .2); mb.pop();
     const nl = 30; for (let i = 0; i < nl; i++) { const t = i / nl * TAU; for (const s of [-1, 1]) { mb.push().rz(t + (s > 0 ? PI / nl : 0)).tr(w.r - .0165, 0, s * w.w * .25).ry(s * .3).box(.016, .017, w.w * .5, .004); mb.pop(); } }
     mb.set(MAT.ALU, .78, .78, .8, .25); mb.push().rx(PI / 2).ring(w.r * .62, w.r * .5, w.w * .75, 24); mb.pop();
-    mb.set(MAT.STEEL, .5, .5, .52, .4); for (let i = 0; i < 5; i++) { mb.push().rz(i / 5 * TAU).tr(w.r * .3, 0, w.w * .1).box(w.r * .46, .026, .02, .004); mb.pop(); }
+    mb.set(MAT.STEEL, .3, .3, .32, .3); mb.cy(0, 0, w.w * .08, w.r * .5, .022, 24, 2, { bev: .004 }); mb.set(MAT.DARK, .03, .03, .035, .2); for (let i = 0; i < 6; i++) mb.cy(Math.cos(i / 6 * TAU + .5) * w.r * .34, Math.sin(i / 6 * TAU + .5) * w.r * .34, w.w * .08 + .0115, w.r * .075, .002, 10, 2, { bev: 0 }); for (let i = 0; i < 6; i++) mb.bolt(Math.cos(i / 6 * TAU) * w.r * .43, Math.sin(i / 6 * TAU) * w.r * .43, w.w * .08 + .011, .007, 2, 1);
     mb.set(MAT.ALU, .8, .8, .82, .3); mb.cy(0, 0, w.w * .1, w.r * .2, .04, 14, 2); mb.bolt(0, 0, w.w * .1 + .02, .012, 2, 1);
     mb.set(MAT.STEEL, .5, .5, .52, .3); mb.cy(0, 0, -w.w / 2 - .014, .014, .05, 8, 2);
     mb.end('wh1');
@@ -1033,7 +1035,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
     var chip = smoothstep(.69, .73, wm); chip = max(chip, smoothstep(.84, .87, fbm(P * 11. + inst.p1.w * 3.) + wear * .05));
     chip = max(chip, smoothstep(.55, .85, sc)); let prim = clamp(smoothstep(.655, .70, wm) - chip, 0., 1.);
     var bare = vec3f(.42, .42, .44); var br = .46;
-    if (mk > .5 && mk < 1.5) { bare = vec3f(.86, .87, .88); br = .3; } else if (mk > 1.5) { let tf = vn(P * 9. + 1.7); bare = mix(vec3f(.56, .52, .47), mix(vec3f(.35, .4, .62), vec3f(.62, .45, .3), tf), smoothstep(.45, .9, edge + tf * .5) * .55); br = .3; }
+    if (mk > .5 && mk < 1.5) { bare = vec3f(.56, .57, .58); br = .46; } else if (mk > 1.5) { let tf = vn(P * 9. + 1.7); bare = mix(vec3f(.56, .52, .47), mix(vec3f(.35, .4, .62), vec3f(.62, .45, .3), tf), smoothstep(.45, .9, edge + tf * .5) * .55); br = .3; }
     let streak = vn(vec3f(uv.x * 3., uv.y * 260., 1.));
     let lum0 = dot(base, vec3f(.3, .6, .1)); var palb = mix(vec3f(lum0), base, .66) * (.46 + .2 * n1 + .12 * wlow); var pr = .16 + .34 * wlow + .14 * n1;
     // adesivos / numero
@@ -1063,6 +1065,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
     if (mat == 2u) { let rust = smoothstep(.8, .9, n3 * .8 + edge * .1 + vn(P * 60.) * .2) * .7; alb = mix(alb, vec3f(.23, .11, .05) * (.7 + .6 * vn(P * 90.)), rust * .8); metal = 1. - rust * .7; rough = mix(rough, .82, rust);
       let blu = smoothstep(.7, 1., edge) * vn(P * 12.); alb = mix(alb, vec3f(.3, .33, .5), blu * .35); }
     if (mat == 4u) { let tf = vn(P * 9.); alb = mix(alb, mix(vec3f(.35, .4, .62), vec3f(.62, .45, .3), tf), .4); }
+    if (i.on.y < -.5) { let us = scratch(uv * 9., 11.) + scratch(vec2f(uv.x * 2., uv.y * 40.), 12.); alb = mix(alb * .7, vec3f(.5), clamp(us, 0., 1.) * .5); rough = rough + .15; }
     alb += sc * .25; rough = mix(rough, .18, sc * .7) + smoothstep(.8, 1., edge) * .22; h = streak * .00005 - sc * .00015;
     if (edge > .95 && mat == 2u) { h += sin(dot(P, vec3f(310., 290., 330.))) * .0001; }
   } else if (mat == 5u) { // borracha
@@ -1078,7 +1081,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
     let q = i.wp.xz; let fuv = q / 14. + .5; let fa = textureSample(floorA, smpA, fuv); let fb = textureSample(floorB, smpA, fuv);
     alb = fa.rgb; metal = fa.a; rough = fb.b; let mk = textureSampleLevel(marks, smp, fuv, 0.);
     alb = mix(alb, vec3f(.015), clamp(mk.r * 1.4, 0., .92)); rough = mix(rough, .62, clamp(mk.r * 1.2, 0., 1.)); metal *= 1. - clamp(mk.r, 0., 1.) * .8;
-    let gg = clamp(mk.g * 1.5, 0., 1.); alb = mix(alb, vec3f(.72, .73, .76), gg); rough = mix(rough, .2, gg); metal = max(metal, gg);
+    let gg = clamp(mk.g * .8, 0., .7); alb = mix(alb, vec3f(.4, .4, .42), gg * .6); rough = mix(rough, .26, gg * .7); metal = max(metal, gg);
     alb *= 1. - clamp(mk.b, 0., 1.) * .8; rough = mix(rough, .85, clamp(mk.b, 0., 1.) * .7);
     let nn = fb.rg * 2. - 1.; N = normalize(vec3f(nn.x, sqrt(max(1. - dot(nn, nn), .01)), nn.y));
   } else if (mat == 11u) { if (edge < .9) { let n = fbm(i.wp * vec3f(1.3, 1.3, 1.3)); let f = vn(i.wp * 40.); alb = i.col * (.7 + .5 * n + .15 * f); rough = mix(.45, .9, smoothstep(.3, .7, n + edge * .5)); h = f * .0004;
@@ -1092,7 +1095,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
   else if (mat == 18u) { alb = vec3f(.02, .025, .04); rough = .06; }
   else if (mat == 19u) { let g = vn(vec3f(P.x * 3., P.y * 60., P.z * 60.)); alb = i.col * (.6 + .7 * g); rough = .55 + g * .2; alb = mix(alb, alb * .4, smoothstep(.6, .8, fbm(P * 4.))); h = g * .0003; }
   else if (mat == 20u) { let g = fract(uv * 32.) - .5; let hole = 1. - smoothstep(.12, .16, length(g)); alb = i.col * (.85 + .2 * vn(P * 30.)) * (1. - hole * .85); rough = .8; h = -hole * .001; }
-  else if (mat == 24u) { let rr = length(select(P.xz, P.xy, abs(i.on.z) > .5)); let ring = vn(vec3f(rr * 240., 1., 2.)); let pp2 = select(P.xz, P.xy, abs(i.on.z) > .5); let ang = atan2(pp2.y, pp2.x); let sw = pow(.5 + .5 * sin(ang * 2. + F.cam.w * 47.), 3.) + .6 * pow(.5 + .5 * sin(ang * 3. - F.cam.w * 31. + 1.), 4.); let rim = smoothstep(.15, .2, rr); alb = vec3f(.2, .2, .215) * (.92 + .1 * ring) * (1. + sw * .7) * mix(1., .8, rim); metal = 1.; rough = .16 + ring * .1 + rim * .2; h = ring * .00008; }
+  else if (mat == 24u) { let rr = length(select(P.xz, P.xy, abs(i.on.z) > .5)); let ring = vn(vec3f(rr * 240., 1., 2.)); let pp2 = select(P.xz, P.xy, abs(i.on.z) > .5); let ang = atan2(pp2.y, pp2.x); let sw = pow(.5 + .5 * sin(ang * 2. + F.cam.w * 47.), 3.) + .6 * pow(.5 + .5 * sin(ang * 3. - F.cam.w * 31. + 1.), 4.); let rim = smoothstep(.15, .2, rr); alb = vec3f(.36, .36, .38) * (.92 + .1 * ring) * (1. + sw * .8) * mix(1., 1.25, rim); metal = 1.; rough = .16 + ring * .1 + rim * .2; h = ring * .00008; }
   else if (mat == 23u) { let r = region(i32(edge + .5)); let t = textureSample(atlas, smp, r.xy + i.col.rg * r.zw); alb = t.rgb * (.52 + .1 * vn(i.wp * 30.)); rough = .7; emis = 0.; }
   // fuligem / queimado
   let burn = inst.p1.x; if (burn > 0.) { let b = clamp(burn * (.5 + fbm(P * 14.)), 0., 1.); alb = mix(alb, vec3f(.012), b * .9); rough = mix(rough, .92, b); metal *= 1. - b * .7; }
@@ -1206,7 +1209,7 @@ const WGSL_VOL = WGSL_COMMON + WGSL_FS_TRI + /* wgsl */`
 @group(0) @binding(3) var shS: sampler_comparison;
 @fragment fn fs(i: FSO) -> @location(0) vec4f {
   let px = vec2i(i.pos.xy) * 2; let d = textureLoad(gD, min(px, vec2i(F.res.xy) - 1), 0);
-  let pf = F.ivpJ * vec4f(i.uv.x * 2. - 1., 1. - i.uv.y * 2., min(d, .99995), 1.); let P1 = pf.xyz / pf.w; let ro = F.cam.xyz; var rd = P1 - ro; var tmax = min(length(rd), 34.); rd = normalize(rd);
+  let pf = F.ivpJ * vec4f(i.uv.x * 2. - 1., 1. - i.uv.y * 2., min(d, .99995), 1.); let P1 = pf.xyz / pf.w; let ro = F.cam.xyz; var rd = P1 - ro; var tmax = min(length(rd), 18.); rd = normalize(rd);
   let n = ign(i.pos.xy, F.misc.y); let NS = 8; let dt = tmax / f32(NS); var acc = vec3f(0.); let time = F.cam.w;
   for (var s = 0; s < NS; s++) { let t = (f32(s) + n) * dt; let p = ro + rd * t;
     let dens = F.fx.x * (.55 + 1.1 * vn(p * .55 + vec3f(time * .05, -time * .03, time * .04)) * smoothstep(9., 1., p.y));
@@ -1363,7 +1366,7 @@ fn fl(q: vec2f) -> array<vec4f, 2> {
   let hzA = max(max(hz, hz2), max(hz3, hz4)); let st = smoothstep(.47, .5, abs(fract((q.x + q.y) * 3.3) - .5)); pc = mix(pc, mix(vec3f(.72, .5, .02), vec3f(.02), st), hzA); pa = max(pa, hzA);
   let pwear = smoothstep(.5, .85, n_m * .8 + wearP * .3 + sc * .5 + fbm2(q * 22.) * .25); pa *= 1. - pwear * .75;
   alb = mix(alb, pc * (.85 + .2 * n_f), pa); metal *= 1. - pa; rough = mix(rough, .4 + n_f * .15, pa);
-  let scl = clamp(sc, 0., 1.) * (1. - pa * .6); alb = mix(alb, vec3f(.45, .45, .48), scl * .2); rough = mix(rough, .2, scl * .3);
+  let scl = clamp(sc, 0., 1.) * (1. - pa * .6); alb = mix(alb, vec3f(.4, .4, .43), scl * .07); rough = mix(rough, .24, scl * .25);
   alb = mix(alb, vec3f(.025), seam * .9); rough = mix(rough, .8, seam); metal *= 1. - seam * .5;
   let bq = abs(fp) * 1.75 - vec2f(.875 - .11); let bd = length(bq); let bolt = 1. - smoothstep(.016, .019, bd); alb = mix(alb, vec3f(.46), bolt * .85); rough = mix(rough, .3, bolt);
   let bring = (1. - smoothstep(.0, .004, abs(bd - .022))) * .6; alb *= 1. - bring;
@@ -2485,7 +2488,7 @@ const G = {
   },
   enterArena() {
     if (R.scene !== 0) { R.im[SLOT.GLASS] = MESH.glass.id; R.im[SLOT.AUX0] = MESH.saw.id; R.im[SLOT.AUX1] = MESH.saw.id; R.im[SLOT.AUX2] = MESH.ahammer.id; R.bake(0, MESH.arena.id, ARENA_LIGHTS, [0, 1.2, 0]); }
-    R.exposure = .29; R.fog = .0026; R.mblur = .3; R.amb = 1; R.cp[0] = .9;
+    R.exposure = .29; R.fog = .0034; R.mblur = .3; R.amb = 1; R.cp[0] = .9;
   },
   // prepara a luta do jogador (ou uma luta avulsa para teste/roteiro)
   setupFight(ia, ib, seed, dur, ea, eb) {

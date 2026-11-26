@@ -129,7 +129,7 @@ function buildRobotMeshes(mb) {
         mb.set(MAT.ARMOR, 1, 1, 1, .12); mb.push().tr(0, th / 2, 0).box(len, th, wid, Math.min(.003, th * .3), sub); mb.pop();
         const ex = len / 2 - .022, ez = wid / 2 - .022;
         if (ai === 0) { // rebites + nervuras
-          const n = Math.max(2, Math.round(len / .05)), m = Math.max(2, Math.round(wid / .05));
+          const n = Math.max(2, Math.round(len / .1)), m = Math.max(2, Math.round(wid / .1));
           mb.set(MAT.ALU, .8, .8, .82, .2);
           for (let i = 0; i <= n; i++) for (const s of [-1, 1]) mb.cy(lerp(-ex, ex, i / n), th + .0015, s * ez, .0055, .003, 6, 1, { bev: .0012 });
           for (let i = 1; i < m; i++) for (const s of [-1, 1]) mb.cy(s * ex, th + .0015, lerp(-ez, ez, i / m), .0055, .003, 6, 1, { bev: .0012 });
@@ -229,6 +229,8 @@ function buildRobotMeshes(mb) {
         const te = c.tops[0][1], kx = te + .06 - g.px, ky = 0, tx = nose + .1 - g.px, ty = .03 - g.py;
         mb.set(MAT.PAINT, 1, 1, 1, .3); beam(.0, ky, kx, ky, 0, .36, .014); beam(kx, ky, tx, ty, 0, .36, .014);
         mb.set(MAT.STEEL, .55, .55, .57, .6); beam(tx - .03, ty + .008, tx + .012, ty - .006, 0, .38, .01);
+        mb.set(MAT.STEEL, .4, .4, .42, .5); for (const f of [.3, .62, .9]) { const bxp = kx + (tx - kx) * f, byp = ky + (ty - ky) * f, an = Math.atan2(ty - ky, tx - kx); mb.push().tr(bxp, byp, 0).rz(an).tr(0, .011, 0).box(.022, .012, .34, .003); mb.pop(); for (const s of [-1, 0, 1]) { mb.push().tr(bxp, byp, s * .14).rz(an); mb.bolt(0, .017, 0, .007, 1, 1); mb.pop(); } }
+        for (const s of [-1, 1]) for (const f of [.25, .75]) mb.bolt(kx * f, ky + .008, s * .16, .007, 1, 1);
         mb.set(MAT.PAINT, 1, 1, 1, .5); for (const s of [-1, 1]) { beam(0, ky + .016, kx, ky + .016, s * .12, .016, .02); mb.bolt(kx * .5, ky + .028, s * .12, .007, 1, 1); }
         mb.end(`wm${ci}_3`);
       } else if (k === 4) { // martelo
@@ -280,7 +282,7 @@ function buildRobotMeshes(mb) {
     mb.set(MAT.RUBBER, .03, .03, .03, 0); mb.push().rx(PI / 2).ring(w.r - .016, w.r * .6, w.w, 32, .2); mb.pop();
     const nl = 30; for (let i = 0; i < nl; i++) { const t = i / nl * TAU; for (const s of [-1, 1]) { mb.push().rz(t + (s > 0 ? PI / nl : 0)).tr(w.r - .0165, 0, s * w.w * .25).ry(s * .3).box(.016, .017, w.w * .5, .004); mb.pop(); } }
     mb.set(MAT.ALU, .78, .78, .8, .25); mb.push().rx(PI / 2).ring(w.r * .62, w.r * .5, w.w * .75, 24); mb.pop();
-    mb.set(MAT.STEEL, .5, .5, .52, .4); for (let i = 0; i < 5; i++) { mb.push().rz(i / 5 * TAU).tr(w.r * .3, 0, w.w * .1).box(w.r * .46, .026, .02, .004); mb.pop(); }
+    mb.set(MAT.STEEL, .3, .3, .32, .3); mb.cy(0, 0, w.w * .08, w.r * .5, .022, 24, 2, { bev: .004 }); mb.set(MAT.DARK, .03, .03, .035, .2); for (let i = 0; i < 6; i++) mb.cy(Math.cos(i / 6 * TAU + .5) * w.r * .34, Math.sin(i / 6 * TAU + .5) * w.r * .34, w.w * .08 + .0115, w.r * .075, .002, 10, 2, { bev: 0 }); for (let i = 0; i < 6; i++) mb.bolt(Math.cos(i / 6 * TAU) * w.r * .43, Math.sin(i / 6 * TAU) * w.r * .43, w.w * .08 + .011, .007, 2, 1);
     mb.set(MAT.ALU, .8, .8, .82, .3); mb.cy(0, 0, w.w * .1, w.r * .2, .04, 14, 2); mb.bolt(0, 0, w.w * .1 + .02, .012, 2, 1);
     mb.set(MAT.STEEL, .5, .5, .52, .3); mb.cy(0, 0, -w.w / 2 - .014, .014, .05, 8, 2);
     mb.end('wh1');
