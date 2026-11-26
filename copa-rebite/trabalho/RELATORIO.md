@@ -25,7 +25,7 @@ e botão/Start bloqueados nas montagens pesadas. O teste achou e fez corrigir do
 
 ## Controles e torneio
 Gamepad simulado (cada botão e eixo, zona morta, detecção ao conectar sem recarregar, vibração crescente com o dano)
-e teclado, na garagem e na luta. Luta roteirizada de 60 s: 31 acertos no adversário, 2 peças arrancadas,
+e teclado, na garagem e na luta. Luta roteirizada de 60 s: 51 acertos no adversário, 4 peças arrancadas,
 maior avanço do casco além da parede 0,030 m (tolerância do contato; o centro nunca passa), soma de verificação
 idêntica em duas execuções e igual à gravada. Torneio acelerado completo (quartas → semifinal → final) com chave,
 decisão dos juízes numa das lutas, conserto/troca limitados a duas ações e salvamento conferido após recarregar.
