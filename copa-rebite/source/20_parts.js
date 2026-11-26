@@ -30,7 +30,9 @@ const ARMAS = [
   { id: 'garra', nome: 'Garra Esmagadora', desc: 'Prende e esmaga. Arrasta para as armadilhas.', kg: 21, hp: 95, dano: 15, spin: 0, cd: 2.0 },
 ];
 const PARTES = ['Chassi', 'Rodas', 'Blindagem', 'Arma'];
-const CORES = [[.75, .06, .04], [.03, .19, .62], [.95, .55, .02], [.06, .42, .12], [.82, .82, .78], [.07, .07, .08], [.45, .05, .5], [.0, .45, .5], [.85, .25, .0], [.55, .62, .05]];
+const CORES = [[.75, .06, .04], [.03, .19, .62], [.95, .55, .02], [.06, .42, .12], [.82, .82, .78], [.07, .07, .08], [.45, .05, .5], [.0, .45, .5], [.85, .25, .0], [.55, .62, .05],
+  [.78, .55, .08], [.015, .015, .02], [.35, .8, .1], [.9, .9, .95]]; // as quatro ultimas sao desbloqueaveis: ouro, carbono, lima, perola
+const CORES_BASE = 10;
 
 // geometria derivada de uma montagem [chassi, rodas, blindagem, arma]
 function layoutOf(b, o) {

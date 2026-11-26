@@ -60,7 +60,7 @@ const UI = {
     for (let r = 0; r < 4; r++) { const p = lists[r][b[r]], sel = g.row === r, ed = sel && g.mode === 1; let hp = '';
       if (rep) { const f = GAR.slotHp(r); hp = `<span class="hp"><u style="transform:${SC[Math.round(f * 100)]}"></u></span><span class="x">${PCT[Math.round(f * 100)]}</span>`; }
       h += `<div class="row${sel ? ' sel' : ''}${ed ? ' ed' : ''}"><span class="k">${PARTES[r]}</span><span class="v">${ed ? '◀ ' : ''}${p.nome}${ed ? ' ▶' : ''}</span>${hp}<span class="x">${p.kg} kg</span></div>`; }
-    h += `<div class="row${g.row === 4 ? ' sel' : ''}"><span class="k">PINTURA</span><span class="v">${CORES.map((c, i) => `<span class="sw${i === g.cor ? ' c' : ''}" style="background:${Atlas.css(c, 1.5)}"></span>`).join('')}</span></div>`;
+    h += `<div class="row${g.row === 4 ? ' sel' : ''}"><span class="k">PINTURA</span><span class="v">${CORES.map((c, i) => `<span class="sw${i === g.cor ? ' c' : ''}" style="background:${Atlas.css(c, 1.5)}${corLivre(i) ? '' : ';opacity:.25;outline:.2vh dashed #8d98a6'}"></span>`).join('')}</span></div>`;
     h += `<div class="row${g.row === 5 ? ' sel' : ''}"><span class="k">NÚMERO</span><span class="v">◀ ${g.num} ▶</span></div>`;
     h += `<div class="row${g.row === 6 ? ' sel' : ''}"><span class="k">NOME</span><span class="v"><input id="gnome" maxlength="14" value="${esc(g.nome)}"></span><span class="x">A: sortear · Enter: digitar</span></div>`;
     h += `<div class="row go${g.row === 7 ? ' sel' : ''}${st.ok ? '' : ' no'}">${st.ok ? (rep ? 'VOLTAR PARA A ARENA ▶' : 'IR PARA A LUTA ▶') : 'ACIMA DO LIMITE DE PESO'}</div>`;

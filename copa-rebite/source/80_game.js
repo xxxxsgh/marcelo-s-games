@@ -19,6 +19,9 @@ const RIVAIS2 = [
   { nome: 'Saca-Rolha', b: [1, 1, 2, 1], cor: 6, num: 17, estilo: 2 },
 ];
 const CAR = { temp: 1, trofeus: 0, v: 0, d: 0, ko: 0, juiz: 0, pecas: 0, conq: 0, armas: 0, chas: 0, seq: 0, rec: 0, sucata: 0, up0: 0, up1: 0, up2: 0, up3: 0, des: 0, dif: 1 };
+const desCount = () => { let n = 0; for (let i = 0; i < DESAFIOS.length; i++) if (CAR.des >> i & 1) n++; return n; };
+const COR_REGRA = ['vença uma temporada', 'vença 3 lutas seguidas na sobrevivência', 'cumpra 4 desafios', 'cumpra os 8 desafios'];
+const corLivre = i => i < CORES_BASE || [CAR.trofeus >= 1, CAR.rec >= 3, desCount() >= 4, desCount() >= 8][i - CORES_BASE];
 const DIFS = ['FÁCIL', 'NORMAL', 'DIFÍCIL'], DIFM = [.78, 1, 1.28];
 // desafios: rival (indice em RIVAIS+RIVAIS2), arena, restricao de montagem e condicao de vitoria
 const DESAFIOS = [
@@ -76,7 +79,7 @@ const GAR = {
       if (g.row === 10 && IN.pOk && !g.repair) { g.sobreviver(0, null); return; }
       if (g.row === 8 && (IN.pLeft || IN.pRight)) { g.rival = (g.rival + (IN.pRight ? 1 : 13)) % 14; ch = true; } else if (g.row === 8 && IN.pOk && !g.repair) g.amistoso();
       if (g.row < 4 && (IN.pOk || IN.pRight)) { if (g.repair && g.acoes <= 0) UI.toast('SEM TEMPO: AS DUAS AÇÕES JÁ FORAM USADAS'); else { g.mode = 1; ch = true; } }
-      else if (g.row === 4 && (IN.pLeft || IN.pRight) && !g.repair) { g.cor = (g.cor + (IN.pRight ? 1 : CORES.length - 1)) % CORES.length; g.refresh(-1); G.save(); }
+      else if (g.row === 4 && (IN.pLeft || IN.pRight) && !g.repair) { const d = IN.pRight ? 1 : CORES.length - 1; let c = (g.cor + d) % CORES.length; if (!corLivre(c)) UI.toast('PINTURA BLOQUEADA: ' + COR_REGRA[c - CORES_BASE].toUpperCase()); while (!corLivre(c)) c = (c + d) % CORES.length; g.cor = c; g.refresh(-1); G.save(); }
       else if (g.row === 5 && (IN.pLeft || IN.pRight) && !g.repair) { g.num = (g.num + (IN.pRight ? 1 : 99)) % 100; g.refresh(-1); G.save(); }
       else if (g.row === 6 && IN.pOk && !g.repair) { if (IN.pA) { g.nome = NOMES[(NOMES.indexOf(g.nome) + 1) % NOMES.length]; g.refresh(-1); G.save(); } else { const i = $('gnome'); i.focus(); i.select(); } }
       else if (g.row === 7 && IN.pOk) g.go();

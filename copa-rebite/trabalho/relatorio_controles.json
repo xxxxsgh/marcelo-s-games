@@ -268,7 +268,7 @@
   {
    "teste": "zero alocacao de JS por quadro na luta (58 janelas de 60 quadros: simulacao+IA+efeitos+desenho+HUD, sem chamadas de GPU)",
    "ok": true,
-   "info": "58/58 janelas de 1 s com exatamente 0 byte; mediana 0.0 bytes/quadro; janelas com alocacao (bytes em 60 quadros): []; controle: +38808 bytes ao alocar 1000 objetos; 43 impactos em 58 s"
+   "info": "58/58 janelas de 1 s com exatamente 0 byte; mediana 0.0 bytes/quadro; janelas com alocacao (bytes em 60 quadros): []; controle: +66316 bytes ao alocar 1000 objetos; 43 impactos em 58 s"
   }
  ],
  "torneio": {
