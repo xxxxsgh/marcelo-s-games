@@ -57,7 +57,7 @@ const GAR = {
   setNome(v) { v = String(v).trim().slice(0, 14) || 'Sem Nome'; if (v !== this.nome) { this.nome = v; Atlas.robot(0, this.nome, this.num, CORES[this.cor]); G.save(); } },
   enter(repair) {
     this.repair = !!repair; this.acoes = 2; this.mode = 0; this.row = 0; this.pre = this.com.slice(); this.hp = repair && TOR ? TOR.ent[0].hp : null;
-    G.st = 'garagem'; UI.show('gar'); R.exposure = .5; R.fog = .0012; R.mblur = .4; R.amb = 1.0; R.keyDim = 1; FX.reset(); DRAW.hide(SLOT.ROBOT + SLOT.ROBOT_N);
+    G.st = 'garagem'; UI.show('gar'); AU.calar(); R.exposure = .5; R.fog = .0012; R.mblur = .4; R.amb = 1.0; R.keyDim = 1; FX.reset(); DRAW.hide(SLOT.ROBOT + SLOT.ROBOT_N);
     for (let i = SLOT.DEBRIS; i < SLOT.DEBRIS + SLOT.DEBRIS_N; i++) R.im[i] = -1; R.im[SLOT.AUX1] = -1; R.im[SLOT.AUX2] = -1; R.im[SLOT.AUX3] = -1; R.im[SLOT.GLASS] = -1;
     R.bake(1, MESH.garage.id, GAR_LIGHTS, [0, 1.5, 1.2]); this.refresh(-1); for (let k = 0; k < 4; k++) this.an[k] = .4 + k * .12;
   },
@@ -88,7 +88,7 @@ const GAR = {
         g.mode = 0; ch = true; G.save(); }
       else if (IN.pBack) { if (g.pre[g.row] !== g.com[g.row]) { g.pre[g.row] = g.com[g.row]; g.refresh(g.row); } g.mode = 0; ch = true; }
     }
-    if (ch) UI.garage(g);
+    if (ch) { UI.garage(g); _k[11] = 0; AU.blip(g.mode === 1 ? 660 : 520); }
     // bancada giratoria
     if (Math.abs(IN.rx) > .01) { g.ang += IN.rx * dt * 2.6; g.idle = 0; } else { g.idle += dt; if (g.idle > 2.5) g.ang += dt * .22; }
     // animacao de encaixe (mola amortecida)
@@ -193,7 +193,7 @@ const G = {
       if (IN.pPause && st === 'luta' && !this.script) { this.prev = st; this.st = 'pausa'; UI.show('hud', 'pausa'); return; }
       if (this.ft[2] > 0) { this.ft[2] -= dt; if (this.ft[2] <= 0 && st === 'luta') UI.msg('', ''); }
       const n = this.fast; for (let k = 0; k < n; k++) this.fightStep();
-      if (!this.skipRender || this.st !== 'luta') { const dbg = this.dbg; if (!(dbg & 1)) this.camera(dt); if (!(dbg & 2)) this.drawFight(1); if (!(dbg & 4)) FX.update(dt); if (!(dbg & 8)) UI.hud(SIM, this.cam); }
+      if (!this.skipRender || this.st !== 'luta') { const dbg = this.dbg; if (!(dbg & 1)) this.camera(dt); if (!(dbg & 2)) this.drawFight(1); if (!(dbg & 4)) FX.update(dt); if (!(dbg & 8)) UI.hud(SIM, this.cam); AU.update(SIM, this.st === 'luta' ? 1 : 0); }
       if (this.st === 'fim') { this.ft[1] += dt * (this.fast > 1 ? 30 : 1); if (this.ft[1] > 3) this.afterFight(); } }
     else if (st === 'juizes') { this.ft[1] += dt * (this.fast > 1 ? 30 : 1); this.camera(dt); this.drawFight(1); FX.update(dt); if (this.ft[1] > 6 || IN.pOk) this.toReplay(); }
     else if (st === 'replay') { this.replayTick(dt); }
@@ -219,10 +219,10 @@ const G = {
     for (let k = 0; k < S.nev; k++) { const o = k * 8, ty = e[o], x = e[o + 1], y = e[o + 2], z = e[o + 3], dx = e[o + 4], dy = e[o + 5], dz = e[o + 6], mag = e[o + 7];
       if (ty === EV.HIT) { const dmg = mag % 1000; this.hits++; if (mag >= 1000) this.hitsB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy, _f[5] = dz, _f[6] = 7 + dmg * 1.5, _f[7] = 3 + dmg * .14, _f[8] = .75, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy + .5, _f[5] = dz, _f[6] = 0, _f[7] = 3.5, _f[8] = .9, FX.sparksR(1)); (_f[0] = x, _f[1] = y + .7, _f[2] = z, _f[3] = 2.6 + dmg * .05, _f[4] = 2.4 + dmg * .16, _f[5] = 1.3 + dmg * .08, _f[6] = .3, _f[7] = .4, FX.lightR()); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 2, _f[4] = .22, _f[5] = .7, FX.smokeR(0)); (_f[0] = x - dz * .2, _f[1] = z + dx * .2, _f[2] = x + dz * .2, _f[3] = z - dx * .2, _f[4] = .012, _f[5] = 1, _f[6] = .6, FX.markR());
         FX.sh[0] = Math.min(1, FX.sh[0] + dmg * .03); const st = Math.min(Math.max(.12 + dmg / 60, 0), 1); (_k[8] = st, _k[9] = st * .7, _k[10] = 120 + dmg * 7, IN.rumbleR()); if (this.rumbleLog && this.rumbleLog.length < 400) this.rumbleLog.push(dmg, st);
-        if (dmg > S.best) { S.best = dmg; this.bestAt = S.frame; } _k[11] = dmg; this.pushEv(1, o); }
-      else if (ty === EV.DETACH) { this.detached++; if (mag >= 100) this.detB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 70, _f[7] = 5, _f[8] = .9, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 14, _f[7] = 4, _f[8] = 1, FX.sparksR(1)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 4, _f[4] = .3, _f[5] = .9, FX.smokeR(1)); (_f[0] = x, _f[1] = y + .3, _f[2] = z, _f[3] = 5, _f[4] = 40, _f[5] = 22, _f[6] = 6, _f[7] = .3, FX.lightR()); (_k[8] = .9, _k[9] = .6, _k[10] = 260, IN.rumbleR()); FX.sh[0] = Math.min(1, FX.sh[0] + .5); _k[11] = 30; this.pushEv(2, o); this.note(this.notes[mag >= 100 ? 1 : 0][mag % 100 | 0]); }
+        if (dmg > S.best) { S.best = dmg; this.bestAt = S.frame; } _k[11] = dmg; this.pushEv(1, o); AU.hitR(); }
+      else if (ty === EV.DETACH) { this.detached++; if (mag >= 100) this.detB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 70, _f[7] = 5, _f[8] = .9, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 14, _f[7] = 4, _f[8] = 1, FX.sparksR(1)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 4, _f[4] = .3, _f[5] = .9, FX.smokeR(1)); (_f[0] = x, _f[1] = y + .3, _f[2] = z, _f[3] = 5, _f[4] = 40, _f[5] = 22, _f[6] = 6, _f[7] = .3, FX.lightR()); (_k[8] = .9, _k[9] = .6, _k[10] = 260, IN.rumbleR()); FX.sh[0] = Math.min(1, FX.sh[0] + .5); _k[11] = 30; this.pushEv(2, o); AU.hitR(); this.note(this.notes[mag >= 100 ? 1 : 0][mag % 100 | 0]); }
       else if (ty === EV.GRIND) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx * .3, _f[4] = .8, _f[5] = dz * .3, _f[6] = 5, _f[7] = 3, _f[8] = .9, FX.sparksR(0)); }
-      else if (ty === EV.SAW) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 1, _f[4] = .9, _f[5] = 0, _f[6] = 46, _f[7] = 6, _f[8] = .5, FX.sparksR(0)); (_f[0] = x, _f[1] = .4, _f[2] = z, _f[3] = 4, _f[4] = 30, _f[5] = 18, _f[6] = 5, _f[7] = .2, FX.lightR()); (_k[8] = .6, _k[9] = .5, _k[10] = 160, IN.rumbleR()); FX.sh[0] = Math.min(1, FX.sh[0] + .3); _k[11] = 12; this.pushEv(1, o); }
+      else if (ty === EV.SAW) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 1, _f[4] = .9, _f[5] = 0, _f[6] = 46, _f[7] = 6, _f[8] = .5, FX.sparksR(0)); (_f[0] = x, _f[1] = .4, _f[2] = z, _f[3] = 4, _f[4] = 30, _f[5] = 18, _f[6] = 5, _f[7] = .2, FX.lightR()); (_k[8] = .6, _k[9] = .5, _k[10] = 160, IN.rumbleR()); FX.sh[0] = Math.min(1, FX.sh[0] + .3); _k[11] = 12; this.pushEv(1, o); AU.hitR(); }
       else if (ty === EV.AHAM) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 0, _f[4] = 1, _f[5] = 0, _f[6] = 40, _f[7] = 4.5, _f[8] = 1, FX.sparksR(0)); (_f[0] = x, _f[1] = .1, _f[2] = z, _f[3] = 3, _f[4] = .4, _f[5] = .5, FX.smokeR(0)); (_f[0] = x, _f[1] = .5, _f[2] = z, _f[3] = 5, _f[4] = 30, _f[5] = 20, _f[6] = 8, _f[7] = .25, FX.lightR()); FX.sh[0] = Math.min(1, FX.sh[0] + .45); (_f[0] = x - .15, _f[1] = z - .15, _f[2] = x + .15, _f[3] = z + .15, _f[4] = .16, _f[5] = 1, _f[6] = .8, FX.markR()); }
       else if (ty === EV.LAND) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 0, _f[4] = 1, _f[5] = 0, _f[6] = 6 + mag * 2, _f[7] = 2.5, _f[8] = 1, FX.sparksR(0)); (_k[8] = Math.min(Math.max(mag / 10, .15), .7), _k[9] = .3, _k[10] = 110, IN.rumbleR()); }
       else if (ty === EV.HAMMER) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 0, _f[4] = 1, _f[5] = 0, _f[6] = 16, _f[7] = 3.5, _f[8] = 1, FX.sparksR(0)); (_f[0] = x, _f[1] = .3, _f[2] = z, _f[3] = 3, _f[4] = 14, _f[5] = 9, _f[6] = 3, _f[7] = .15, FX.lightR()); (_f[0] = x - .04, _f[1] = z, _f[2] = x + .04, _f[3] = z, _f[4] = .05, _f[5] = 1, _f[6] = .9, FX.markR()); }

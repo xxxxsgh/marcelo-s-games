@@ -1,4 +1,5 @@
 // ---------- entrada: gamepad (layout padrao) + teclado ----------
+const QS_MUDO = /[?&]mudo=1/.test(location.search);
 const IN = {
   thr: 0, steer: 0, rx: 0, fire: 0, flip: 0, rst: 0,
   // pressionados neste quadro
@@ -7,7 +8,8 @@ const IN = {
   rum: { startDelay: 0, duration: 100, weakMagnitude: 0, strongMagnitude: 0 }, lastRumble: 0, typing: false,
   K: { KeyW: 0, KeyS: 1, KeyA: 2, KeyD: 3, Space: 4, KeyF: 5, KeyC: 6, KeyR: 7, ArrowUp: 8, ArrowDown: 9, ArrowLeft: 10, ArrowRight: 11, Enter: 12, Escape: 13, Backspace: 14, KeyQ: 15, KeyE: 16, KeyP: 17, NumpadEnter: 12 },
   init() {
-    addEventListener('keydown', e => { if (this.typing) { if (e.code === 'Enter' || e.code === 'Escape') { e.preventDefault(); UI.endTyping(); } return; } const k = this.K[e.code]; if (k === undefined) return; if (!this.kb[k]) this.kp[k] = 1; this.kb[k] = 1; e.preventDefault(); });
+    addEventListener('pointerdown', () => { if (!QS_MUDO) AU.init(); });
+    addEventListener('keydown', e => { if (!QS_MUDO) AU.init(); if (this.typing) { if (e.code === 'Enter' || e.code === 'Escape') { e.preventDefault(); UI.endTyping(); } return; } const k = this.K[e.code]; if (k === undefined) return; if (!this.kb[k]) this.kp[k] = 1; this.kb[k] = 1; e.preventDefault(); });
     addEventListener('keyup', e => { const k = this.K[e.code]; if (k !== undefined) this.kb[k] = 0; });
     addEventListener('blur', () => this.kb.fill(0));
     addEventListener('gamepadconnected', e => { this.gpName = e.gamepad.id; UI.toast('CONTROLE CONECTADO'); });
