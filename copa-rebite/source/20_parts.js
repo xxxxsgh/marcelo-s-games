@@ -277,8 +277,8 @@ function buildRobotMeshes(mb) {
   }
   { // grandes com cravos
     const w = RODAS[1];
-    mb.set(MAT.RUBBER, .03, .03, .03, 0); mb.push().rx(PI / 2).ring(w.r - .022, w.r * .6, w.w, 32, .2); mb.pop();
-    const nl = 20; for (let i = 0; i < nl; i++) { const t = i / nl * TAU; for (const s of [-1, 1]) { mb.push().rz(t + (s > 0 ? PI / nl : 0)).tr(w.r - .0195, 0, s * w.w * .25).ry(s * .3).box(.022, .026, w.w * .5, .004); mb.pop(); } }
+    mb.set(MAT.RUBBER, .03, .03, .03, 0); mb.push().rx(PI / 2).ring(w.r - .016, w.r * .6, w.w, 32, .2); mb.pop();
+    const nl = 30; for (let i = 0; i < nl; i++) { const t = i / nl * TAU; for (const s of [-1, 1]) { mb.push().rz(t + (s > 0 ? PI / nl : 0)).tr(w.r - .0165, 0, s * w.w * .25).ry(s * .3).box(.016, .017, w.w * .5, .004); mb.pop(); } }
     mb.set(MAT.ALU, .78, .78, .8, .25); mb.push().rx(PI / 2).ring(w.r * .62, w.r * .5, w.w * .75, 24); mb.pop();
     mb.set(MAT.STEEL, .5, .5, .52, .4); for (let i = 0; i < 5; i++) { mb.push().rz(i / 5 * TAU).tr(w.r * .3, 0, w.w * .1).box(w.r * .46, .026, .02, .004); mb.pop(); }
     mb.set(MAT.ALU, .8, .8, .82, .3); mb.cy(0, 0, w.w * .1, w.r * .2, .04, 14, 2); mb.bolt(0, 0, w.w * .1 + .02, .012, 2, 1);
