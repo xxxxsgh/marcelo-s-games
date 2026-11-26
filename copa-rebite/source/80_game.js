@@ -108,7 +108,7 @@ const G = {
   },
   enterArena() {
     if (R.scene !== 0) { R.im[SLOT.GLASS] = MESH.glass.id; R.im[SLOT.AUX0] = MESH.saw.id; R.im[SLOT.AUX1] = MESH.saw.id; R.im[SLOT.AUX2] = MESH.ahammer.id; R.bake(0, MESH.arena.id, ARENA_LIGHTS, [0, 1.2, 0]); }
-    R.exposure = .26; R.fog = .003; R.mblur = .55; R.amb = 1; R.cp[0] = .9;
+    R.exposure = .25; R.fog = .0017; R.mblur = .55; R.amb = 1; R.cp[0] = .9;
   },
   // prepara a luta do jogador (ou uma luta avulsa para teste/roteiro)
   setupFight(ia, ib, seed, dur, ea, eb) {
@@ -210,7 +210,7 @@ const G = {
   replayTick(dt) {
     const F = this.REC_F, c = this.clip; this.ft[9] += dt * 60 * .25; if (this.ft[9] >= this.clipN - 1 || IN.pOk || IN.pStart) { this.endFight(); return; }
     const f0 = Math.floor(this.ft[9]), fr = this.ft[9] - f0, o0 = f0 * F, o1 = Math.min(f0 + 1, this.clipN - 1) * F, S = SIM;
-    for (let i = 0; i < 2; i++) { const B = S.bots[i], P = this.rp[i], q0 = o0 + i * 14, q1 = o1 + i * 14; P.b = B.b; P.L = B.L; P.mid = B.mid; P.cor = B.cor; P.dent = B.dent; P.hpMax = B.hpMax; P.ycm = B.ycm;
+    for (let i = 0; i < 2; i++) { const B = S.bots[i], P = this.rp[i], q0 = o0 + i * 14, q1 = o1 + i * 14; P.b = B.b; P.L = B.L; P.mid = B.mid; P.wav = (P.wav || 0) + .09; P.cor = B.cor; P.dent = B.dent; P.hpMax = B.hpMax; P.ycm = B.ycm;
       const px = ((c[q0]) + ((c[q1]) - (c[q0])) * (fr)), py = ((c[q0 + 1]) + ((c[q1 + 1]) - (c[q0 + 1])) * (fr)), pz = ((c[q0 + 2]) + ((c[q1 + 2]) - (c[q0 + 2])) * (fr)); let d = c[q0 + 3] * c[q1 + 3] + c[q0 + 4] * c[q1 + 4] + c[q0 + 5] * c[q1 + 5] + c[q0 + 6] * c[q1 + 6]; const sg = d < 0 ? -1 : 1;
       let qx = ((c[q0 + 3]) + ((c[q1 + 3] * sg) - (c[q0 + 3])) * (fr)), qy = ((c[q0 + 4]) + ((c[q1 + 4] * sg) - (c[q0 + 4])) * (fr)), qz = ((c[q0 + 5]) + ((c[q1 + 5] * sg) - (c[q0 + 5])) * (fr)), qw = ((c[q0 + 6]) + ((c[q1 + 6] * sg) - (c[q0 + 6])) * (fr)); const l = 1 / Math.sqrt((qx) * (qx) + (qy) * (qy) + (qz) * (qz) + (qw) * (qw)); qx *= l; qy *= l; qz *= l; qw *= l;
       P.wa = ((c[q0 + 7]) + ((c[q1 + 7]) - (c[q0 + 7])) * (fr)); for (let k = 0; k < 4; k++) P.wang[k] = ((c[q0 + 8 + k]) + ((c[q1 + 8 + k]) - (c[q0 + 8 + k])) * (fr)); const m = c[q0 + 12]; for (let k = 0; k < NPART; k++) P.hp[k] = (m >> k) & 1 ? B.hpMax[k] : 0; P.burn = c[q0 + 13]; P.glow = 0;
@@ -242,7 +242,7 @@ const G = {
   },
   drawFight() {
     const S = SIM;
-    for (let i = 0; i < 2; i++) { const B = S.bots[i], s = B.s; (_q[0] = s[0], _q[1] = s[1], _q[2] = s[2], _q[3] = s[3], _q[4] = s[4], _q[5] = s[5], _q[6] = s[6], DRAW.botR(SLOT.ROBOT + i * SLOT.ROBOT_N, B, i, null)); if (this.first) for (let k = 0; k < SLOT.ROBOT_N; k++) R.snap(SLOT.ROBOT + i * SLOT.ROBOT_N + k); }
+    for (let i = 0; i < 2; i++) { const B = S.bots[i], s = B.s; B.wav += Math.min(Math.max(B.wspin * DT, -.34), .34); (_q[0] = s[0], _q[1] = s[1], _q[2] = s[2], _q[3] = s[3], _q[4] = s[4], _q[5] = s[5], _q[6] = s[6], DRAW.botR(SLOT.ROBOT + i * SLOT.ROBOT_N, B, i, null)); if (this.first) for (let k = 0; k < SLOT.ROBOT_N; k++) R.snap(SLOT.ROBOT + i * SLOT.ROBOT_N + k); }
     const P = this.pr; P[0] = S.sawH[0]; P[1] = S.sawH[1]; P[2] = S.sawA; P[3] = S.ahA; P[4] = S.pitY; this.drawProps();
     const d = S.deb; for (let i = 0; i < DEB_N; i++) { const sl = SLOT.DEBRIS + i, m = S.debMesh[i]; if (m < 0) { R.im[sl] = -1; continue; } const o = i * DEB_F, was = R.im[sl]; (_q[0] = d[o + 3], _q[1] = d[o + 4], _q[2] = d[o + 5], _q[3] = d[o + 6], _q[4] = d[o], _q[5] = d[o + 1], _q[6] = d[o + 2], M4.fromQTr(R.I, sl * INST_F)); const B = S.bots[d[o + 17] | 0], part = d[o + 18] | 0, c = CHASSIS[B.b[0]];
       (_d[0] = BLIND[B.b[2]].metal, _d[1] = part >= P_AF && part <= P_AT ? d[o + 17] : -1, _d[2] = c.L / 2, _d[3] = c.W / 2 + .012, _d[4] = 1, _d[5] = B.burn, _d[6] = 0, _d[7] = 0, _d[8] = sl * 1.3, DRAW.putR(sl, m, B.cor)); if (part >= P_AF && part <= P_AT) DRAW.dents(sl, B.dent, (part - P_AF) * 16); else DRAW.dents(sl, null, 0); if (was !== m) R.snap(sl); }

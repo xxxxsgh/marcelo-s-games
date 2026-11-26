@@ -1,6 +1,6 @@
 // ---------- atlas procedural (canvas 2D -> textura): adesivos, numeros, faixas, placar ----------
 const FONT = '"Bahnschrift","DIN Condensed","Arial Narrow","Liberation Sans Narrow",Impact,sans-serif';
-const PATROS = ['KORVA ÓLEOS', 'TORQUE 9', 'FAGULHA SOLDAS', 'MOLA & CIA', 'VOLT-RÃ', 'ZINCO NORTE', 'PARAFUSOS IRMÃOS LUME', 'BORRACHARIA DO EIXO'];
+const PATROS = ['KORVA ÓLEOS', 'TORQUE 9', 'CENTELHA SOLDAS', 'MOLA & CIA', 'VOLT-RÃ', 'ZINCO NORTE', 'PARAFUSOS IRMÃOS LUME', 'BORRACHARIA DO EIXO'];
 const Atlas = {
   cv: null, g: null, dirty: false,
   init() { this.cv = document.createElement('canvas'); this.cv.width = this.cv.height = 2048; this.g = this.cv.getContext('2d'); this.statics(); this.score('—', '—', 'COPA REBITE', '', 0, 1); },

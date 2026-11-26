@@ -15,7 +15,7 @@ class Bot {
   constructor(id) {
     this.id = id; this.s = new Float64Array(13); this.R = new Float64Array(9); this.hp = new Float32Array(NPART); this.hpMax = new Float32Array(NPART);
     this.dent = new Float32Array(6 * 16); this.dentN = new Uint8Array(6); this.wl = new Float64Array(12); this.wang = new Float32Array(4); this.wcon = new Uint8Array(4); this.wslip = new Float32Array(4);
-    this.F = new Float64Array(3); this.T = new Float64Array(3); this.Ii = new Float64Array(3); this.hpt = new Float64Array(20 * 3);
+    this.F = new Float64Array(3); this.T = new Float64Array(3); this.Ii = new Float64Array(3); this.hpt = new Float64Array(40 * 3);
     this.b = [0, 0, 0, 0]; this.L = {}; this.S = {}; this.cor = [1, 0, 0]; this.nome = ''; this.num = 0;
     this.thr = 0; this.steer = 0; this.fire = 0; this.flipB = 0; this.resetB = 0; this.pfire = 0;
     this.ai = { estilo: 0, t: 0, mode: 0, mt: 0, stuck: 0, sx: 0, sz: 0, jit: 0, side: 1, lastHit: 0 };
@@ -23,7 +23,7 @@ class Bot {
     this.arng = new Rng(1); this.mid = new Int16Array(12);
     this.reset0();
   }
-  reset0() { this.wspin = 0; this.wa = 0; this.wst = 0; this.wt = 0; this.wcd = 0; this.won = 0; this.grab = 0; this.hitcd = 0; this.imm = 0; this.ax = 0; this.az = 0; this.at = 0; this.flipCd = 0; this.resetCd = 0; this.burn = 0; this.fireOn = 0; this.dead = 0; this.ko = 0; this.sawCd = 0; this.heat = 0; this.air = 0; this.lastHitBy = 0; this.pitted = 0; this.glow = 0; this.scr = 0; this.scrX = 0; this.scrZ = 0; this.hcon = 0; this.grounded = 0; this.teleport = 0; this.gx = 0; this.gy = 0; this.gz = 0; this.wedge = 0; }
+  reset0() { this.wspin = 0; this.wa = 0; this.wst = 0; this.wt = 0; this.wcd = 0; this.won = 0; this.grab = 0; this.hitcd = 0; this.imm = 0; this.ax = 0; this.az = 0; this.at = 0; this.flipCd = 0; this.resetCd = 0; this.burn = 0; this.fireOn = 0; this.dead = 0; this.ko = 0; this.sawCd = 0; this.heat = 0; this.air = 0; this.lastHitBy = 0; this.pitted = 0; this.glow = 0; this.wav = 0; this.scr = 0; this.scrX = 0; this.scrZ = 0; this.hcon = 0; this.grounded = 0; this.teleport = 0; this.gx = 0; this.gy = 0; this.gz = 0; this.wedge = 0; }
 }
 
 class Sim {
@@ -50,10 +50,11 @@ class Sim {
     const wl = B.wl; for (let q = 0; q < 4; q++) { wl[q * 3] = q < 2 ? L.wx0 : L.wx1; wl[q * 3 + 1] = AXLE_Y - B.ycm; wl[q * 3 + 2] = (q & 1) ? L.wz : -L.wz; }
     // pontos do casco (relativos ao CM)
     let n = 0; const hp_ = B.hpt, y0 = -B.ycm, y1 = L.hy1 - B.ycm;
-    for (const yy of [y0, y1]) { for (const xx of [-L.hx, L.hx]) for (const zz of [-L.hz, L.hz]) { hp_[n++] = xx; hp_[n++] = yy; hp_[n++] = zz; } for (const [xx, zz] of [[0, -L.hz], [0, L.hz], [-L.hx, 0], [L.hx, 0]]) { hp_[n++] = xx; hp_[n++] = yy; hp_[n++] = zz; } }
-    // cunha: os cantos da frente em cima descem
-    if (c.wedge) { for (let q = 0; q < 16; q++) if (hp_[q * 3] > 0 && hp_[q * 3 + 1] > 0) hp_[q * 3 + 1] = .045 - B.ycm; }
-    B.nhp = 16; B.wedge = c.wedge;
+    for (const yy of [y0, y1]) for (let ix = 0; ix < 5; ix++) for (let iz = 0; iz < 3; iz++) { if (ix > 0 && ix < 4 && iz === 1) continue; hp_[n++] = (ix / 2 - 1) * L.hx; hp_[n++] = yy; hp_[n++] = (iz - 1) * L.hz; }
+    for (const xx of [-L.hx, L.hx]) for (const zz of [-L.hz, 0, L.hz]) { hp_[n++] = xx; hp_[n++] = (y0 + y1) / 2; hp_[n++] = zz; } for (const zz of [-L.hz, L.hz]) { hp_[n++] = 0; hp_[n++] = (y0 + y1) / 2; hp_[n++] = zz; }
+    const NH = n / 3;
+    if (c.wedge) { for (let q = 0; q < NH; q++) if (hp_[q * 3] > .02 && hp_[q * 3 + 1] > y0 + .01) { const f = (hp_[q * 3] - .02) / (L.hx - .02); hp_[q * 3 + 1] = Math.min(hp_[q * 3 + 1], (y1) + ((.045 - B.ycm) - (y1)) * f); } }
+    B.nhp = NH; B.wedge = c.wedge;
     const s = B.s; s[0] = START[i][0]; s[1] = L.clear + B.ycm + .01; s[2] = START[i][1]; s[3] = 0; s[4] = i ? 1 : 0; s[5] = 0; s[6] = i ? 0 : 1; for (let q = 7; q < 13; q++) s[q] = 0;
     B.ax = s[0]; B.az = s[2]; this.updR(B);
   }
@@ -287,7 +288,7 @@ class Sim {
       const bx = px - bs[0], by = py - bs[1], bz = pz - bs[2];
       const vx = (as[7] + as[11] * rz - as[12] * ry) - (bs[7] + bs[11] * bz - bs[12] * by), vy = (as[8] + as[12] * rx - as[10] * rz) - (bs[8] + bs[12] * bx - bs[10] * bz), vz = (as[9] + as[10] * ry - as[11] * rx) - (bs[9] + bs[10] * by - bs[11] * bx), vn = vx * wx + vy * wy + vz * wz;
       let fn = kc * Math.min(pen, .12) * (pen > .03 ? 2.2 : 1) - cc * vn; if (fn < 0) fn = 0; if (fn > mm * 500) fn = mm * 500;
-      if (pen > .035) { const q = (pen - .035) * .22, ia = B.m / (A.m + B.m), ib = 1 - ia; as[0] += wx * q * ia; as[1] += wy * q * ia; as[2] += wz * q * ia; bs[0] -= wx * q * ib; bs[1] -= Math.min(wy * q * ib, 0) ; bs[2] -= wz * q * ib; }
+      if (pen > .02) { const q = (pen - .02) * .4, ia = B.m / (A.m + B.m), ib = 1 - ia; as[0] += wx * q * ia; as[1] += wy * q * ia; as[2] += wz * q * ia; bs[0] -= wx * q * ib; bs[1] -= Math.min(wy * q * ib, 0) ; bs[2] -= wz * q * ib; }
       const tvx = vx - wx * vn, tvy = vy - wy * vn, tvz = vz - wz * vn, tl = Math.sqrt((tvx) * (tvx) + (tvy) * (tvy) + (tvz) * (tvz)), k = Math.min(.35 * fn / (tl + .1), mm * 5), fx = wx * fn - tvx * k, fy = wy * fn - tvy * k, fz = wz * fn - tvz * k;
       (_c[36] = px, _c[37] = py, _c[38] = pz, _c[39] = fx, _c[40] = fy, _c[41] = fz, this.forceR(A)); (_c[36] = px, _c[37] = py, _c[38] = pz, _c[39] = -fx, _c[40] = -fy, _c[41] = -fz, this.forceR(B));
       if (-vn > 2.2 && A.hitcd <= 0 && B.hitcd <= 0) { // trombada

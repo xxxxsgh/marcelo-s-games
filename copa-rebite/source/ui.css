@@ -29,7 +29,7 @@ b,.h{font-weight:800}
 #clock b{display:block;font-size:4.6vh;line-height:1;font-variant-numeric:tabular-nums}
 #clock span{font-size:1.4vh;font-weight:700}
 #msg{position:absolute;left:0;right:0;top:27vh;text-align:center;font-size:11vh;font-weight:800;text-shadow:0 .5vh 0 #000,0 0 4vh rgba(0,0,0,.8);letter-spacing:.08em}
-#sub{position:absolute;left:0;right:0;top:40vh;text-align:center;font-size:3.2vh;color:var(--am);text-shadow:0 .2vh 0 #000;font-weight:700}
+#sub{position:absolute;left:0;right:0;top:17vh;text-align:center;font-size:3.2vh;color:var(--am);text-shadow:0 .2vh 0 #000;font-weight:700}
 #ko{position:absolute;left:50%;transform:translateX(-50%);bottom:14vh;background:var(--r);color:#fff;padding:.6vh 3vh;font-size:3.4vh;font-weight:800;display:none;clip-path:polygon(4% 0,100% 0,96% 100%,0 100%)}
 #cam{position:absolute;left:2vw;bottom:3vh;font-size:1.5vh;color:var(--mu);background:rgba(10,13,18,.7);padding:.4vh 1vh}
 #cam b{color:var(--tx)}

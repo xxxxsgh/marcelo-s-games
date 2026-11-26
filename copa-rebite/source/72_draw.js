@@ -25,7 +25,7 @@ const DRAW = {
       (_d[0] = mk, _d[1] = decal, _d[2] = hl, _d[3] = hw, _d[4] = 1 - hp[5 + p] / hm[5 + p], _d[5] = burn, _d[6] = glow, _d[7] = 0, _d[8] = seed + p * 3.1, this.putR(s, B.mid[2 + p], B.cor)); this.dents(s, B.dent, p * 16); }
     // arma
     s = base + 10; (_t[0] = 0, _t[1] = a3, _t[2] = 0, _t[3] = 0, M4.mulTRr(I, s * INST_F, _m, 16, 1)); (_d[0] = 0, _d[1] = -1, _d[2] = hl, _d[3] = hw, _d[4] = 1 - hp[10] / hm[10], _d[5] = burn, _d[6] = 0, _d[7] = 0, _d[8] = seed + 20, this.putR(s, B.mid[7], B.cor)); this.dents(s, null, 0);
-    s = base + 11; if (hp[10] <= 0) R.im[s] = -1; else { (_t[0] = L.px, _t[1] = L.py + a3, _t[2] = 0, _t[3] = B.wa, M4.mulTRr(I, s * INST_F, _m, 16, b[3] === 0 ? 1 : 2)); (_d[0] = 0, _d[1] = -1, _d[2] = hl, _d[3] = hw, _d[4] = 1 - hp[10] / hm[10], _d[5] = burn, _d[6] = 0, _d[7] = 0, _d[8] = seed + 21, this.putR(s, B.mid[8], B.cor)); this.dents(s, null, 0); }
+    s = base + 11; if (hp[10] <= 0) R.im[s] = -1; else { (_t[0] = L.px, _t[1] = L.py + a3, _t[2] = 0, _t[3] = (b[3] < 3 ? B.wav : B.wa), M4.mulTRr(I, s * INST_F, _m, 16, b[3] === 0 ? 1 : 2)); (_d[0] = 0, _d[1] = -1, _d[2] = hl, _d[3] = hw, _d[4] = 1 - hp[10] / hm[10], _d[5] = burn, _d[6] = 0, _d[7] = 0, _d[8] = seed + 21, this.putR(s, B.mid[8], B.cor)); this.dents(s, null, 0); }
     for (let k = 12; k < SLOT.ROBOT_N; k++) R.im[base + k] = -1;
   },
 };

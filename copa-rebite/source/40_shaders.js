@@ -93,13 +93,13 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
     if (mat == 21u && mk > 1.5) { let s = fract((P.x - abs(P.z) * .7) * 2.4 + .1); cover = smoothstep(.0, .02, s) - smoothstep(.34, .36, s); }
     var sc = scratch(uv * 16., inst.p1.w) * (.3 + wear * 1.1);
     let wlow = fbm(P * 7. + inst.p1.w * 1.3);
-    let wm = n3 * .26 + nf * .12 + vn(P * 60. + 5.) * .16 + edge * .5 + wear * wlow * .16 + dent * .9;
+    let wm = n3 * .28 + nf * .12 + vn(P * 60. + 5.) * .16 + edge * .56 + wear * wlow * .16 + dent * .9;
     var chip = smoothstep(.69, .73, wm); chip = max(chip, smoothstep(.84, .87, fbm(P * 11. + inst.p1.w * 3.) + wear * .05));
     chip = max(chip, smoothstep(.55, .85, sc)); let prim = clamp(smoothstep(.655, .70, wm) - chip, 0., 1.);
     var bare = vec3f(.52, .52, .54); var br = .34;
     if (mk > .5 && mk < 1.5) { bare = vec3f(.86, .87, .88); br = .3; } else if (mk > 1.5) { let tf = vn(P * 9. + 1.7); bare = mix(vec3f(.56, .52, .47), mix(vec3f(.35, .4, .62), vec3f(.62, .45, .3), tf), smoothstep(.45, .9, edge + tf * .5) * .55); br = .3; }
     let streak = vn(vec3f(uv.x * 3., uv.y * 260., 1.));
-    let lum0 = dot(base, vec3f(.3, .6, .1)); var palb = mix(vec3f(lum0), base, .8) * (.62 + .22 * n1 + .1 * wlow); var pr = .22 + .3 * wlow + .12 * n1;
+    let lum0 = dot(base, vec3f(.3, .6, .1)); var palb = mix(vec3f(lum0), base, .66) * (.46 + .2 * n1 + .12 * wlow); var pr = .16 + .34 * wlow + .14 * n1;
     // adesivos / numero
     if (inst.p0.x >= 0. && mat == 21u) {
       var duv = vec2f(-1.);
@@ -242,7 +242,7 @@ fn ggx(N: vec3f, V: vec3f, L: vec3f, r: f32, F0: vec3f) -> vec3f {
   }
   // ambiente: cubo de ambiente + reflexo no espaco de tela
   let rj = vec3f(ign(i.pos.xy + 17., fr), ign(i.pos.xy + 41., fr + 3.), ign(i.pos.xy + 73., fr + 7.)) - .5;
-  let R = normalize(reflect(-V, N) + rj * rough * rough * 1.6); let nv = max(dot(N, V), 0.);
+  let R = normalize(reflect(-V, N) + rj * rough * rough * .7); let nv = max(dot(N, V), 0.);
   let irr = textureSampleLevel(envT, smpC, N * vec3f(1., 1., -1.), 5.).rgb * 2.2 + vec3f(.016, .017, .021) * (.6 + .4 * N.y);
   var spec = textureSampleLevel(envT, smpC, R * vec3f(1., 1., -1.), rough * 5.).rgb; var hitc = 0.;
   if (rough < .62 && F.misc2.z > .5) {
@@ -410,7 +410,7 @@ fn fl(q: vec2f) -> array<vec4f, 2> {
   let dir = floor(hr * 4.) * .7854 + .2; let sq = vec2f(q.x * cos(dir) + q.y * sin(dir), -q.x * sin(dir) + q.y * cos(dir));
   let brushed = vn2(vec2f(sq.x * 3., sq.y * 380.)) * .6 + vn2(vec2f(sq.x * 9., sq.y * 900.)) * .4;
   let sc = scratch(q * 4., 1.) + scratch(q * 11., 4.) * .8 + scratch(q * 27., 7.) * .5;
-  alb = vec3f(.33, .335, .345) * (.84 + .12 * hr + .14 * brushed); rough = mix(.5, .3, wearP) + (brushed - .5) * .07 + (n_m - .5) * .08;
+  alb = vec3f(.25, .255, .265) * (.84 + .12 * hr + .14 * brushed); rough = mix(.5, .3, wearP) + (brushed - .5) * .07 + (n_m - .5) * .08;
   let oil = smoothstep(.7, .78, fbm2(q * 1.1 + 40.)); alb = mix(alb, alb * vec3f(.45, .42, .38), oil * .6); rough = mix(rough, .1, oil * .7);
   let rust = smoothstep(.74, .86, n_m * .6 + seam * .3 + fbm2(q * 14.) * .4) * .5; alb = mix(alb, vec3f(.2, .11, .06), rust); rough = mix(rough, .7, rust); metal = 1. - rust * .6;
   var pc = vec3f(0.); var pa = 0.;
