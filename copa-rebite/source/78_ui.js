@@ -55,7 +55,7 @@ const UI = {
   // ----- garagem -----
   garage(g) {
     const e = this.el, b = g.pre, st = statsOf(b), base = statsOf(g.com), rep = g.repair, T = TOR;
-    e.gst.textContent = rep ? `ENTRE LUTAS · ${RODADAS[T.rodada]} · CONSERTOS/TROCAS RESTANTES: ${g.acoes}` : 'GARAGEM · MONTE SEU ROBÔ';
+    e.gst.textContent = (rep ? `ENTRE LUTAS · ${RODADAS[T.rodada]} · CONSERTOS/TROCAS RESTANTES: ${g.acoes}` : 'GARAGEM · MONTE SEU ROBÔ') + ` · TEMPORADA ${CAR.temp} · TROFÉUS ${CAR.trofeus} · ${CAR.v}V ${CAR.d}D`;
     const lists = [CHASSIS, RODAS, BLIND, ARMAS]; let h = '';
     for (let r = 0; r < 4; r++) { const p = lists[r][b[r]], sel = g.row === r, ed = sel && g.mode === 1; let hp = '';
       if (rep) { const f = GAR.slotHp(r); hp = `<span class="hp"><u style="transform:${SC[Math.round(f * 100)]}"></u></span><span class="x">${PCT[Math.round(f * 100)]}</span>`; }
@@ -78,7 +78,7 @@ const UI = {
   bracket(T, txt, foot) {
     const e = this.el, col = (r, tit) => `<div class="col"><h2>${tit}</h2>${T.jogos[r].map(j => { const row = (i, o) => { if (i < 0) return `<div class="l">—</div>`; const en = T.ent[i], w = j.w === i, l = j.w >= 0 && !w; return `<div class="${w ? 'w' : l ? 'l' : ''}${i === 0 ? ' me' : ''}"><i class="dot" style="background:${this.css(en.cor)}"></i>${esc(en.nome)}<span>${j.w >= 0 ? (w ? (j.how === 'juizes' ? `JUÍZES ${j.pa >= j.pb ? Math.max(j.pa, j.pb) : Math.max(j.pa, j.pb)}–${Math.min(j.pa, j.pb)}` : j.how === 'fosso' ? 'FOSSO' : 'NOCAUTE') : '') : ''}</span></div>`; }; return `<div class="mt${j.next ? ' nx' : ''}">${row(j.a)}${row(j.b)}</div>`; }).join('')}</div>`;
     e.bk.innerHTML = col(0, RODADAS[0]) + col(1, RODADAS[1]) + col(2, RODADAS[2]);
-    e.chs.textContent = T.campeao >= 0 ? 'TORNEIO ENCERRADO' : RODADAS[T.rodada]; e.chb.textContent = txt || ''; e.chf.innerHTML = foot || '<b>A / ENTER</b> continuar';
+    e.chs.textContent = `TEMPORADA ${T.temp || 1} · ` + (T.campeao >= 0 ? 'TORNEIO ENCERRADO' : RODADAS[T.rodada]) + ` · CARREIRA: ${CAR.trofeus} TROFÉU(S), ${CAR.v} VITÓRIAS (${CAR.ko} POR NOCAUTE), ${CAR.d} DERROTAS, ${CAR.pecas} PEÇAS ARRANCADAS`; e.chb.textContent = txt || ''; e.chf.innerHTML = foot || '<b>A / ENTER</b> continuar';
   },
   intro(en, side, st, hist) {
     const e = this.el.ic; e.className = 'ic ' + (side ? 'r' : 'l'); e.style.setProperty('--cc', this.css(en.cor));

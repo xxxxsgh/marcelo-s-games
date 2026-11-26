@@ -1,6 +1,6 @@
 // ---------- inicializacao, laco principal e ganchos de teste ----------
 const QS = new URLSearchParams(location.search), MBG = new MB();
-const CR = window.CR = { G, GAR, SIM, BG, R, IN, UI, FX, Atlas, MESH, DRAW, statsOf, layoutOf, CHASSIS, RODAS, BLIND, ARMAS, PESO_MAX, pronto: false, erro: '',
+const CR = window.CR = { CAR, G, GAR, SIM, BG, R, IN, UI, FX, Atlas, MESH, DRAW, statsOf, layoutOf, CHASSIS, RODAS, BLIND, ARMAS, PESO_MAX, pronto: false, erro: '',
   get TOR() { return TOR; },
   // avanca n quadros de 1/60 s sem desenhar na GPU
   advance(n) { for (let i = 0; i < n; i++) G.tick(DT); },

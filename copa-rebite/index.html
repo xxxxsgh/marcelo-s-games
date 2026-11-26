@@ -1670,6 +1670,7 @@ class Sim {
     B.ycm = L.hy1 * .36; B.m = B.S.kg; const sx = 2 * L.hx, sy = L.hy1 + L.clear, sz = 2 * L.hz;
     B.Ii[0] = 1 / (B.m / 12 * (sy * sy + sz * sz) * 1.5); B.Ii[1] = 1 / (B.m / 12 * (sx * sx + sz * sz) * 1.25); B.Ii[2] = 1 / (B.m / 12 * (sx * sx + sy * sy) * 1.5);
     const hm = B.hpMax; hm[0] = c.hp * 1.6; for (let q = 1; q <= 4; q++) hm[q] = w.hp * 1.35; for (let q = 5; q <= 9; q++) hm[q] = a.hp * 1.4; hm[P_AT] = a.hp * 1.25; hm[P_WP] = k.hp * 1.5; hm[P_BAT] = 115;
+    const bf = cfg.buff || 1; if (bf !== 1) for (let q = 0; q < NPART; q++) hm[q] *= bf;
     for (let q = 0; q < NPART; q++) B.hp[q] = hp ? Math.min(hp[q], hm[q]) : hm[q];
     if (w.n === 2) { B.hp[3] = B.hp[1]; B.hp[4] = B.hp[2]; } // esteiras: 1 = lado -z, 2 = lado +z
     B.dent.fill(0); B.dentN.fill(0);
@@ -2268,7 +2269,7 @@ const UI = {
   // ----- garagem -----
   garage(g) {
     const e = this.el, b = g.pre, st = statsOf(b), base = statsOf(g.com), rep = g.repair, T = TOR;
-    e.gst.textContent = rep ? `ENTRE LUTAS · ${RODADAS[T.rodada]} · CONSERTOS/TROCAS RESTANTES: ${g.acoes}` : 'GARAGEM · MONTE SEU ROBÔ';
+    e.gst.textContent = (rep ? `ENTRE LUTAS · ${RODADAS[T.rodada]} · CONSERTOS/TROCAS RESTANTES: ${g.acoes}` : 'GARAGEM · MONTE SEU ROBÔ') + ` · TEMPORADA ${CAR.temp} · TROFÉUS ${CAR.trofeus} · ${CAR.v}V ${CAR.d}D`;
     const lists = [CHASSIS, RODAS, BLIND, ARMAS]; let h = '';
     for (let r = 0; r < 4; r++) { const p = lists[r][b[r]], sel = g.row === r, ed = sel && g.mode === 1; let hp = '';
       if (rep) { const f = GAR.slotHp(r); hp = `<span class="hp"><u style="transform:${SC[Math.round(f * 100)]}"></u></span><span class="x">${PCT[Math.round(f * 100)]}</span>`; }
@@ -2291,7 +2292,7 @@ const UI = {
   bracket(T, txt, foot) {
     const e = this.el, col = (r, tit) => `<div class="col"><h2>${tit}</h2>${T.jogos[r].map(j => { const row = (i, o) => { if (i < 0) return `<div class="l">—</div>`; const en = T.ent[i], w = j.w === i, l = j.w >= 0 && !w; return `<div class="${w ? 'w' : l ? 'l' : ''}${i === 0 ? ' me' : ''}"><i class="dot" style="background:${this.css(en.cor)}"></i>${esc(en.nome)}<span>${j.w >= 0 ? (w ? (j.how === 'juizes' ? `JUÍZES ${j.pa >= j.pb ? Math.max(j.pa, j.pb) : Math.max(j.pa, j.pb)}–${Math.min(j.pa, j.pb)}` : j.how === 'fosso' ? 'FOSSO' : 'NOCAUTE') : '') : ''}</span></div>`; }; return `<div class="mt${j.next ? ' nx' : ''}">${row(j.a)}${row(j.b)}</div>`; }).join('')}</div>`;
     e.bk.innerHTML = col(0, RODADAS[0]) + col(1, RODADAS[1]) + col(2, RODADAS[2]);
-    e.chs.textContent = T.campeao >= 0 ? 'TORNEIO ENCERRADO' : RODADAS[T.rodada]; e.chb.textContent = txt || ''; e.chf.innerHTML = foot || '<b>A / ENTER</b> continuar';
+    e.chs.textContent = `TEMPORADA ${T.temp || 1} · ` + (T.campeao >= 0 ? 'TORNEIO ENCERRADO' : RODADAS[T.rodada]) + ` · CARREIRA: ${CAR.trofeus} TROFÉU(S), ${CAR.v} VITÓRIAS (${CAR.ko} POR NOCAUTE), ${CAR.d} DERROTAS, ${CAR.pecas} PEÇAS ARRANCADAS`; e.chb.textContent = txt || ''; e.chf.innerHTML = foot || '<b>A / ENTER</b> continuar';
   },
   intro(en, side, st, hist) {
     const e = this.el.ic; e.className = 'ic ' + (side ? 'r' : 'l'); e.style.setProperty('--cc', this.css(en.cor));
@@ -2317,6 +2318,16 @@ const RIVAIS = [
   { nome: 'Pipoca', b: [0, 1, 2, 2], cor: 8, num: 3, estilo: 0 },
   { nome: 'Catapimba', b: [1, 2, 0, 3], cor: 1, num: 77, estilo: 2 },
 ];
+const RIVAIS2 = [
+  { nome: 'Cascavel', b: [0, 0, 2, 1], cor: 9, num: 13, estilo: 3 },
+  { nome: 'Bate-Estaca', b: [2, 2, 0, 4], cor: 4, num: 66, estilo: 0 },
+  { nome: 'Lesma Turbo', b: [1, 2, 1, 2], cor: 3, num: 5, estilo: 1 },
+  { nome: 'Pé-de-Cabra', b: [0, 1, 1, 5], cor: 8, num: 31, estilo: 3 },
+  { nome: 'Ventania', b: [1, 0, 0, 0], cor: 7, num: 88, estilo: 2 },
+  { nome: 'Chumbo Grosso', b: [2, 1, 1, 2], cor: 5, num: 99, estilo: 0 },
+  { nome: 'Saca-Rolha', b: [1, 1, 2, 1], cor: 6, num: 17, estilo: 2 },
+];
+const CAR = { temp: 1, trofeus: 0, v: 0, d: 0, ko: 0, juiz: 0, pecas: 0 };
 const NOMES = ['Fagulha', 'Rebimboca', 'Chapa Quente', 'Zé Faísca', 'Mordaça', 'Tranco', 'Parafuseta', 'Curto-Circuito', 'Bigorna', 'Marreta Boa'];
 const SIM = new Sim(), BG = new Sim(), TMPS = new Sim();
 let TOR = null;
@@ -2378,17 +2389,20 @@ const G = {
   auto: false, fast: 1, dbg: 0, skipRender: false, camFix: null, notes: null, entA: null, entB: null, curMatch: null, cnt: 0, clipFor: -2, rk: 0, rpx: .5, rpy: .5, rpz: .5, rqx: .5, rqy: .5, rqz: .5, script: null, sf: 0, rec: null, lastSk: new Float32Array(2 * 4 * 3).fill(-9), frameLog: null, nlog: 0, lastT: 0, acc: 0, hits: 0, detached: 0, maxPen: 0, rumbleLog: null,
   // replay
   REC_F: 28 + 5 + DEB_N * 8, ring: null, clip: null, clipN: 0, clipHit: 0, cev: new Float32Array(32 * 9), ncev: 0, rev: new Float32Array(64 * 9), nrev: 0, bestAt: -1, rp: null,
-  save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ b: GAR.com, cor: GAR.cor, num: GAR.num, nome: GAR.nome, tor: TOR })); } catch (e) { } },
-  load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return; if (Array.isArray(s.b) && s.b.length === 4) GAR.com = s.b.map((v, i) => Math.min(Math.max(v | 0, 0), [2, 2, 2, 5][i])); GAR.cor = Math.min(Math.max(s.cor | 0, 0), CORES.length - 1); GAR.num = Math.min(Math.max(s.num | 0, 0), 99); GAR.nome = String(s.nome || 'Fagulha').slice(0, 14); if (s.tor && s.tor.ent && s.tor.ent.length === 8) TOR = s.tor; } catch (e) { } },
+  save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ b: GAR.com, cor: GAR.cor, num: GAR.num, nome: GAR.nome, tor: TOR, car: CAR })); } catch (e) { } },
+  load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return; if (s.car) for (const k in CAR) if (typeof s.car[k] === 'number') CAR[k] = s.car[k]; if (Array.isArray(s.b) && s.b.length === 4) GAR.com = s.b.map((v, i) => Math.min(Math.max(v | 0, 0), [2, 2, 2, 5][i])); GAR.cor = Math.min(Math.max(s.cor | 0, 0), CORES.length - 1); GAR.num = Math.min(Math.max(s.num | 0, 0), 99); GAR.nome = String(s.nome || 'Fagulha').slice(0, 14); if (s.tor && s.tor.ent && s.tor.ent.length === 8) TOR = s.tor; } catch (e) { } },
   newTournament(seed) {
     const ent = [{ nome: GAR.nome, b: GAR.com.slice(), cor: CORES[GAR.cor], num: GAR.num, estilo: -1, hp: null, v: 0, d: 0 }];
-    for (const r of RIVAIS) ent.push({ nome: r.nome, b: r.b.slice(), cor: CORES[r.cor], num: r.num, estilo: r.estilo, hp: null, v: 0, d: 0 });
+    // elenco da temporada: 7 rivais sorteados de 14 pela temporada; a cada temporada ficam mais resistentes
+    const pool = RIVAIS.concat(RIVAIS2), t = CAR.temp, pick = t === 1 ? RIVAIS : Array.from({ length: 7 }, (_, i) => pool[(i * 2 + (t - 1) * 3 + (i > 3 ? 1 : 0)) % 14]).filter((r, i, a) => a.indexOf(r) === i);
+    for (let i = 0; pick.length < 7; i++) if (!pick.includes(pool[i])) pick.push(pool[i]);
+    for (const r of pick) ent.push({ nome: r.nome, b: r.b.slice(), cor: CORES[r.cor], num: r.num, estilo: r.estilo, hp: null, v: 0, d: 0 });
     const mk = (a, b) => ({ a, b, w: -1, how: '', pa: 0, pb: 0 });
-    TOR = { ativo: true, rodada: 0, ent, jogos: [[mk(0, 1), mk(2, 3), mk(4, 5), mk(6, 7)], [mk(-1, -1), mk(-1, -1)], [mk(-1, -1)]], campeao: -1, vivo: true, seed: seed || 20260, lutas: 0 };
+    TOR = { ativo: true, rodada: 0, ent, jogos: [[mk(0, 1), mk(2, 3), mk(4, 5), mk(6, 7)], [mk(-1, -1), mk(-1, -1)], [mk(-1, -1)]], campeao: -1, vivo: true, seed: seed || (20260 + CAR.temp * 37), lutas: 0, temp: CAR.temp, buff: 1 + Math.min(CAR.temp - 1, 8) * .09 };
     this.save();
   },
   myMatch() { if (!TOR || !TOR.vivo) return null; for (const j of TOR.jogos[TOR.rodada]) if ((j.a === 0 || j.b === 0) && j.w < 0) return j; return null; },
-  cfg(i) { const e = TOR.ent[i]; return { nome: e.nome, cor: e.cor, num: e.num, estilo: Math.max(0, e.estilo) }; },
+  cfg(i) { const e = TOR.ent[i]; return { nome: e.nome, cor: e.cor, num: e.num, estilo: Math.max(0, e.estilo), buff: i === 0 ? 1 : (TOR.buff || 1) }; },
   // simula as lutas restantes da rodada (IA x IA) e avanca a chave
   finishRound() {
     const T = TOR, js = T.jogos[T.rodada];
@@ -2404,12 +2418,12 @@ const G = {
     }
     this.save();
   },
-  record(j, S) { const T = TOR; j.w = S.winner === 0 ? j.a : j.b; j.how = S.koBy; j.pa = S.ptsA; j.pb = S.ptsB; const l = j.w === j.a ? j.b : j.a; T.ent[j.w].v++; T.ent[l].d++; T.ent[j.a].hp = Array.from(S.bots[0].hp); T.ent[j.b].hp = Array.from(S.bots[1].hp); if (l === 0) T.vivo = false; T.lutas++; },
+  record(j, S) { const T = TOR; j.w = S.winner === 0 ? j.a : j.b; j.how = S.koBy; j.pa = S.ptsA; j.pb = S.ptsB; const l = j.w === j.a ? j.b : j.a; T.ent[j.w].v++; T.ent[l].d++; T.ent[j.a].hp = Array.from(S.bots[0].hp); T.ent[j.b].hp = Array.from(S.bots[1].hp); if (l === 0) T.vivo = false; T.lutas++; if (j.a === 0 || j.b === 0) { if (j.w === 0) { CAR.v++; if (S.koBy === 'juizes') CAR.juiz++; else CAR.ko++; } else CAR.d++; CAR.pecas += this.detB || 0; } },
   toBracket(txt) {
     const T = TOR, j = this.myMatch(); for (const r of T.jogos) for (const q of r) q.next = q === j;
     this.st = 'chave'; UI.show('chave'); this.enterArena(); this.cam = 2;
     let foot = '<b>A / ENTER</b> continuar';
-    if (T.campeao >= 0) { txt = T.campeao === 0 ? 'VOCÊ É O CAMPEÃO DA COPA REBITE!' : `CAMPEÃO: ${T.ent[T.campeao].nome}`; foot = '<b>A / ENTER</b> novo torneio'; }
+    if (T.campeao >= 0) { txt = T.campeao === 0 ? 'VOCÊ É O CAMPEÃO DA COPA REBITE!' : `CAMPEÃO: ${T.ent[T.campeao].nome}`; foot = T.campeao === 0 ? `<b>A / ENTER</b> avançar para a temporada ${CAR.temp + 1} (rivais mais fortes)` : '<b>A / ENTER</b> tentar de novo esta temporada'; }
     else if (!T.vivo) { txt = 'VOCÊ FOI ELIMINADO'; foot = '<b>A / ENTER</b> ver o resto do torneio'; }
     else if (j) { const o = j.a === 0 ? j.b : j.a; txt = `${txt || 'PRÓXIMA LUTA'}: ${T.ent[0].nome} × ${T.ent[o].nome}`; }
     UI.bracket(T, txt, foot);
@@ -2421,7 +2435,7 @@ const G = {
   // prepara a luta do jogador (ou uma luta avulsa para teste/roteiro)
   setupFight(ia, ib, seed, dur, ea, eb) {
     const A = ea || TOR.ent[ia], B = eb || TOR.ent[ib]; this.entA = A; this.entB = B;
-    SIM.setupBot(0, A.b, A.hp, { nome: A.nome, cor: A.cor, num: A.num, estilo: Math.max(0, A.estilo) }); SIM.setupBot(1, B.b, B.hp, { nome: B.nome, cor: B.cor, num: B.num, estilo: Math.max(0, B.estilo) });
+    SIM.setupBot(0, A.b, A.hp, { nome: A.nome, cor: A.cor, num: A.num, estilo: Math.max(0, A.estilo) }); SIM.setupBot(1, B.b, B.hp, { nome: B.nome, cor: B.cor, num: B.num, estilo: Math.max(0, B.estilo), buff: eb ? 1 : (TOR && TOR.buff || 1) });
     SIM.bots[0].isAI = this.auto; SIM.bots[1].isAI = true; SIM.start(seed, dur);
     Atlas.robot(0, A.nome, A.num, A.cor); Atlas.robot(1, B.nome, B.num, B.cor); Atlas.score(A.nome.toUpperCase(), B.nome.toUpperCase(), this.round, 'AO VIVO', A.cor, B.cor);
     this.enterArena(); R.clearMarks(); FX.reset(); this.lastSk.fill(-9); this.hits = 0; this.hitsB = 0; this.detB = 0; this.detached = 0; this.maxPen = -9; this.bestAt = -1; this.clipN = 0; this.ncev = 0; this.nrev = 0; this.sf = 0;
@@ -2441,7 +2455,7 @@ const G = {
   tick(dt) {
     IN.poll(dt); UI.tick(dt); this.ft[0] += dt; const st = this.st;
     if (st === 'garagem') { GAR.tick(dt); GAR.draw(); FX.update(dt); }
-    else if (st === 'chave') { if (IN.pOk || IN.pStart) { if (TOR.campeao >= 0) { TOR = null; this.save(); GAR.com = GAR.com.slice(); GAR.enter(false); } else if (!TOR.vivo) { this.finishRound(); this.toBracket(''); } else if (TOR.lutas === 0) this.startIntro(); else GAR.enter(true); }
+    else if (st === 'chave') { if (IN.pOk || IN.pStart) { if (TOR.campeao >= 0) { if (TOR.campeao === 0) { CAR.trofeus++; CAR.temp++; } TOR = null; this.save(); GAR.com = GAR.com.slice(); GAR.enter(false); } else if (!TOR.vivo) { this.finishRound(); this.toBracket(''); } else if (TOR.lutas === 0) this.startIntro(); else GAR.enter(true); }
       else { this.ft[8] += dt; const a = this.ft[8] * .12; R.eye[0] = Math.cos(a) * 11.5; R.eye[1] = 6.6; R.eye[2] = Math.sin(a) * 11.5; R.tgt[0] = 0; R.tgt[1] = .4; R.tgt[2] = 0; R.cp[0] = .8; FX.update(dt); { const P = this.pr, S = SIM; P[0] = S.sawH[0]; P[1] = S.sawH[1]; P[2] = S.sawA; P[3] = S.ahA; P[4] = S.pitY; } this.drawProps(); } }
     else if (st === 'intro') { this.ft[7] += dt; const B = SIM.bots[this.intro], s = B.s, a = this.ft[7] * .9 + (this.intro ? PI : 0) + .6, r = 2.3;
       R.eye[0] = Math.min(Math.max(s[0] + Math.cos(a) * r, -AR + .5), AR - .5); R.eye[1] = .75 + Math.sin(this.ft[7] * .7) * .12; R.eye[2] = s[2] + Math.sin(a) * r; R.tgt[0] = s[0]; R.tgt[1] = .2; R.tgt[2] = s[2]; R.cp[0] = .7;
@@ -2564,7 +2578,7 @@ const ROTEIRO = {"a": [1, 1, 1, 0], "b": [1, 2, 0, 3], "seed": 14, "eb": 2, "nb"
 // ==== 99_main.js ====
 // ---------- inicializacao, laco principal e ganchos de teste ----------
 const QS = new URLSearchParams(location.search), MBG = new MB();
-const CR = window.CR = { G, GAR, SIM, BG, R, IN, UI, FX, Atlas, MESH, DRAW, statsOf, layoutOf, CHASSIS, RODAS, BLIND, ARMAS, PESO_MAX, pronto: false, erro: '',
+const CR = window.CR = { CAR, G, GAR, SIM, BG, R, IN, UI, FX, Atlas, MESH, DRAW, statsOf, layoutOf, CHASSIS, RODAS, BLIND, ARMAS, PESO_MAX, pronto: false, erro: '',
   get TOR() { return TOR; },
   // avanca n quadros de 1/60 s sem desenhar na GPU
   advance(n) { for (let i = 0; i < n; i++) G.tick(DT); },

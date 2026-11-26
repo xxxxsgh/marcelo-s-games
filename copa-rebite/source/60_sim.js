@@ -43,6 +43,7 @@ class Sim {
     B.ycm = L.hy1 * .36; B.m = B.S.kg; const sx = 2 * L.hx, sy = L.hy1 + L.clear, sz = 2 * L.hz;
     B.Ii[0] = 1 / (B.m / 12 * (sy * sy + sz * sz) * 1.5); B.Ii[1] = 1 / (B.m / 12 * (sx * sx + sz * sz) * 1.25); B.Ii[2] = 1 / (B.m / 12 * (sx * sx + sy * sy) * 1.5);
     const hm = B.hpMax; hm[0] = c.hp * 1.6; for (let q = 1; q <= 4; q++) hm[q] = w.hp * 1.35; for (let q = 5; q <= 9; q++) hm[q] = a.hp * 1.4; hm[P_AT] = a.hp * 1.25; hm[P_WP] = k.hp * 1.5; hm[P_BAT] = 115;
+    const bf = cfg.buff || 1; if (bf !== 1) for (let q = 0; q < NPART; q++) hm[q] *= bf;
     for (let q = 0; q < NPART; q++) B.hp[q] = hp ? Math.min(hp[q], hm[q]) : hm[q];
     if (w.n === 2) { B.hp[3] = B.hp[1]; B.hp[4] = B.hp[2]; } // esteiras: 1 = lado -z, 2 = lado +z
     B.dent.fill(0); B.dentN.fill(0);
