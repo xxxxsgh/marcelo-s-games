@@ -66,7 +66,7 @@ const UI = {
     h += `<div class="row go${g.row === 7 ? ' sel' : ''}${st.ok ? '' : ' no'}">${st.ok ? (rep ? 'VOLTAR PARA A ARENA ▶' : 'IR PARA A LUTA ▶') : 'ACIMA DO LIMITE DE PESO'}</div>`;
     if (!rep) { const rv = RIVAIS.concat(RIVAIS2)[g.rival]; h += `<div class="row${g.row === 8 ? ' sel' : ''}"><span class="k">AMISTOSO</span><span class="v">◀ ${esc(rv.nome)} ▶</span><span class="x">${ARMAS[rv.b[3]].nome} · A: lutar</span></div>`; }
     { let n = 0; for (let i = 0; i < CONQ.length; i++) if (CAR.conq >> i & 1) n++; h += `<div class="row${g.row === 9 ? ' sel' : ''}"><span class="k">CONQUISTAS</span><span class="v">${n} / ${CONQ.length}</span><span class="x">A: ver</span></div>`;
-      if (!rep) h += `<div class="row${g.row === 10 ? ' sel' : ''}"><span class="k">SOBREVIVÊNCIA</span><span class="v">lutas em sequência, sem conserto</span><span class="x">recorde ${CAR.rec} · A: começar</span></div>`;
+      if (!rep) h += `<div class="row${g.row === 10 ? ' sel' : ''}"><span class="k">SOBREVIVER</span><span class="v">sem conserto</span><span class="x">recorde ${CAR.rec} · A: começar</span></div>`;
       if (g.verConq) h = `<div class="cq">` + CONQ.map((c, i) => `<div class="${CAR.conq >> i & 1 ? 'ok' : ''}"><b>${CAR.conq >> i & 1 ? '★' : '☆'} ${c[0]}</b><span>${c[1]}</span></div>`).join('') + `</div><div class="row sel go">A / B: VOLTAR</div>`; }
     e.rows.innerHTML = h;
     const inp = $('gnome'); inp.onfocus = () => { IN.typing = true; }; inp.onblur = () => { IN.typing = false; GAR.setNome(inp.value); };
@@ -82,7 +82,7 @@ const UI = {
   bracket(T, txt, foot) {
     const e = this.el, col = (r, tit) => `<div class="col"><h2>${tit}</h2>${T.jogos[r].map(j => { const row = (i, o) => { if (i < 0) return `<div class="l">—</div>`; const en = T.ent[i], w = j.w === i, l = j.w >= 0 && !w; return `<div class="${w ? 'w' : l ? 'l' : ''}${i === 0 ? ' me' : ''}"><i class="dot" style="background:${this.css(en.cor)}"></i>${esc(en.nome)}<span>${j.w >= 0 ? (w ? (j.how === 'juizes' ? `JUÍZES ${j.pa >= j.pb ? Math.max(j.pa, j.pb) : Math.max(j.pa, j.pb)}–${Math.min(j.pa, j.pb)}` : j.how === 'fosso' ? 'FOSSO' : 'NOCAUTE') : '') : ''}</span></div>`; }; return `<div class="mt${j.next ? ' nx' : ''}">${row(j.a)}${row(j.b)}</div>`; }).join('')}</div>`;
     e.bk.innerHTML = col(0, RODADAS[0]) + col(1, RODADAS[1]) + col(2, RODADAS[2]);
-    e.chs.textContent = `TEMPORADA ${T.temp || 1} · ` + (T.campeao >= 0 ? 'TORNEIO ENCERRADO' : RODADAS[T.rodada]) + ` · CARREIRA: ${CAR.trofeus} TROFÉU(S), ${CAR.v} VITÓRIAS (${CAR.ko} POR NOCAUTE), ${CAR.d} DERROTAS, ${CAR.pecas} PEÇAS ARRANCADAS`; e.chb.textContent = txt || ''; e.chf.innerHTML = foot || '<b>A / ENTER</b> continuar';
+    e.chs.textContent = `TEMPORADA ${T.temp || 1} · ARENA ${ARENAS[((T.temp || 1) - 1) % 4]} · ` + (T.campeao >= 0 ? 'TORNEIO ENCERRADO' : RODADAS[T.rodada]) + ` · CARREIRA: ${CAR.trofeus} TROFÉU(S), ${CAR.v} VITÓRIAS (${CAR.ko} POR NOCAUTE), ${CAR.d} DERROTAS, ${CAR.pecas} PEÇAS ARRANCADAS`; e.chb.textContent = txt || ''; e.chf.innerHTML = foot || '<b>A / ENTER</b> continuar';
   },
   intro(en, side, st, hist) {
     const e = this.el.ic; e.className = 'ic ' + (side ? 'r' : 'l'); e.style.setProperty('--cc', this.css(en.cor));

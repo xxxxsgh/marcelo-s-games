@@ -31,7 +31,7 @@ class Sim {
     this.bots = [new Bot(0), new Bot(1)]; this.rng = new Rng(1); this.t = 0; this.frame = 0; this.over = 0; this.winner = -1; this.koBy = '';
     this.deb = new Float64Array(DEB_N * DEB_F); this.debMesh = new Int16Array(DEB_N).fill(-1); this.debNext = 0; this.debInfo = new Float32Array(DEB_N * 8);
     this.ev = new Float32Array(96 * 8); this.nev = 0; this.sawH = new Float32Array(2); this.sawA = 0; this.ahA = 1.25; this.ahSt = 0; this.ahT = 0; this.ahCd = 2; this.flameOn = 0; this.dur = LUTA_T;
-    this.best = 0; this.bestFrame = -1; this.noKO = false; this.pitY = 0; this.scores = new Float32Array(3 * 2 * 3); this.judgeTot = new Float32Array(6); this.ptsA = 0; this.ptsB = 0;
+    this.best = 0; this.bestFrame = -1; this.noKO = false; this.pitY = 0; this.modo = 0; this.scores = new Float32Array(3 * 2 * 3); this.judgeTot = new Float32Array(6); this.ptsA = 0; this.ptsB = 0;
   }
   emitR(type) { if (this.nev >= 96) return; const e = this.ev, o = this.nev++ * 8, x = _c[48], y = _c[49], z = _c[50], dx = _c[51], dy = _c[52], dz = _c[53], mag = _c[54]; e[o] = type; e[o + 1] = x; e[o + 2] = y; e[o + 3] = z; e[o + 4] = dx; e[o + 5] = dy; e[o + 6] = dz; e[o + 7] = mag; }
   // b: montagem, hp: Float32Array(12) ou null (novo), cfg {nome,cor,num,estilo}
@@ -198,10 +198,10 @@ class Sim {
   step() {
     if (this.over === 2) return; this.nev = 0; const b0 = this.bots[0], b1 = this.bots[1];
     // armadilhas
-    const t = this.t; let pq = (t - PIT_T) / 2.5; pq = pq < 0 ? 0 : pq > 1 ? 1 : pq; this.pitY = -PIT.d * pq * pq * (3 - 2 * pq); for (let i = 0; i < 2; i++) { const ph = (t + i * 3.6) % 7.2, up = ph < 2.4 && t > 4 ? 1 : 0; this.sawH[i] += Math.min(Math.max(up - this.sawH[i], -DT * 3.5), DT * 3.5); } this.sawA += DT * 55;
-    this.flameOn = ((t + 1.5) % 6.5) < 1.9 && t > 3 ? 1 : 0;
+    const t = this.t; let pq = (t - PIT_T) / 2.5; pq = pq < 0 ? 0 : pq > 1 ? 1 : pq; this.pitY = -PIT.d * pq * pq * (3 - 2 * pq); for (let i = 0; i < 2; i++) { const md = this.modo, ph = (t + i * (md === 2 ? 2.1 : 3.6)) % (md === 2 ? 4.2 : 7.2), up = ph < (md === 2 ? 2.6 : 2.4) && t > 4 ? 1 : 0; this.sawH[i] += Math.min(Math.max(up - this.sawH[i], -DT * 3.5), DT * 3.5); } this.sawA += DT * 55;
+    this.flameOn = (this.modo === 1 ? ((t + 1.5) % 3.6) < 2.1 : ((t + 1.5) % 6.5) < 1.9) && t > 3 ? 1 : 0;
     this.ahCd -= DT; if (this.ahSt === 0) { this.ahA += Math.min(Math.max(1.25 - this.ahA, -1), DT * 1.2); if (this.ahCd <= 0) for (let i = 0; i < 2; i++) { const s = this.bots[i].s; if (Math.sqrt((s[0] - AHAM.hx) * (s[0] - AHAM.hx) + (s[2] - AHAM.hz) * (s[2] - AHAM.hz)) < AHAM.r + .25 && s[1] < .6) { this.ahSt = 1; this.ahT = 0; } } }
-    else if (this.ahSt === 1) { this.ahT += DT; if (this.ahT > .4) { this.ahA -= DT * 14; if (this.ahA <= -.16) { this.ahA = -.16; this.ahSt = 0; this.ahCd = 3.6; (_c[48] = AHAM.hx, _c[49] = .05, _c[50] = AHAM.hz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 1, this.emitR(EV.AHAM));
+    else if (this.ahSt === 1) { this.ahT += DT; if (this.ahT > .4) { this.ahA -= DT * 14; if (this.ahA <= -.16) { this.ahA = -.16; this.ahSt = 0; this.ahCd = this.modo === 3 ? 1.5 : 3.6; (_c[48] = AHAM.hx, _c[49] = .05, _c[50] = AHAM.hz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 1, this.emitR(EV.AHAM));
           for (let i = 0; i < 2; i++) { const B = this.bots[i], s = B.s; if (Math.sqrt((s[0] - AHAM.hx) * (s[0] - AHAM.hx) + (s[2] - AHAM.hz) * (s[2] - AHAM.hz)) < AHAM.r + B.L.hx * .6 && s[1] < .7) { (_c[42] = AHAM.hx, _c[43] = s[1] + .2, _c[44] = AHAM.hz, this.toLocalR(B)); (_c[55] = Math.min(Math.max(_c[4], -B.L.hx), B.L.hx), _c[56] = B.L.hy1 - B.ycm, _c[57] = Math.min(Math.max(_c[6], -B.L.hz), B.L.hz), _c[58] = 30, this.damageR(B, 1, -1)); (_c[36] = AHAM.hx, _c[37] = s[1], _c[38] = AHAM.hz, _c[39] = 0, _c[40] = -B.m * 2.5, _c[41] = 0, this.impulseR(B)); this.bots[1 - i].jd[2] += 6; (_c[48] = AHAM.hx, _c[49] = s[1] + .1, _c[50] = AHAM.hz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 60 + i * 1000, this.emitR(EV.HIT)); } } } } }
     for (let i = 0; i < 2; i++) { const B = this.bots[i], A = this.bots[1 - i]; if (B.isAI && !this.over) this.think(B, A); if (this.over) { B.thr = 0; B.steer = 0; B.fire = 0; } }
     for (let sub = 0; sub < SUB; sub++) { this.physics(b0); this.physics(b1); this.pair(b0, b1); this.pair(b1, b0); this.integrate(b0); this.integrate(b1); }
