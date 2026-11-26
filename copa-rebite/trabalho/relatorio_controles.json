@@ -213,22 +213,22 @@
   {
    "teste": "roteiro: meu robo acerta o adversario",
    "ok": true,
-   "info": "55"
+   "info": "38"
   },
   {
    "teste": "roteiro: arranca pelo menos uma peca do adversario",
    "ok": true,
-   "info": "(5, [0, 0, 100, 0, 100, 0, 0, 0, 24, 8, 0, 96])"
+   "info": "(5, [0, 0, 152, 0, 152, 0, 0, 0, 49, 0, 64, 16])"
   },
   {
    "teste": "roteiro: nenhum robo atravessa a parede da caixa",
    "ok": true,
-   "info": "maior avanco do casco alem da parede: 0.037 m"
+   "info": "maior avanco do casco alem da parede: 0.033 m"
   },
   {
    "teste": "roteiro: deterministico (duas execucoes iguais e igual ao gravado)",
    "ok": true,
-   "info": "(-1207479243, -1207479243, -1207479243)"
+   "info": "(2042947533, 2042947533, 2042947533)"
   },
   {
    "teste": "tempo esgotado -> tres juizes pontuam dano, agressividade e controle (placar na tela)",
@@ -258,7 +258,7 @@
   {
    "teste": "torneio: conserto entre lutas (dano continua; so duas acoes)",
    "ok": true,
-   "info": "[{'antes': [0.8602118102363918, 0.9987893633992188, 0.9421520063358183, 0.9358908335367838], 'slot': 0, 'depois': 1, 'acoes': [2, 1, 0], 'arma': [0, 1], 'hpArma': 1, 'terceiraBloqueada': True}, {'antes': [0.675266109964122, 0.99666066806811, 0.7548458985640588, 0.08217798021104601], 'slot': 3, 'depo"
+   "info": "[{'antes': [0.8602118102363918, 0.9987893633992188, 0.9421520063358183, 0.9358908335367838], 'slot': 0, 'depois': 1, 'acoes': [2, 1, 0], 'arma': [0, 1], 'hpArma': 1, 'terceiraBloqueada': True}, {'antes': [0.7293575950290845, 0.9987893633992188, 0.748804535949444, 0.31357666015625], 'slot': 3, 'depoi"
   },
   {
    "teste": "montagem e andamento do torneio ficam salvos entre aberturas",
@@ -268,7 +268,7 @@
   {
    "teste": "zero alocacao de JS por quadro na luta (58 janelas de 60 quadros: simulacao+IA+efeitos+desenho+HUD, sem chamadas de GPU)",
    "ok": true,
-   "info": "58/58 janelas de 1 s com exatamente 0 byte; mediana 0.0 bytes/quadro; janelas com alocacao (bytes em 60 quadros): []; controle: +38808 bytes ao alocar 1000 objetos; 53 impactos em 58 s"
+   "info": "58/58 janelas de 1 s com exatamente 0 byte; mediana 0.0 bytes/quadro; janelas com alocacao (bytes em 60 quadros): []; controle: +38808 bytes ao alocar 1000 objetos; 43 impactos em 58 s"
   }
  ],
  "torneio": {
@@ -378,10 +378,10 @@
    },
    {
     "antes": [
-     0.675266109964122,
-     0.99666066806811,
-     0.7548458985640588,
-     0.08217798021104601
+     0.7293575950290845,
+     0.9987893633992188,
+     0.748804535949444,
+     0.31357666015625
     ],
     "slot": 3,
     "depois": 1,
