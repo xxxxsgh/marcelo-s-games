@@ -18,7 +18,7 @@ const RIVAIS2 = [
   { nome: 'Chumbo Grosso', b: [2, 1, 1, 2], cor: 5, num: 99, estilo: 0 },
   { nome: 'Saca-Rolha', b: [1, 1, 2, 1], cor: 6, num: 17, estilo: 2 },
 ];
-const CAR = { temp: 1, trofeus: 0, v: 0, d: 0, ko: 0, juiz: 0, pecas: 0, conq: 0, armas: 0, chas: 0, seq: 0 };
+const CAR = { temp: 1, trofeus: 0, v: 0, d: 0, ko: 0, juiz: 0, pecas: 0, conq: 0, armas: 0, chas: 0, seq: 0, rec: 0 };
 const CONQ = [['Primeira vitória', 'Vença uma luta de torneio'], ['Nocaute', 'Vença por nocaute'], ['Nas mãos dos juízes', 'Vença por decisão'], ['Buraco negro', 'Mande um adversário para o fosso'], ['Campeão', 'Vença uma temporada'], ['Bicampeão', 'Vença duas temporadas'],
   ['Ferro-velho', 'Arranque 10 peças na carreira'], ['Desmanche', 'Arranque 30 peças na carreira'], ['Intacto', 'Vença sem perder nenhuma peça'], ['Arsenal completo', 'Vença com as 6 armas'], ['Três carcaças', 'Vença com os 3 chassis'], ['Embalado', 'Vença 5 lutas seguidas']];
 function conquistas(S, ganhou, perdidas) {
@@ -52,8 +52,9 @@ const GAR = {
     const g = this; let ch = false;
     if (IN.typing) { } else if (g.mode === 0) {
       if (g.verConq) { if (IN.pOk || IN.pBack) { g.verConq = 0; ch = true; } IN.pOk = 0; IN.pUp = 0; IN.pDown = 0; IN.pStart = 0; }
-      if (IN.pUp) { g.row = (g.row + 9) % 10; ch = true; } if (IN.pDown) { g.row = (g.row + 1) % 10; ch = true; }
+      if (IN.pUp) { g.row = (g.row + 10) % 11; ch = true; } if (IN.pDown) { g.row = (g.row + 1) % 11; ch = true; }
       if (g.row === 9 && IN.pOk) { g.verConq = 1; ch = true; }
+      if (g.row === 10 && IN.pOk && !g.repair) { g.sobreviver(0, null); return; }
       if (g.row === 8 && (IN.pLeft || IN.pRight)) { g.rival = (g.rival + (IN.pRight ? 1 : 13)) % 14; ch = true; } else if (g.row === 8 && IN.pOk && !g.repair) g.amistoso();
       if (g.row < 4 && (IN.pOk || IN.pRight)) { if (g.repair && g.acoes <= 0) UI.toast('SEM TEMPO: AS DUAS AÇÕES JÁ FORAM USADAS'); else { g.mode = 1; ch = true; } }
       else if (g.row === 4 && (IN.pLeft || IN.pRight) && !g.repair) { g.cor = (g.cor + (IN.pRight ? 1 : CORES.length - 1)) % CORES.length; g.refresh(-1); G.save(); }
@@ -78,6 +79,8 @@ const GAR = {
   },
   amistoso() { const st = statsOf(this.pre); if (!st.ok) { UI.toast(`PESO ACIMA DO LIMITE (${st.kg} / ${PESO_MAX} kg)`); return; } this.com = this.pre.slice(); G.save(); const r = RIVAIS.concat(RIVAIS2)[this.rival]; G.round = 'AMISTOSO'; G.curMatch = null; G.script = null;
     G.setupFight(0, 1, 500 + this.rival * 13 + CAR.v, LUTA_T, { nome: this.nome, b: this.com.slice(), cor: CORES[this.cor], num: this.num, estilo: -1, hp: null, v: CAR.v, d: CAR.d }, { nome: r.nome, b: r.b.slice(), cor: CORES[r.cor], num: r.num, estilo: r.estilo, hp: null, v: 0, d: 0 }); G.st = 'intro'; G.intro = 0; G.ft[7] = 0; R.keyDim = .45; UI.show('intro'); G.showIntro(); },
+  sobreviver(n, hp) { const st = statsOf(this.pre); if (!st.ok) { UI.toast(`PESO ACIMA DO LIMITE (${st.kg} / ${PESO_MAX} kg)`); return; } this.com = this.pre.slice(); const pool = RIVAIS.concat(RIVAIS2), r = pool[(n * 5 + 3) % 14]; G.surv = n; G.round = 'SOBREVIVÊNCIA · LUTA ' + (n + 1); G.curMatch = null; G.script = null;
+    G.setupFight(0, 1, 900 + n * 17, LUTA_T, { nome: this.nome, b: this.com.slice(), cor: CORES[this.cor], num: this.num, estilo: -1, hp: hp, v: n, d: 0 }, { nome: r.nome, b: r.b.slice(), cor: CORES[r.cor], num: r.num, estilo: r.estilo, hp: null, v: 0, d: 0, buff: 1 + n * .1 }); G.st = 'intro'; G.intro = 0; G.ft[7] = 0; R.keyDim = .45; UI.show('intro'); G.showIntro(); },
   go() { const st = statsOf(this.pre); if (this.mode === 1) return; if (!st.ok) { UI.toast(`PESO ACIMA DO LIMITE (${st.kg} / ${PESO_MAX} kg)`); this.warn = 1; return false; } this.com = this.pre.slice(); G.save(); if (!TOR || !TOR.ativo) G.newTournament(); else TOR.ent[0].b = this.com.slice(); if (this.repair) G.startIntro(); else G.toBracket('PRÓXIMA LUTA'); return true; },
   draw() {
     const B = this.bot, L = B.L, a = this.ang, I = R.I;
@@ -90,7 +93,7 @@ const GAR = {
 
 const G = {
   st: 'boot', ft: new Float64Array(12), pr: new Float32Array(8), cam: 0, ce: new Float32Array(3), ct: new Float32Array(3), first: 1, round: '', intro: 0, paused: 0, prev: '',
-  auto: false, fast: 1, dbg: 0, livreMsg: 0, skipRender: false, camFix: null, notes: null, entA: null, entB: null, curMatch: null, cnt: 0, clipFor: -2, rk: 0, rpx: .5, rpy: .5, rpz: .5, rqx: .5, rqy: .5, rqz: .5, script: null, sf: 0, rec: null, lastSk: new Float32Array(2 * 4 * 3).fill(-9), frameLog: null, nlog: 0, lastT: 0, acc: 0, hits: 0, detached: 0, maxPen: 0, rumbleLog: null,
+  auto: false, fast: 1, dbg: 0, livreMsg: 0, surv: -1, skipRender: false, camFix: null, notes: null, entA: null, entB: null, curMatch: null, cnt: 0, clipFor: -2, rk: 0, rpx: .5, rpy: .5, rpz: .5, rqx: .5, rqy: .5, rqz: .5, script: null, sf: 0, rec: null, lastSk: new Float32Array(2 * 4 * 3).fill(-9), frameLog: null, nlog: 0, lastT: 0, acc: 0, hits: 0, detached: 0, maxPen: 0, rumbleLog: null,
   // replay
   REC_F: 28 + 5 + DEB_N * 8, ring: null, clip: null, clipN: 0, clipHit: 0, cev: new Float32Array(32 * 9), ncev: 0, rev: new Float32Array(64 * 9), nrev: 0, bestAt: -1, rp: null,
   save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ b: GAR.com, cor: GAR.cor, num: GAR.num, nome: GAR.nome, tor: TOR, car: CAR })); } catch (e) { } },
@@ -134,12 +137,12 @@ const G = {
   },
   enterArena() {
     if (R.scene !== 0) { R.im[SLOT.GLASS] = MESH.glass.id; R.im[SLOT.AUX0] = MESH.saw.id; R.im[SLOT.AUX1] = MESH.saw.id; R.im[SLOT.AUX2] = MESH.ahammer.id; R.bake(0, MESH.arena.id, ARENA_LIGHTS, [0, 1.2, 0]); }
-    R.exposure = .27; R.fog = .0022; R.mblur = .3; R.amb = 1; R.cp[0] = .9;
+    R.exposure = .3; R.fog = .0022; R.mblur = .3; R.amb = 1; R.cp[0] = .9;
   },
   // prepara a luta do jogador (ou uma luta avulsa para teste/roteiro)
   setupFight(ia, ib, seed, dur, ea, eb) {
     const A = ea || TOR.ent[ia], B = eb || TOR.ent[ib]; this.entA = A; this.entB = B;
-    SIM.setupBot(0, A.b, A.hp, { nome: A.nome, cor: A.cor, num: A.num, estilo: Math.max(0, A.estilo) }); SIM.setupBot(1, B.b, B.hp, { nome: B.nome, cor: B.cor, num: B.num, estilo: Math.max(0, B.estilo), buff: eb ? 1 : (TOR && TOR.buff || 1) });
+    SIM.setupBot(0, A.b, A.hp, { nome: A.nome, cor: A.cor, num: A.num, estilo: Math.max(0, A.estilo) }); SIM.setupBot(1, B.b, B.hp, { nome: B.nome, cor: B.cor, num: B.num, estilo: Math.max(0, B.estilo), buff: eb ? (eb.buff || 1) : (TOR && TOR.buff || 1) });
     SIM.bots[0].isAI = this.auto; SIM.bots[1].isAI = true; SIM.start(seed, dur);
     Atlas.robot(0, A.nome, A.num, A.cor); Atlas.robot(1, B.nome, B.num, B.cor); Atlas.score(A.nome.toUpperCase(), B.nome.toUpperCase(), this.round, 'AO VIVO', A.cor, B.cor);
     this.enterArena(); R.clearMarks(); FX.reset(); this.lastSk.fill(-9); this.hits = 0; this.hitsB = 0; this.detB = 0; this.detached = 0; this.maxPen = -9; this.bestAt = -1; this.clipN = 0; this.ncev = 0; this.nrev = 0; this.sf = 0;
@@ -175,7 +178,8 @@ const G = {
       if (this.st === 'fim') { this.ft[1] += dt * (this.fast > 1 ? 30 : 1); if (this.ft[1] > 3) this.afterFight(); } }
     else if (st === 'juizes') { this.ft[1] += dt * (this.fast > 1 ? 30 : 1); this.camera(dt); this.drawFight(1); FX.update(dt); if (this.ft[1] > 6 || IN.pOk) this.toReplay(); }
     else if (st === 'replay') { this.replayTick(dt); }
-    else if (st === 'livre') { this.camera(dt); this.drawFight(1); FX.update(dt); if (this.round === 'AMISTOSO') { if (!this.livreMsg) { this.livreMsg = 1; UI.msg(SIM.winner === 0 ? 'VITÓRIA' : 'DERROTA', 'A / ENTER volta para a garagem'); } if (IN.pOk || IN.pStart) { this.livreMsg = 0; GAR.enter(false); } } }
+    else if (st === 'livre') { this.camera(dt); this.drawFight(1); FX.update(dt); if (this.surv >= 0 && this.round.startsWith('SOBREV')) { if (!this.livreMsg) { this.livreMsg = 1; const w = SIM.winner === 0; if (w) UI.msg('VENCEU A LUTA ' + (this.surv + 1), 'A / ENTER próxima luta — sem conserto'); else { const n = this.surv; if (n > CAR.rec) CAR.rec = n; this.save(); UI.msg('FIM DA SOBREVIVÊNCIA', n + ' vitória(s) seguida(s) · recorde ' + CAR.rec + ' · A / ENTER garagem'); } } if (IN.pOk || IN.pStart) { this.livreMsg = 0; if (SIM.winner === 0) GAR.sobreviver(this.surv + 1, Array.from(SIM.bots[0].hp)); else { this.surv = -1; GAR.enter(false); } } }
+      else if (this.round === 'AMISTOSO') { if (!this.livreMsg) { this.livreMsg = 1; UI.msg(SIM.winner === 0 ? 'VITÓRIA' : 'DERROTA', 'A / ENTER volta para a garagem'); } if (IN.pOk || IN.pStart) { this.livreMsg = 0; GAR.enter(false); } } }
     else if (st === 'pausa') { if (IN.pPause || IN.pOk) { this.st = this.prev; UI.show('hud'); } }
   },
   fightStep() {

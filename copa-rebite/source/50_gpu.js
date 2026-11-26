@@ -123,7 +123,7 @@ const R = {
     for (let i = 0; i < list.length; i++) {
       const L = list[i], o = 100 + i * 16, dx = L.t[0] - L.p[0], dy = L.t[1] - L.p[1], dz = L.t[2] - L.p[2], l = 1 / Math.hypot(dx, dy, dz), a = L.a * PI / 180;
       U[o] = L.p[0]; U[o + 1] = L.p[1]; U[o + 2] = L.p[2]; U[o + 3] = 60; U[o + 4] = dx * l; U[o + 5] = dy * l; U[o + 6] = dz * l; U[o + 7] = Math.cos(a);
-      U[o + 8] = L.c[0] * L.I; U[o + 9] = L.c[1] * L.I; U[o + 10] = L.c[2] * L.I; U[o + 11] = Math.cos(a * .45); U[o + 12] = L.s ? si : -1; U[o + 13] = 0; U[o + 14] = (L.s || i < 6) && L.vol !== 0 ? 1 : 0; U[o + 15] = 0;
+      U[o + 8] = L.c[0] * L.I; U[o + 9] = L.c[1] * L.I; U[o + 10] = L.c[2] * L.I; U[o + 11] = Math.cos(a * .62); U[o + 12] = L.s ? si : -1; U[o + 13] = 0; U[o + 14] = (L.s || i < 6) && L.vol !== 0 ? 1 : 0; U[o + 15] = 0;
       if (L.s) { const P = new Float32Array(16), V = new Float32Array(16), O = new Float32Array(16); M4.persp(P, 2 * (a + .05), 1, .4, 40); M4.lookAt(V, L.p[0], L.p[1], L.p[2], L.t[0], L.t[1], L.t[2], Math.abs(dy * l) > .98 ? 1 : 0, Math.abs(dy * l) > .98 ? 0 : 1, 0); M4.mul(O, 0, P, 0, V, 0); U.set(O, 356 + si * 16); this.dev.queue.writeBuffer(this.shUbo[si], 0, O); si++; }
     }
     this.nsh = si; this.baseL = new Float32Array(48); for (let i = 0; i < list.length; i++) for (let c = 0; c < 3; c++) this.baseL[i * 3 + c] = U[100 + i * 16 + 8 + c];

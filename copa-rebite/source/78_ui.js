@@ -66,6 +66,7 @@ const UI = {
     h += `<div class="row go${g.row === 7 ? ' sel' : ''}${st.ok ? '' : ' no'}">${st.ok ? (rep ? 'VOLTAR PARA A ARENA ▶' : 'IR PARA A LUTA ▶') : 'ACIMA DO LIMITE DE PESO'}</div>`;
     if (!rep) { const rv = RIVAIS.concat(RIVAIS2)[g.rival]; h += `<div class="row${g.row === 8 ? ' sel' : ''}"><span class="k">AMISTOSO</span><span class="v">◀ ${esc(rv.nome)} ▶</span><span class="x">${ARMAS[rv.b[3]].nome} · A: lutar</span></div>`; }
     { let n = 0; for (let i = 0; i < CONQ.length; i++) if (CAR.conq >> i & 1) n++; h += `<div class="row${g.row === 9 ? ' sel' : ''}"><span class="k">CONQUISTAS</span><span class="v">${n} / ${CONQ.length}</span><span class="x">A: ver</span></div>`;
+      if (!rep) h += `<div class="row${g.row === 10 ? ' sel' : ''}"><span class="k">SOBREVIVÊNCIA</span><span class="v">lutas em sequência, sem conserto</span><span class="x">recorde ${CAR.rec} · A: começar</span></div>`;
       if (g.verConq) h = `<div class="cq">` + CONQ.map((c, i) => `<div class="${CAR.conq >> i & 1 ? 'ok' : ''}"><b>${CAR.conq >> i & 1 ? '★' : '☆'} ${c[0]}</b><span>${c[1]}</span></div>`).join('') + `</div><div class="row sel go">A / B: VOLTAR</div>`; }
     e.rows.innerHTML = h;
     const inp = $('gnome'); inp.onfocus = () => { IN.typing = true; }; inp.onblur = () => { IN.typing = false; GAR.setNome(inp.value); };
