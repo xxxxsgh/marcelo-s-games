@@ -112,3 +112,5 @@ b,.h{font-weight:800}
 #erro{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;font-size:2.4vh;padding:10vw;text-transform:none;background:#0b0e13}
 #carga{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#0b0e13;font-size:2vh;color:var(--mu)}
 #carga b{font-size:6vh;color:var(--tx)}#carga b em{color:var(--am);font-style:normal}
+
+.cq{display:grid;grid-template-columns:1fr 1fr;gap:.5vh;margin:.6vh 0}.cq div{background:#161c25;padding:.7vh 1vh;color:var(--mu);font-size:1.5vh;text-transform:none}.cq div b{display:block;color:#5d6876;font-size:1.7vh;text-transform:uppercase}.cq div.ok b{color:var(--am)}.cq div.ok{color:var(--tx)}

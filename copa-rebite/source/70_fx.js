@@ -37,7 +37,7 @@ const FX = {
     for (let i = 0; i < this.NS; i++) { const o = i * 10; if (m[o + 6] <= 0) continue; m[o + 6] -= dt; if (m[o + 6] <= 0) continue; m[o + 3] *= 1 - dt * .8; m[o + 5] *= 1 - dt * .8; m[o + 4] *= 1 - dt * .35; m[o] += m[o + 3] * dt; m[o + 1] += m[o + 4] * dt; m[o + 2] += m[o + 5] * dt;
       const q = na++ * 12, f = m[o + 6] / m[o + 7], dk = this.st[i];
       A[q] = m[o]; A[q + 1] = m[o + 1]; A[q + 2] = m[o + 2]; A[q + 3] = m[o + 8] * (.45 + (1 - f) * 1.5); A[q + 4] = m[o + 9] * .1 + (1 - f) * .6; A[q + 5] = m[o + 9]; A[q + 6] = 0; A[q + 7] = 2;
-      const c = dk ? .1 : .5; A[q + 8] = c; A[q + 9] = c; A[q + 10] = c * 1.03; A[q + 11] = Math.min(1, (1 - f) * 5) * f * f * (dk ? .6 : .26); }
+      const c = dk ? .1 : .5; A[q + 8] = c; A[q + 9] = c; A[q + 10] = c * 1.03; A[q + 11] = Math.min(1, (1 - f) * 5) * f * f * (dk ? .5 : .16); }
     R.nA = na;
     // luzes: primeiro as continuas, depois os pulsos
     const d = R.dl; let n = 0; for (let i = 0; i < this.nfl && n < 6; i++) { const o = i * 7, k = n++ * 8; d[k] = this.fl[o]; d[k + 1] = this.fl[o + 1]; d[k + 2] = this.fl[o + 2]; d[k + 3] = this.fl[o + 3]; d[k + 4] = this.fl[o + 4]; d[k + 5] = this.fl[o + 5]; d[k + 6] = this.fl[o + 6]; }

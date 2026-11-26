@@ -112,7 +112,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
     let streakd = smoothstep(.55, .9, vn(vec3f(P.x * 30., P.y * 3., P.z * 30.) + 2.)) * (1. - abs(i.on.y)); palb *= 1. - streakd * .35;
     let pm = (1. - chip) * cover;
     alb = mix(bare * (.9 + .2 * streak), palb, pm); alb = mix(alb, vec3f(.5, .47, .42) * (.8 + .3 * nf), prim * cover * .8);
-    metal = 1. - pm * .62; rough = mix(br + .22 * streak + sc * .1, pr * .8, pm);
+    metal = 1. - pm * .5; rough = mix(br + .22 * streak + sc * .1, pr * .8, pm);
     h = pm * .00035 + nf * .00006 + sc * -.0002 + (1. - pm) * streak * .00004;
     if (edge > .95 && mat != 14u) { h += sin(dot(P, vec3f(310., 290., 330.))) * .00012; } // cordao de solda nas arestas
     if (mat == 21u) { // rasgo
@@ -156,6 +156,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
   else if (mat == 18u) { alb = vec3f(.02, .025, .04); rough = .06; }
   else if (mat == 19u) { let g = vn(vec3f(P.x * 3., P.y * 60., P.z * 60.)); alb = i.col * (.6 + .7 * g); rough = .55 + g * .2; alb = mix(alb, alb * .4, smoothstep(.6, .8, fbm(P * 4.))); h = g * .0003; }
   else if (mat == 20u) { let g = fract(uv * 32.) - .5; let hole = 1. - smoothstep(.12, .16, length(g)); alb = i.col * (.85 + .2 * vn(P * 30.)) * (1. - hole * .85); rough = .8; h = -hole * .001; }
+  else if (mat == 24u) { let rr = length(select(P.xz, P.xy, abs(i.on.z) > .5)); let ring = vn(vec3f(rr * 240., 1., 2.)); let ang = atan2(P.z + P.y, P.x); alb = vec3f(.2, .2, .215) * (.7 + .5 * ring) + smoothstep(.17, .2, rr) * .12; metal = 1.; rough = .2 + ring * .16; h = ring * .0002; }
   else if (mat == 23u) { let r = region(i32(edge + .5)); let t = textureSample(atlas, smp, r.xy + i.col.rg * r.zw); alb = t.rgb * (.5 + .12 * vn(i.wp * 30.)); rough = .7; emis = .03; }
   // fuligem / queimado
   let burn = inst.p1.x; if (burn > 0.) { let b = clamp(burn * (.5 + fbm(P * 14.)), 0., 1.); alb = mix(alb, vec3f(.012), b * .9); rough = mix(rough, .92, b); metal *= 1. - b * .7; }
@@ -175,11 +176,11 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
   let nv = max(dot(N, V), 0.); let fr = .04 + .96 * pow(1. - nv, 5.);
   let R = reflect(-V, N); var refl = textureSampleLevel(envT, smpC, R * vec3f(1., 1., -1.), 1.5).rgb;
   var uv = i.wp.xy; if (abs(i.wn.x) > .5) { uv = i.wp.zy; }
-  let s1 = scratch(uv * 6., 2.) + scratch(uv * 17., 6.) * .7 + scratch(vec2f(uv.x * 3., uv.y * 30.) , 9.) * .6; let haze = fbm2(uv * 1.4) ; let low = 1. - smoothstep(.45, 1.6, i.wp.y);
+  let s1 = scratch(uv * 5., 2.) + scratch(uv * 13., 6.) * .5; let haze = fbm2(uv * 1.4) ; let low = 1. - smoothstep(.45, 1.6, i.wp.y);
   var lit = vec3f(0.);
   for (var k = 0u; k < u32(F.misc2.y); k++) { let L = F.lights[k]; let d = L.pos.xyz - i.wp; let dl = length(d); let dn = d / dl; var a = L.col.rgb / (dl * dl + 1.);
     if (L.ext.y < .5) { a *= smoothstep(L.dir.w, L.col.w, dot(-dn, L.dir.xyz)); } lit += a * (.3 + .7 * pow(max(dot(reflect(-dn, N), V), 0.), 6.) + .4 * pow(max(dot(-dn, V), 0.), 4.)); }
-  let scat = clamp(s1 * .3 * smoothstep(.35, .7, haze + low * .4) + haze * haze * .03 + low * (.03 + .08 * haze) + .004, 0., 1.);
+  let scat = clamp(s1 * .16 * smoothstep(.4, .75, haze + low * .4) + haze * haze * .03 + low * (.03 + .08 * haze) + .004, 0., 1.);
   let col = refl * fr + lit * scat * .16 + vec3f(.5, .6, .65) * .0015;
   let a = clamp(fr * .6 + scat * .2 + .012, 0., 1.);
   return vec4f(col, a);
@@ -243,7 +244,7 @@ fn ggx(N: vec3f, V: vec3f, L: vec3f, r: f32, F0: vec3f) -> vec3f {
   // ambiente: cubo de ambiente + reflexo no espaco de tela
   let rj = vec3f(ign(i.pos.xy + 17., fr), ign(i.pos.xy + 41., fr + 3.), ign(i.pos.xy + 73., fr + 7.)) - .5;
   let R = normalize(reflect(-V, N) + rj * rough * rough * .7); let nv = max(dot(N, V), 0.);
-  let irr = textureSampleLevel(envT, smpC, N * vec3f(1., 1., -1.), 5.).rgb * 2.4 + vec3f(.03, .032, .038) * (.6 + .4 * N.y);
+  let irr = textureSampleLevel(envT, smpC, N * vec3f(1., 1., -1.), 5.).rgb * 2.2 + vec3f(.014, .015, .019) * (.6 + .4 * N.y);
   var spec = textureSampleLevel(envT, smpC, R * vec3f(1., 1., -1.), rough * 5.).rgb; var hitc = 0.;
   if (rough < .62 && F.misc2.z > .5) {
     var t = .04 + noise * .06; var hit = false; var huv = vec2f(0.); var st = .07; var tp = 0.;
@@ -342,7 +343,7 @@ fn tone(c0: vec3f) -> vec3f { var c = mat3x3f(.59719, .07600, .02840, .35458, .9
   let c0 = textureSampleLevel(t0, smpC, i.uv, 0.).rgb; c += clamp((c0 - nb) * .12, vec3f(-.3), vec3f(.3)) * step(vl, 2.) ;
   c = max(c, vec3f(0.)) + textureSampleLevel(t1, smpC, i.uv, 0.).rgb * .075;
   let q = i.uv - .5; let vig = 1. - dot(q, q) * .55; c *= F.misc.x * vig * vig;
-  c = tone(c * .82); c = mix(c, c * c * (3. - 2. * c), .08);
+  c = tone(c); c = mix(c, c * c * (3. - 2. * c), .2);
   let l = dot(c, vec3f(.2126, .7152, .0722)); c = mix(vec3f(l), c, 1.06) * vec3f(1.01, 1., .985);
   c = pow(clamp(c, vec3f(0.), vec3f(1.)), vec3f(1. / 2.2));
   c += (h21(i.pos.xy + F.misc.y * 7.13) - .5) * .014 + (h21(i.pos.xy * 1.7) - .5) / 255.;

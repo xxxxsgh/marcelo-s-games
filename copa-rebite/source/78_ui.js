@@ -43,7 +43,7 @@ const UI = {
       this.setBar(o + 3, q[3], Math.ceil(h[10] / m[10] * 100) | 0, q[8]);
       this.setBar(o + 4, q[4], Math.ceil(h[11] / m[11] * 100) | 0, q[9]);
       const k = ARMAS[B.b[3]]; let code = 0, lvl = 0;
-      if (h[10] <= 0) { code = 200; } else if (k.spin) { lvl = (Math.round(B.wspin / k.wmax * 20) | 0) * 5; code = B.won || lvl > 0 ? lvl : 201; } else if (B.wst === 2) { code = 204; lvl = 100; } else if (B.wst === 1) { code = 203; lvl = 100; } else if (B.wcd > 0) { lvl = (Math.round((1 - B.wcd / k.cd) * 20) | 0) * 5; code = 300 + lvl; } else { code = 202; lvl = 100; }
+      if (h[10] <= 0) { code = 200; } else if (k.spin) { lvl = (Math.round(B.wspin / k.wmax * 10 + (L[o + 5] > 0 && L[o + 5] <= 100 && Math.abs(B.wspin / k.wmax * 100 - L[o + 5]) < 8 ? (L[o + 5] / 10 - B.wspin / k.wmax * 10) : 0)) | 0) * 10; code = B.won || lvl > 0 ? lvl : 201; } else if (B.wst === 2) { code = 204; lvl = 100; } else if (B.wst === 1) { code = 203; lvl = 100; } else if (B.wcd > 0) { lvl = (Math.round((1 - B.wcd / k.cd) * 20) | 0) * 5; code = 300 + lvl; } else { code = 202; lvl = 100; }
       if (L[o + 5] !== code) { L[o + 5] = code; q[11].textContent = code === 200 ? 'DESTRUÍDA' : code === 201 ? 'DESLIGADA' : code === 202 ? 'PRONTA' : code === 203 ? 'DISPARADA' : code === 204 ? 'PRENDENDO' : code >= 300 ? 'RECARREGANDO' : RPM[code]; }
       this.setBar(o + 6, q[10], lvl, null);
     }
@@ -65,6 +65,8 @@ const UI = {
     h += `<div class="row${g.row === 6 ? ' sel' : ''}"><span class="k">NOME</span><span class="v"><input id="gnome" maxlength="14" value="${esc(g.nome)}"></span><span class="x">A: sortear · Enter: digitar</span></div>`;
     h += `<div class="row go${g.row === 7 ? ' sel' : ''}${st.ok ? '' : ' no'}">${st.ok ? (rep ? 'VOLTAR PARA A ARENA ▶' : 'IR PARA A LUTA ▶') : 'ACIMA DO LIMITE DE PESO'}</div>`;
     if (!rep) { const rv = RIVAIS.concat(RIVAIS2)[g.rival]; h += `<div class="row${g.row === 8 ? ' sel' : ''}"><span class="k">AMISTOSO</span><span class="v">◀ ${esc(rv.nome)} ▶</span><span class="x">${ARMAS[rv.b[3]].nome} · A: lutar</span></div>`; }
+    { let n = 0; for (let i = 0; i < CONQ.length; i++) if (CAR.conq >> i & 1) n++; h += `<div class="row${g.row === 9 ? ' sel' : ''}"><span class="k">CONQUISTAS</span><span class="v">${n} / ${CONQ.length}</span><span class="x">A: ver</span></div>`;
+      if (g.verConq) h = `<div class="cq">` + CONQ.map((c, i) => `<div class="${CAR.conq >> i & 1 ? 'ok' : ''}"><b>${CAR.conq >> i & 1 ? '★' : '☆'} ${c[0]}</b><span>${c[1]}</span></div>`).join('') + `</div><div class="row sel go">A / B: VOLTAR</div>`; }
     e.rows.innerHTML = h;
     const inp = $('gnome'); inp.onfocus = () => { IN.typing = true; }; inp.onblur = () => { IN.typing = false; GAR.setNome(inp.value); };
     const part = g.row < 4 ? lists[g.row][b[g.row]] : null;

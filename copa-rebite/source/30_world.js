@@ -7,16 +7,16 @@ const FLAME = { x: -4.3, z: -4.3, r: 1.15, n: [[-4.9, -4.3], [-4.3, -4.3], [-3.7
 const START = [[-5, 0], [5, 0]];
 // refletores: p posicao, t alvo, c cor, I intensidade, a meio-angulo (graus), s sombra
 const ARENA_LIGHTS = [
-  { p: [5.6, 7.0, 5.6], t: [-.8, 0, -.8], c: [1, .93, .82], I: 560, a: 43, s: 1 },
-  { p: [-5.6, 7.0, -5.6], t: [.8, 0, .8], c: [.82, .9, 1], I: 560, a: 43, s: 1 },
-  { p: [5.6, 7.0, -5.6], t: [-.8, 0, .8], c: [1, .96, .9], I: 500, a: 43, s: 1 },
-  { p: [-5.6, 7.0, 5.6], t: [.8, 0, -.8], c: [.9, .95, 1], I: 500, a: 43, s: 1 },
+  { p: [5.6, 7.0, 5.6], t: [-.8, 0, -.8], c: [1, .93, .82], I: 860, a: 43, s: 1 },
+  { p: [-5.6, 7.0, -5.6], t: [.8, 0, .8], c: [.82, .9, 1], I: 860, a: 43, s: 1 },
+  { p: [5.6, 7.0, -5.6], t: [-.8, 0, .8], c: [1, .96, .9], I: 760, a: 43, s: 1 },
+  { p: [-5.6, 7.0, 5.6], t: [.8, 0, -.8], c: [.9, .95, 1], I: 760, a: 43, s: 1 },
   { p: [-7.6, 6.2, 0], t: [-4.2, 0, 0], c: [1, .12, .06], I: 420, a: 26, s: 0 },
   { p: [7.6, 6.2, 0], t: [4.2, 0, 0], c: [.08, .25, 1], I: 420, a: 26, s: 0 },
   { p: [0, 7.3, 9.5], t: [0, 2, 15], c: [1, .8, .6], I: 16, a: 48, s: 0, vol: 0 },
   { p: [0, 7.3, -9.5], t: [0, 2, -15], c: [1, .8, .6], I: 16, a: 48, s: 0, vol: 0 },
   { p: [9.5, 7.3, 0], t: [15, 2, 0], c: [.7, .8, 1], I: 15, a: 48, s: 0, vol: 0 },
-  { p: [0, 7.4, .01], t: [0, 0, 0], c: [.9, .95, 1], I: 520, a: 62, s: 0, vol: 0 },
+  { p: [0, 7.4, .01], t: [0, 0, 0], c: [.9, .95, 1], I: 300, a: 62, s: 0, vol: 0 },
 ];
 const GAR_LIGHTS = [
   { p: [1.5, 3.1, 1.9], t: [0, .7, 0], c: [1, .9, .74], I: 150, a: 38, s: 1 },
@@ -49,7 +49,7 @@ function buildWorldMeshes(mb) {
     mb.set(MAT.DARK, .06, .06, .065, .4); tube([L.p[0], L.p[1] + .16 * s, L.p[2]], [L.p[0], L.p[1] + .4, L.p[2]], .02, 6);
   };
   const person = (x, y, z, face, seated, raise, shirt, hi) => {
-    const sk = [[.3, .22, .17], [.21, .15, .11], [.35, .28, .22], [.14, .1, .07]][Math.floor(rng.u() * 4)], pal = [[.2, .05, .05], [.05, .08, .2], [.28, .28, .27], [.04, .04, .05], [.3, .2, .06], [.07, .14, .08], [.14, .05, .16], [.1, .1, .12], [.2, .2, .22], [.04, .05, .09]], sh = shirt || pal[Math.floor(rng.u() * pal.length)], sc = rng.r(.9, 1.1), sg = hi ? 12 : 7, lean = rng.s1() * .18, tw = rng.s1() * .3;
+    const sk = [[.16, .12, .09], [.11, .08, .06], [.19, .15, .12], [.08, .06, .04]][Math.floor(rng.u() * 4)], pal = [[.1, .03, .03], [.03, .04, .1], [.13, .13, .13], [.02, .02, .03], [.14, .1, .03], [.04, .07, .04], [.07, .03, .08], [.05, .05, .06], [.1, .1, .11], [.02, .03, .05]], sh = shirt || pal[Math.floor(rng.u() * pal.length)], sc = rng.r(.9, 1.1), sg = hi ? 12 : 7, lean = rng.s1() * .18, tw = rng.s1() * .3;
     mb.push().tr(x, y, z).ry(face + tw).sc(sc);
     const hip = seated ? .0 : .82;
     mb.set(MAT.CLOTH, .05 + rng.u() * .07, .05 + rng.u() * .06, .07 + rng.u() * .08, 0);
@@ -106,9 +106,9 @@ function buildWorldMeshes(mb) {
   mb.set(MAT.DARK, .02, .02, .02, .2); for (const s of SAWS) mb.bx(s.x, -.1, s.z, SAW_R * 2 + .12, .2, .05, 0);
   mb.set(MAT.STEEL, .45, .45, .47, .5); for (const s of SAWS) for (const d of [-1, 1]) { mb.bx(s.x, .004, s.z + d * .05, SAW_R * 2 + .16, .008, .05, .002); }
   for (const n of FLAME.n) { mb.set(MAT.STEEL, .35, .33, .3, .6); mb.cy(n[0], .012, n[1], .11, .024, 16, 1); mb.set(MAT.DARK, .02, .02, .02, .2); mb.cy(n[0], .022, n[1], .06, .01, 12, 1, { bev: 0 }); for (let i = 0; i < 6; i++) mb.bolt(n[0] + Math.cos(i / 6 * TAU) * .09, .024, n[1] + Math.sin(i / 6 * TAU) * .09, .01, 1, 1); }
-  mb.push().tr(AHAM.x, 0, AHAM.z).ry(-PI * .75 + PI); mb.set(MAT.HAZ, 1, .8, 0, 0); mb.bx(0, .32, 0, .7, .64, .7, .02); mb.set(MAT.STEEL, .4, .4, .42, .5); for (const s of [-1, 1]) mb.bx(0, .62, s * .2, .3, .5, .05, .01); mb.set(MAT.DARK, .06, .06, .07, .5); mb.cy(0, AHAM.y + .1, 0, .07, .52, 12, 2); mb.pop();
+  mb.push().tr(AHAM.x, 0, AHAM.z).ry(-PI * .75 + PI); mb.set(MAT.HAZ, 1, .8, 0, 0); mb.bx(0, .26, 0, .56, .52, .56, .03); mb.set(MAT.STEEL, .4, .4, .42, .5); for (const s of [-1, 1]) mb.bx(0, .62, s * .2, .3, .5, .05, .01); mb.set(MAT.DARK, .06, .06, .07, .5); mb.cy(0, AHAM.y + .1, 0, .07, .52, 12, 2); mb.pop();
   // sinalizadores das armadilhas e dos cantos
-  mb.set(MAT.DARK, .05, .05, .06, .4); mb.bx(-AR + .06, .6, 0, .1, .2, 1.9, .01); mb.bx(AR - .06, .6, 0, .1, .2, 1.9, .01); mb.set(MAT.EMIS, 1, .2, .05, 2.5); mb.bx(-AR + .115, .6, 0, .01, .06, 1.7, 0); mb.set(MAT.EMIS, .08, .3, 1, 2.5); mb.bx(AR - .115, .6, 0, .01, .06, 1.7, 0);
+  
 
   // grade de trelica dos refletores + torres
   const RG = 8.6, RY = 7.6;
@@ -188,6 +188,8 @@ function buildWorldMeshes(mb) {
   for (let k = 0; k < 4; k++) { mb.push().ry(k * PI / 2); for (let i = 0; i < 4; i++) { const x0 = -AR + i * 3.5 + .06, x1 = x0 + 3.38; const a = mb.v(x0, .47, AR + .06, 0, 0, -1), b = mb.v(x1, .47, AR + .06, 0, 0, -1), c = mb.v(x1, WALL_H + .08, AR + .06, 0, 0, -1), d = mb.v(x0, WALL_H + .08, AR + .06, 0, 0, -1); mb.quad(a, b, c, d); } mb.pop(); }
   mb.end('glass');
 
+  mb.set(MAT.SPIN, .3, .3, .32, 0); mb.cy(0, 0, 0, .214, .024, 48, 1, { bev: .004 }); mb.set(MAT.DARK, .07, .07, .08, .3); mb.cy(0, 0, 0, .06, .04, 16, 1); mb.end('blurH');
+  mb.set(MAT.SPIN, .3, .3, .32, 0); mb.cy(0, 0, 0, .198, .03, 48, 2, { bev: .004 }); mb.set(MAT.DARK, .07, .07, .08, .3); mb.cy(0, 0, 0, .075, .04, 18, 2); mb.end('blurV');
   // serra (eixo Z, gira), martelo da arena (braco em +X a partir do pivo)
   mb.set(MAT.STEEL, .66, .66, .68, .3); { const poly = [], N = 72; for (let i = 0; i < N; i++) { const t = -i / N * TAU, f = (i / N * 24) % 1, r = SAW_R - .03 + .03 * f; poly.push([Math.cos(t) * r, Math.sin(t) * r]); } mb.extrude(poly, .012, .002); mb.set(MAT.DARK, .1, .1, .11, .3); mb.cy(0, 0, 0, .07, .03, 12, 2); } mb.end('saw');
   mb.set(MAT.HAZ, 1, .8, 0, 0); mb.bx(AHAM.len / 2, 0, 0, AHAM.len, .12, .12, .012); mb.set(MAT.STEEL, .5, .5, .52, .6); mb.bx(AHAM.len, -.12, 0, .3, .36, .36, .03); mb.cy(AHAM.len, -.36, 0, .1, .14, 10, 1, { r2: .02, bev: 0 }); mb.end('ahammer');

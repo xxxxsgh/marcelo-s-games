@@ -47,7 +47,7 @@ const CR = window.CR = { CAR, G, GAR, SIM, BG, R, IN, UI, FX, Atlas, MESH, DRAW,
 };
 async function boot() {
   UI.build(); IN.init(); Atlas.init();
-  buildRobotMeshes(MBG); buildWorldMeshes(MBG); Object.assign(MESH, MBG.meshes);
+  buildRobotMeshes(MBG); buildWorldMeshes(MBG); Object.assign(MESH, MBG.meshes); DRAW.blurH = MESH.blurH.id; DRAW.blurV = MESH.blurV.id;
   const cv = $('cv'); await R.init(cv, MBG);
   const fit = () => { let w = +QS.get('w') || Math.round(innerWidth * Math.min(devicePixelRatio || 1, 2)), h = +QS.get('h') || Math.round(innerHeight * Math.min(devicePixelRatio || 1, 2)); const k = Math.min(1, 1920 / w, 1080 / h) * (+QS.get('rs') || 1); w = Math.max(320, Math.round(w * k / 2) * 2); h = Math.max(180, Math.round(h * k / 2) * 2); R.resize(w, h); };
   fit(); if (!QS.get('cap')) addEventListener('resize', fit);
