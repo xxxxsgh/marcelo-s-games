@@ -84,6 +84,7 @@ class Sim {
     let p2 = Math.abs(x) + r - AR; if (p2 > pen && p2 > 0) { pen = p2; nx = x > 0 ? -1 : 1; ny = 0; nz = 0; }
     p2 = Math.abs(z) + r - AR; if (p2 > pen && p2 > 0) { pen = p2; nz = z > 0 ? -1 : 1; ny = 0; nx = 0; }
     p2 = y + r - (WALL_H + .7); if (p2 > pen && p2 > 0) { pen = p2; nx = 0; ny = -1; nz = 0; }
+    { const bx = Math.abs(x - AHAM.x) - .34 - r, bz = Math.abs(z - AHAM.z) - .34 - r; if (bx < 0 && bz < 0 && y - r < .56) { const p3 = Math.min(-bx, -bz); if (p3 > pen) { pen = Math.min(p3, .2); ny = 0; if (bx > bz) { nx = x > AHAM.x ? 1 : -1; nz = 0; } else { nz = z > AHAM.z ? 1 : -1; nx = 0; } } } }
     _c[0] = pen; _c[1] = nx; _c[2] = ny; _c[3] = nz;
   }
   // ponto mundial -> local do casco (relativo ao CM) em _c[4..6]

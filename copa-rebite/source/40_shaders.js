@@ -91,7 +91,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
     if (mat == 1u) { base = i.col; mk = 0.; }
     if (mat == 14u) { let s = fract((i.wp.x + i.wp.y * 1.2 + i.wp.z) * 2.2); base = mix(vec3f(.85, .6, .02), vec3f(.02, .02, .02), smoothstep(.48, .52, s) - smoothstep(.98, 1., s)); mk = 0.; }
     if (mat == 21u && mk > 1.5) { let s = fract((P.x - abs(P.z) * .7) * 2.4 + .1); cover = smoothstep(.0, .02, s) - smoothstep(.34, .36, s); }
-    var sc = scratch(uv * 16., inst.p1.w) * (.3 + wear * 1.1);
+    var sc = (scratch(uv * 16., inst.p1.w) + scratch(vec2f(uv.x * 5., uv.y * 22.), inst.p1.w + 4.) * wear) * (.3 + wear * 1.3);
     let wlow = fbm(P * 7. + inst.p1.w * 1.3);
     let wm = n3 * .3 + nf * .04 + edge * (.34 + .6 * fbm(P * 13. + 7.)) + wear * wlow * .16 + dent * .9;
     var chip = smoothstep(.69, .73, wm); chip = max(chip, smoothstep(.84, .87, fbm(P * 11. + inst.p1.w * 3.) + wear * .05));
@@ -108,7 +108,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
       if (duv.x > 0. && duv.x < 1. && duv.y > 0. && duv.y < 1.) { let t = textureSample(atlas, smp, (duv + vec2f(inst.p0.x, 0.)) * vec2f(.25, .25)); palb = mix(palb, t.rgb * (.85 + .15 * n1), t.a); cover = max(cover, t.a); }
     }
     let grime = smoothstep(.5, .85, fbm(P * 4. + 9.) + (1. - clamp(P.y * 6., 0., 1.)) * .22);
-    palb = mix(palb, palb * vec3f(.42, .38, .34), grime * .6); pr = mix(pr, .75, grime * .6);
+    palb = mix(palb, palb * vec3f(.42, .38, .34), clamp(grime * .6 + wear * wlow * .7, 0., .85)); pr = mix(pr, .75, clamp(grime * .6 + wear * .4, 0., 1.));
     let streakd = smoothstep(.55, .9, vn(vec3f(P.x * 30., P.y * 3., P.z * 30.) + 2.)) * (1. - abs(i.on.y)); palb *= 1. - streakd * .35;
     let pm = (1. - chip) * cover;
     alb = mix(bare * (.9 + .2 * streak), palb, pm); alb = mix(alb, vec3f(.5, .47, .42) * (.8 + .3 * nf), prim * cover * .8);

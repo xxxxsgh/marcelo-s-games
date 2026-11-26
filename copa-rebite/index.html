@@ -607,7 +607,7 @@ function buildRobotMeshes(mb) {
         // braco (pivo na origem): parte plana + pa descendo ate o nariz
         const te = c.tops[0][1], kx = te + .06 - g.px, ky = 0, tx = nose + .1 - g.px, ty = .03 - g.py;
         mb.set(MAT.PAINT, 1, 1, 1, .3); beam(.0, ky, kx, ky, 0, .36, .014); beam(kx, ky, tx, ty, 0, .36, .014);
-        mb.set(MAT.STEEL, .55, .55, .57, .6); beam(tx - .03, ty + .008, tx + .012, ty - .006, 0, .38, .01);
+        mb.set(MAT.STEEL, .32, .32, .34, .6); beam(tx - .03, ty + .008, tx + .012, ty - .006, 0, .38, .01);
         mb.set(MAT.STEEL, .4, .4, .42, .5); for (const f of [.3, .62, .9]) { const bxp = kx + (tx - kx) * f, byp = ky + (ty - ky) * f, an = Math.atan2(ty - ky, tx - kx); mb.push().tr(bxp, byp, 0).rz(an).tr(0, .011, 0).box(.022, .012, .34, .003); mb.pop(); for (const s of [-1, 0, 1]) { mb.push().tr(bxp, byp, s * .14).rz(an); mb.bolt(0, .017, 0, .007, 1, 1); mb.pop(); } }
         for (const s of [-1, 1]) for (const f of [.25, .75]) mb.bolt(kx * f, ky + .008, s * .16, .007, 1, 1);
         mb.set(MAT.PAINT, 1, 1, 1, .5); for (const s of [-1, 1]) { beam(0, ky + .016, kx, ky + .016, s * .12, .016, .02); mb.bolt(kx * .5, ky + .028, s * .12, .007, 1, 1); }
@@ -696,10 +696,10 @@ const FLAME = { x: -4.3, z: -4.3, r: 1.15, n: [[-4.9, -4.3], [-4.3, -4.3], [-3.7
 const START = [[-5, 0], [5, 0]];
 // refletores: p posicao, t alvo, c cor, I intensidade, a meio-angulo (graus), s sombra
 const ARENA_LIGHTS = [
-  { p: [5.6, 7.0, 5.6], t: [-.8, 0, -.8], c: [1, .93, .82], I: 800, a: 52, s: 1 },
-  { p: [-5.6, 7.0, -5.6], t: [.8, 0, .8], c: [.82, .9, 1], I: 800, a: 52, s: 1 },
-  { p: [5.6, 7.0, -5.6], t: [-.8, 0, .8], c: [1, .96, .9], I: 700, a: 52, s: 1 },
-  { p: [-5.6, 7.0, 5.6], t: [.8, 0, -.8], c: [.9, .95, 1], I: 700, a: 52, s: 1 },
+  { p: [5.6, 7.0, 5.6], t: [-.8, 0, -.8], c: [1, .93, .82], I: 690, a: 52, s: 1 },
+  { p: [-5.6, 7.0, -5.6], t: [.8, 0, .8], c: [.82, .9, 1], I: 690, a: 52, s: 1 },
+  { p: [5.6, 7.0, -5.6], t: [-.8, 0, .8], c: [1, .96, .9], I: 610, a: 52, s: 1 },
+  { p: [-5.6, 7.0, 5.6], t: [.8, 0, -.8], c: [.9, .95, 1], I: 610, a: 52, s: 1 },
   { p: [-7.6, 6.2, 0], t: [-4.2, 0, 0], c: [1, .12, .06], I: 620, a: 30, s: 0 },
   { p: [7.6, 6.2, 0], t: [4.2, 0, 0], c: [.08, .25, 1], I: 620, a: 30, s: 0 },
   { p: [0, 7.3, 9.5], t: [0, 2, 15], c: [1, .8, .6], I: 16, a: 48, s: 0, vol: 0 },
@@ -1029,7 +1029,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
     if (mat == 1u) { base = i.col; mk = 0.; }
     if (mat == 14u) { let s = fract((i.wp.x + i.wp.y * 1.2 + i.wp.z) * 2.2); base = mix(vec3f(.85, .6, .02), vec3f(.02, .02, .02), smoothstep(.48, .52, s) - smoothstep(.98, 1., s)); mk = 0.; }
     if (mat == 21u && mk > 1.5) { let s = fract((P.x - abs(P.z) * .7) * 2.4 + .1); cover = smoothstep(.0, .02, s) - smoothstep(.34, .36, s); }
-    var sc = scratch(uv * 16., inst.p1.w) * (.3 + wear * 1.1);
+    var sc = (scratch(uv * 16., inst.p1.w) + scratch(vec2f(uv.x * 5., uv.y * 22.), inst.p1.w + 4.) * wear) * (.3 + wear * 1.3);
     let wlow = fbm(P * 7. + inst.p1.w * 1.3);
     let wm = n3 * .3 + nf * .04 + edge * (.34 + .6 * fbm(P * 13. + 7.)) + wear * wlow * .16 + dent * .9;
     var chip = smoothstep(.69, .73, wm); chip = max(chip, smoothstep(.84, .87, fbm(P * 11. + inst.p1.w * 3.) + wear * .05));
@@ -1046,7 +1046,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
       if (duv.x > 0. && duv.x < 1. && duv.y > 0. && duv.y < 1.) { let t = textureSample(atlas, smp, (duv + vec2f(inst.p0.x, 0.)) * vec2f(.25, .25)); palb = mix(palb, t.rgb * (.85 + .15 * n1), t.a); cover = max(cover, t.a); }
     }
     let grime = smoothstep(.5, .85, fbm(P * 4. + 9.) + (1. - clamp(P.y * 6., 0., 1.)) * .22);
-    palb = mix(palb, palb * vec3f(.42, .38, .34), grime * .6); pr = mix(pr, .75, grime * .6);
+    palb = mix(palb, palb * vec3f(.42, .38, .34), clamp(grime * .6 + wear * wlow * .7, 0., .85)); pr = mix(pr, .75, clamp(grime * .6 + wear * .4, 0., 1.));
     let streakd = smoothstep(.55, .9, vn(vec3f(P.x * 30., P.y * 3., P.z * 30.) + 2.)) * (1. - abs(i.on.y)); palb *= 1. - streakd * .35;
     let pm = (1. - chip) * cover;
     alb = mix(bare * (.9 + .2 * streak), palb, pm); alb = mix(alb, vec3f(.5, .47, .42) * (.8 + .3 * nf), prim * cover * .8);
@@ -1720,6 +1720,7 @@ class Sim {
     let p2 = Math.abs(x) + r - AR; if (p2 > pen && p2 > 0) { pen = p2; nx = x > 0 ? -1 : 1; ny = 0; nz = 0; }
     p2 = Math.abs(z) + r - AR; if (p2 > pen && p2 > 0) { pen = p2; nz = z > 0 ? -1 : 1; ny = 0; nx = 0; }
     p2 = y + r - (WALL_H + .7); if (p2 > pen && p2 > 0) { pen = p2; nx = 0; ny = -1; nz = 0; }
+    { const bx = Math.abs(x - AHAM.x) - .34 - r, bz = Math.abs(z - AHAM.z) - .34 - r; if (bx < 0 && bz < 0 && y - r < .56) { const p3 = Math.min(-bx, -bz); if (p3 > pen) { pen = Math.min(p3, .2); ny = 0; if (bx > bz) { nx = x > AHAM.x ? 1 : -1; nz = 0; } else { nz = z > AHAM.z ? 1 : -1; nx = 0; } } } }
     _c[0] = pen; _c[1] = nx; _c[2] = ny; _c[3] = nz;
   }
   // ponto mundial -> local do casco (relativo ao CM) em _c[4..6]
@@ -2195,6 +2196,7 @@ const Atlas = {
 
 // ==== 76_input.js ====
 // ---------- entrada: gamepad (layout padrao) + teclado ----------
+const QS_MUDO = /[?&]mudo=1/.test(location.search);
 const IN = {
   thr: 0, steer: 0, rx: 0, fire: 0, flip: 0, rst: 0,
   // pressionados neste quadro
@@ -2203,7 +2205,8 @@ const IN = {
   rum: { startDelay: 0, duration: 100, weakMagnitude: 0, strongMagnitude: 0 }, lastRumble: 0, typing: false,
   K: { KeyW: 0, KeyS: 1, KeyA: 2, KeyD: 3, Space: 4, KeyF: 5, KeyC: 6, KeyR: 7, ArrowUp: 8, ArrowDown: 9, ArrowLeft: 10, ArrowRight: 11, Enter: 12, Escape: 13, Backspace: 14, KeyQ: 15, KeyE: 16, KeyP: 17, NumpadEnter: 12 },
   init() {
-    addEventListener('keydown', e => { if (this.typing) { if (e.code === 'Enter' || e.code === 'Escape') { e.preventDefault(); UI.endTyping(); } return; } const k = this.K[e.code]; if (k === undefined) return; if (!this.kb[k]) this.kp[k] = 1; this.kb[k] = 1; e.preventDefault(); });
+    addEventListener('pointerdown', () => { if (!QS_MUDO) AU.init(); });
+    addEventListener('keydown', e => { if (!QS_MUDO) AU.init(); if (this.typing) { if (e.code === 'Enter' || e.code === 'Escape') { e.preventDefault(); UI.endTyping(); } return; } const k = this.K[e.code]; if (k === undefined) return; if (!this.kb[k]) this.kp[k] = 1; this.kb[k] = 1; e.preventDefault(); });
     addEventListener('keyup', e => { const k = this.K[e.code]; if (k !== undefined) this.kb[k] = 0; });
     addEventListener('blur', () => this.kb.fill(0));
     addEventListener('gamepadconnected', e => { this.gpName = e.gamepad.id; UI.toast('CONTROLE CONECTADO'); });
@@ -2329,6 +2332,44 @@ const UI = {
   fatal(m) { const e = $('erro'); e.style.display = 'flex'; e.textContent = m; const c = $('carga'); if (c) c.remove(); },
 };
 
+// ==== 79_audio.js ====
+// ---------- som procedural (Web Audio): tudo sintetizado, nenhum arquivo ----------
+// As vozes sao criadas uma unica vez e ficam tocando; durante a luta so se mexe em AudioParams (sem alocar).
+const AU = {
+  ctx: null, on: false, vol: .6, eng: null, wpn: null, hits: [], nh: 0, crowd: null, ui: null, cheer: 0,
+  init() { // precisa de um gesto do usuario (tecla ou clique)
+    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    let c; try { c = this.ctx = new AC(); } catch (e) { return; }
+    const master = c.createGain(); master.gain.value = this.vol; const comp = c.createDynamicsCompressor(); master.connect(comp); comp.connect(c.destination); this.master = master;
+    // ruido branco em laco (base de impactos, plateia e faiscas)
+    const nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = nb.getChannelData(0); let s = 12345; for (let i = 0; i < d.length; i++) { s = (s * 1664525 + 1013904223) >>> 0; d[i] = s / 2147483648 - 1; }
+    const noise = () => { const n = c.createBufferSource(); n.buffer = nb; n.loop = true; n.start(); return n; };
+    const voice = (type, f) => { const o = c.createOscillator(); o.type = type; o.frequency.value = f; const g = c.createGain(); g.gain.value = 0; o.connect(g); g.connect(master); o.start(); return { o, g }; };
+    // motores dos dois robos e gemido das armas
+    this.eng = [0, 1].map(i => { const v = voice('sawtooth', 50 + i * 7), lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400; v.o.disconnect(); v.o.connect(lp); lp.connect(v.g); return v; });
+    this.wpn = [0, 1].map(i => voice('triangle', 120));
+    // impactos: 4 vozes de ruido filtrado + 1 pancada grave
+    for (let i = 0; i < 4; i++) { const n = noise(), bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1800 + i * 900; bp.Q.value = .8; const g = c.createGain(); g.gain.value = 0; n.connect(bp); bp.connect(g); g.connect(master); this.hits.push({ g, bp }); }
+    this.thump = voice('sine', 60);
+    // plateia: ruido com passa-faixa lento
+    { const n = noise(), bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = .5; const g = c.createGain(); g.gain.value = 0; n.connect(bp); bp.connect(g); g.connect(master); this.crowd = { g, bp }; }
+    this.ui = voice('square', 440); this.on = true;
+  },
+  hitR() { if (!this.on) return; const dmg = _k[11], c = this.ctx, t = c.currentTime, v = this.hits[this.nh], a = Math.min(1, .15 + dmg / 45); this.nh = (this.nh + 1) & 3;
+    v.g.gain.cancelScheduledValues(t); v.g.gain.setValueAtTime(a, t); v.g.gain.exponentialRampToValueAtTime(.001, t + .12 + a * .25);
+    const th = this.thump; th.o.frequency.cancelScheduledValues(t); th.o.frequency.setValueAtTime(110, t); th.o.frequency.exponentialRampToValueAtTime(38, t + .18); th.g.gain.cancelScheduledValues(t); th.g.gain.setValueAtTime(a * .9, t); th.g.gain.exponentialRampToValueAtTime(.001, t + .3);
+    if (dmg > 14) this.cheer = Math.min(1, this.cheer + dmg / 60); },
+  blip(f) { if (!this.on) return; const t = this.ctx.currentTime, u = this.ui; u.o.frequency.setValueAtTime(f, t); u.g.gain.cancelScheduledValues(t); u.g.gain.setValueAtTime(.08, t); u.g.gain.exponentialRampToValueAtTime(.001, t + .07); },
+  // chamado a cada quadro da luta: so ajusta parametros
+  update(S, ativo) { if (!this.on || (S.frame % 6)) return; const t = this.ctx.currentTime; // a 10 Hz: as chamadas da API de audio recebem numeros e o navegador os encaixota
+    for (let i = 0; i < 2; i++) { const B = S.bots[i], s = B.s, sp = Math.sqrt(s[7] * s[7] + s[9] * s[9]), k = ARMAS[B.b[3]], e = this.eng[i], w = this.wpn[i], a = ativo && !B.dead ? 1 : 0;
+      e.o.frequency.setTargetAtTime(46 + sp * 26 + Math.abs(B.thr) * 30, t, .05); e.g.gain.setTargetAtTime(a * (.035 + Math.abs(B.thr) * .05), t, .08);
+      const fr = k.spin ? B.wspin / k.wmax : 0; w.o.frequency.setTargetAtTime(90 + fr * 620, t, .05); w.g.gain.setTargetAtTime(a * fr * .06, t, .08); }
+    this.cheer *= .985; this.crowd.g.gain.setTargetAtTime(ativo ? .035 + this.cheer * .16 : .012, t, .2); this.crowd.bp.frequency.setTargetAtTime(600 + this.cheer * 900, t, .3); },
+  calar() { if (!this.on) return; const t = this.ctx.currentTime; for (let i = 0; i < 2; i++) { this.eng[i].g.gain.setTargetAtTime(0, t, .1); this.wpn[i].g.gain.setTargetAtTime(0, t, .1); } this.crowd.g.gain.setTargetAtTime(.01, t, .3); },
+};
+
 // ==== 80_game.js ====
 // ---------- jogo: garagem, torneio, luta, cameras, replay ----------
 const SAVE_KEY = 'copaRebite.v1';
@@ -2389,7 +2430,7 @@ const GAR = {
   setNome(v) { v = String(v).trim().slice(0, 14) || 'Sem Nome'; if (v !== this.nome) { this.nome = v; Atlas.robot(0, this.nome, this.num, CORES[this.cor]); G.save(); } },
   enter(repair) {
     this.repair = !!repair; this.acoes = 2; this.mode = 0; this.row = 0; this.pre = this.com.slice(); this.hp = repair && TOR ? TOR.ent[0].hp : null;
-    G.st = 'garagem'; UI.show('gar'); R.exposure = .5; R.fog = .0012; R.mblur = .4; R.amb = 1.0; R.keyDim = 1; FX.reset(); DRAW.hide(SLOT.ROBOT + SLOT.ROBOT_N);
+    G.st = 'garagem'; UI.show('gar'); AU.calar(); R.exposure = .5; R.fog = .0012; R.mblur = .4; R.amb = 1.0; R.keyDim = 1; FX.reset(); DRAW.hide(SLOT.ROBOT + SLOT.ROBOT_N);
     for (let i = SLOT.DEBRIS; i < SLOT.DEBRIS + SLOT.DEBRIS_N; i++) R.im[i] = -1; R.im[SLOT.AUX1] = -1; R.im[SLOT.AUX2] = -1; R.im[SLOT.AUX3] = -1; R.im[SLOT.GLASS] = -1;
     R.bake(1, MESH.garage.id, GAR_LIGHTS, [0, 1.5, 1.2]); this.refresh(-1); for (let k = 0; k < 4; k++) this.an[k] = .4 + k * .12;
   },
@@ -2420,7 +2461,7 @@ const GAR = {
         g.mode = 0; ch = true; G.save(); }
       else if (IN.pBack) { if (g.pre[g.row] !== g.com[g.row]) { g.pre[g.row] = g.com[g.row]; g.refresh(g.row); } g.mode = 0; ch = true; }
     }
-    if (ch) UI.garage(g);
+    if (ch) { UI.garage(g); _k[11] = 0; AU.blip(g.mode === 1 ? 660 : 520); }
     // bancada giratoria
     if (Math.abs(IN.rx) > .01) { g.ang += IN.rx * dt * 2.6; g.idle = 0; } else { g.idle += dt; if (g.idle > 2.5) g.ang += dt * .22; }
     // animacao de encaixe (mola amortecida)
@@ -2488,7 +2529,7 @@ const G = {
   },
   enterArena() {
     if (R.scene !== 0) { R.im[SLOT.GLASS] = MESH.glass.id; R.im[SLOT.AUX0] = MESH.saw.id; R.im[SLOT.AUX1] = MESH.saw.id; R.im[SLOT.AUX2] = MESH.ahammer.id; R.bake(0, MESH.arena.id, ARENA_LIGHTS, [0, 1.2, 0]); }
-    R.exposure = .29; R.fog = .0034; R.mblur = .3; R.amb = 1; R.cp[0] = .9;
+    R.exposure = .3; R.fog = .0016; R.mblur = .3; R.amb = 1; R.cp[0] = .9;
   },
   // prepara a luta do jogador (ou uma luta avulsa para teste/roteiro)
   setupFight(ia, ib, seed, dur, ea, eb) {
@@ -2525,7 +2566,7 @@ const G = {
       if (IN.pPause && st === 'luta' && !this.script) { this.prev = st; this.st = 'pausa'; UI.show('hud', 'pausa'); return; }
       if (this.ft[2] > 0) { this.ft[2] -= dt; if (this.ft[2] <= 0 && st === 'luta') UI.msg('', ''); }
       const n = this.fast; for (let k = 0; k < n; k++) this.fightStep();
-      if (!this.skipRender || this.st !== 'luta') { const dbg = this.dbg; if (!(dbg & 1)) this.camera(dt); if (!(dbg & 2)) this.drawFight(1); if (!(dbg & 4)) FX.update(dt); if (!(dbg & 8)) UI.hud(SIM, this.cam); }
+      if (!this.skipRender || this.st !== 'luta') { const dbg = this.dbg; if (!(dbg & 1)) this.camera(dt); if (!(dbg & 2)) this.drawFight(1); if (!(dbg & 4)) FX.update(dt); if (!(dbg & 8)) UI.hud(SIM, this.cam); AU.update(SIM, this.st === 'luta' ? 1 : 0); }
       if (this.st === 'fim') { this.ft[1] += dt * (this.fast > 1 ? 30 : 1); if (this.ft[1] > 3) this.afterFight(); } }
     else if (st === 'juizes') { this.ft[1] += dt * (this.fast > 1 ? 30 : 1); this.camera(dt); this.drawFight(1); FX.update(dt); if (this.ft[1] > 6 || IN.pOk) this.toReplay(); }
     else if (st === 'replay') { this.replayTick(dt); }
@@ -2551,10 +2592,10 @@ const G = {
     for (let k = 0; k < S.nev; k++) { const o = k * 8, ty = e[o], x = e[o + 1], y = e[o + 2], z = e[o + 3], dx = e[o + 4], dy = e[o + 5], dz = e[o + 6], mag = e[o + 7];
       if (ty === EV.HIT) { const dmg = mag % 1000; this.hits++; if (mag >= 1000) this.hitsB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy, _f[5] = dz, _f[6] = 7 + dmg * 1.5, _f[7] = 3 + dmg * .14, _f[8] = .75, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy + .5, _f[5] = dz, _f[6] = 0, _f[7] = 3.5, _f[8] = .9, FX.sparksR(1)); (_f[0] = x, _f[1] = y + .7, _f[2] = z, _f[3] = 2.6 + dmg * .05, _f[4] = 2.4 + dmg * .16, _f[5] = 1.3 + dmg * .08, _f[6] = .3, _f[7] = .4, FX.lightR()); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 2, _f[4] = .22, _f[5] = .7, FX.smokeR(0)); (_f[0] = x - dz * .2, _f[1] = z + dx * .2, _f[2] = x + dz * .2, _f[3] = z - dx * .2, _f[4] = .012, _f[5] = 1, _f[6] = .6, FX.markR());
         FX.sh[0] = Math.min(1, FX.sh[0] + dmg * .03); const st = Math.min(Math.max(.12 + dmg / 60, 0), 1); (_k[8] = st, _k[9] = st * .7, _k[10] = 120 + dmg * 7, IN.rumbleR()); if (this.rumbleLog && this.rumbleLog.length < 400) this.rumbleLog.push(dmg, st);
-        if (dmg > S.best) { S.best = dmg; this.bestAt = S.frame; } _k[11] = dmg; this.pushEv(1, o); }
-      else if (ty === EV.DETACH) { this.detached++; if (mag >= 100) this.detB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 70, _f[7] = 5, _f[8] = .9, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 14, _f[7] = 4, _f[8] = 1, FX.sparksR(1)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 4, _f[4] = .3, _f[5] = .9, FX.smokeR(1)); (_f[0] = x, _f[1] = y + .3, _f[2] = z, _f[3] = 5, _f[4] = 40, _f[5] = 22, _f[6] = 6, _f[7] = .3, FX.lightR()); (_k[8] = .9, _k[9] = .6, _k[10] = 260, IN.rumbleR()); FX.sh[0] = Math.min(1, FX.sh[0] + .5); _k[11] = 30; this.pushEv(2, o); this.note(this.notes[mag >= 100 ? 1 : 0][mag % 100 | 0]); }
+        if (dmg > S.best) { S.best = dmg; this.bestAt = S.frame; } _k[11] = dmg; this.pushEv(1, o); AU.hitR(); }
+      else if (ty === EV.DETACH) { this.detached++; if (mag >= 100) this.detB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 70, _f[7] = 5, _f[8] = .9, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 14, _f[7] = 4, _f[8] = 1, FX.sparksR(1)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 4, _f[4] = .3, _f[5] = .9, FX.smokeR(1)); (_f[0] = x, _f[1] = y + .3, _f[2] = z, _f[3] = 5, _f[4] = 40, _f[5] = 22, _f[6] = 6, _f[7] = .3, FX.lightR()); (_k[8] = .9, _k[9] = .6, _k[10] = 260, IN.rumbleR()); FX.sh[0] = Math.min(1, FX.sh[0] + .5); _k[11] = 30; this.pushEv(2, o); AU.hitR(); this.note(this.notes[mag >= 100 ? 1 : 0][mag % 100 | 0]); }
       else if (ty === EV.GRIND) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx * .3, _f[4] = .8, _f[5] = dz * .3, _f[6] = 5, _f[7] = 3, _f[8] = .9, FX.sparksR(0)); }
-      else if (ty === EV.SAW) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 1, _f[4] = .9, _f[5] = 0, _f[6] = 46, _f[7] = 6, _f[8] = .5, FX.sparksR(0)); (_f[0] = x, _f[1] = .4, _f[2] = z, _f[3] = 4, _f[4] = 30, _f[5] = 18, _f[6] = 5, _f[7] = .2, FX.lightR()); (_k[8] = .6, _k[9] = .5, _k[10] = 160, IN.rumbleR()); FX.sh[0] = Math.min(1, FX.sh[0] + .3); _k[11] = 12; this.pushEv(1, o); }
+      else if (ty === EV.SAW) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 1, _f[4] = .9, _f[5] = 0, _f[6] = 46, _f[7] = 6, _f[8] = .5, FX.sparksR(0)); (_f[0] = x, _f[1] = .4, _f[2] = z, _f[3] = 4, _f[4] = 30, _f[5] = 18, _f[6] = 5, _f[7] = .2, FX.lightR()); (_k[8] = .6, _k[9] = .5, _k[10] = 160, IN.rumbleR()); FX.sh[0] = Math.min(1, FX.sh[0] + .3); _k[11] = 12; this.pushEv(1, o); AU.hitR(); }
       else if (ty === EV.AHAM) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 0, _f[4] = 1, _f[5] = 0, _f[6] = 40, _f[7] = 4.5, _f[8] = 1, FX.sparksR(0)); (_f[0] = x, _f[1] = .1, _f[2] = z, _f[3] = 3, _f[4] = .4, _f[5] = .5, FX.smokeR(0)); (_f[0] = x, _f[1] = .5, _f[2] = z, _f[3] = 5, _f[4] = 30, _f[5] = 20, _f[6] = 8, _f[7] = .25, FX.lightR()); FX.sh[0] = Math.min(1, FX.sh[0] + .45); (_f[0] = x - .15, _f[1] = z - .15, _f[2] = x + .15, _f[3] = z + .15, _f[4] = .16, _f[5] = 1, _f[6] = .8, FX.markR()); }
       else if (ty === EV.LAND) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 0, _f[4] = 1, _f[5] = 0, _f[6] = 6 + mag * 2, _f[7] = 2.5, _f[8] = 1, FX.sparksR(0)); (_k[8] = Math.min(Math.max(mag / 10, .15), .7), _k[9] = .3, _k[10] = 110, IN.rumbleR()); }
       else if (ty === EV.HAMMER) { (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 0, _f[4] = 1, _f[5] = 0, _f[6] = 16, _f[7] = 3.5, _f[8] = 1, FX.sparksR(0)); (_f[0] = x, _f[1] = .3, _f[2] = z, _f[3] = 3, _f[4] = 14, _f[5] = 9, _f[6] = 3, _f[7] = .15, FX.lightR()); (_f[0] = x - .04, _f[1] = z, _f[2] = x + .04, _f[3] = z, _f[4] = .05, _f[5] = 1, _f[6] = .9, FX.markR()); }
@@ -2613,7 +2654,7 @@ const G = {
     if (this.cam === 0 || (this.cam === 1 && R_[4] < .45)) { let fx = R_[0], fz = R_[6]; const l = Math.sqrt((fx) * (fx) + (fz) * (fz)); if (l > .3) { fx /= l; fz /= l; this.ft[5] = fx; this.ft[6] = fz; } else { fx = this.ft[5] || 1; fz = this.ft[6] || 0; }
       const kk = this.first ? 1 : 1 - Math.exp(-dt * 3.2); this.ft[3] = (this.ft[3] || fx) + (fx - (this.ft[3] || fx)) * kk; this.ft[4] = (this.ft[4] || 0) + (fz - (this.ft[4] || 0)) * kk; if (this.first) { this.ft[3] = fx; this.ft[4] = fz; }
       const n = Math.sqrt((this.ft[3]) * (this.ft[3]) + (this.ft[4]) * (this.ft[4])) || 1, ux = this.ft[3] / n, uz = this.ft[4] / n;
-      (_k[0] = Math.min(Math.max(s[0] - ux * 2.05, -AR + .25), AR - .25) + jx, _k[1] = Math.min(Math.max(s[1] + 1.05, .5), 3) + jy, _k[2] = Math.min(Math.max(s[2] - uz * 2.05, -AR + .25), AR - .25), _k[3] = s[0] + ux * 1.1, _k[4] = Math.max(s[1], 0) + .2, _k[5] = s[2] + uz * 1.1, _k[6] = dt, _k[7] = .86, this.setCamR()); }
+      (_k[0] = Math.min(Math.max(s[0] - ux * 2.05, -AR + .25), AR - .25) + jx, _k[1] = Math.min(Math.max(s[1] + 1.05, .5), 3) + jy + (((s[0] - ux * 2.05 - B.s[0]) * (s[0] - ux * 2.05 - B.s[0]) + (s[2] - uz * 2.05 - B.s[2]) * (s[2] - uz * 2.05 - B.s[2])) < 2.6 ? 1.3 : 0), _k[2] = Math.min(Math.max(s[2] - uz * 2.05, -AR + .25), AR - .25), _k[3] = s[0] + ux * 1.1, _k[4] = Math.max(s[1], 0) + .2, _k[5] = s[2] + uz * 1.1, _k[6] = dt, _k[7] = .86, this.setCamR()); }
     else if (this.cam === 1) { const L = A.L, y = L.hy1 - A.ycm + .3, x = L.mx - .12; (_c[45] = x, _c[46] = y, _c[47] = 0, SIM.wptR(A)); e[0] = Math.min(Math.max(_c[0] + jx, -AR + .75), AR - .75); e[1] = _c[1] + jy; e[2] = Math.min(Math.max(_c[2], -AR + .75), AR - .75); (_c[45] = x + 3, _c[46] = y - .62, _c[47] = 0, SIM.wptR(A)); t[0] = _c[0]; t[1] = _c[1]; t[2] = _c[2]; R.up[0] = R_[1]; R.up[1] = R_[4]; R.up[2] = R_[7]; R.cp[0] = 1.05; if (this.first) { this.first = 0; R.reset = 1; } }
     else { const mx = (s[0] + B.s[0]) / 2, mz = (s[2] + B.s[2]) / 2, d = Math.sqrt((s[0] - B.s[0]) * (s[0] - B.s[0]) + (s[2] - B.s[2]) * (s[2] - B.s[2])); (_k[0] = mx * .35 + jx, _k[1] = 3.55 + jy, _k[2] = -6.55, _k[3] = mx, _k[4] = .2, _k[5] = mz, _k[6] = dt, _k[7] = Math.min(Math.max(2 * Math.atan((d * .55 + 1.25) / (1.78 * Math.sqrt((mx * .65) * (mx * .65) + 11.6 + (mz + 6.55) * (mz + 6.55)))), .1), .95), this.setCamR()); }
   },

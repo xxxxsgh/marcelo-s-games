@@ -228,7 +228,7 @@ function buildRobotMeshes(mb) {
         // braco (pivo na origem): parte plana + pa descendo ate o nariz
         const te = c.tops[0][1], kx = te + .06 - g.px, ky = 0, tx = nose + .1 - g.px, ty = .03 - g.py;
         mb.set(MAT.PAINT, 1, 1, 1, .3); beam(.0, ky, kx, ky, 0, .36, .014); beam(kx, ky, tx, ty, 0, .36, .014);
-        mb.set(MAT.STEEL, .55, .55, .57, .6); beam(tx - .03, ty + .008, tx + .012, ty - .006, 0, .38, .01);
+        mb.set(MAT.STEEL, .32, .32, .34, .6); beam(tx - .03, ty + .008, tx + .012, ty - .006, 0, .38, .01);
         mb.set(MAT.STEEL, .4, .4, .42, .5); for (const f of [.3, .62, .9]) { const bxp = kx + (tx - kx) * f, byp = ky + (ty - ky) * f, an = Math.atan2(ty - ky, tx - kx); mb.push().tr(bxp, byp, 0).rz(an).tr(0, .011, 0).box(.022, .012, .34, .003); mb.pop(); for (const s of [-1, 0, 1]) { mb.push().tr(bxp, byp, s * .14).rz(an); mb.bolt(0, .017, 0, .007, 1, 1); mb.pop(); } }
         for (const s of [-1, 1]) for (const f of [.25, .75]) mb.bolt(kx * f, ky + .008, s * .16, .007, 1, 1);
         mb.set(MAT.PAINT, 1, 1, 1, .5); for (const s of [-1, 1]) { beam(0, ky + .016, kx, ky + .016, s * .12, .016, .02); mb.bolt(kx * .5, ky + .028, s * .12, .007, 1, 1); }
