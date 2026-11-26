@@ -158,7 +158,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
   else if (mat == 18u) { alb = vec3f(.02, .025, .04); rough = .06; }
   else if (mat == 19u) { let g = vn(vec3f(P.x * 3., P.y * 60., P.z * 60.)); alb = i.col * (.6 + .7 * g); rough = .55 + g * .2; alb = mix(alb, alb * .4, smoothstep(.6, .8, fbm(P * 4.))); h = g * .0003; }
   else if (mat == 20u) { let g = fract(uv * 32.) - .5; let hole = 1. - smoothstep(.12, .16, length(g)); alb = i.col * (.85 + .2 * vn(P * 30.)) * (1. - hole * .85); rough = .8; h = -hole * .001; }
-  else if (mat == 24u) { let rr = length(select(P.xz, P.xy, abs(i.on.z) > .5)); let ring = vn(vec3f(rr * 240., 1., 2.)); let pp2 = select(P.xz, P.xy, abs(i.on.z) > .5); let ang = atan2(pp2.y, pp2.x); let sw = pow(.5 + .5 * sin(ang * 2. + F.cam.w * 9.), 3.) + .6 * pow(.5 + .5 * sin(ang * 3. - F.cam.w * 6. + 1.), 4.); let rim = smoothstep(.15, .2, rr); let tooth = smoothstep(-.2, .4, sin(ang * 4. + F.cam.w * 7.)); let streak2 = .85 + .3 * vn(vec3f(ang * 30. + F.cam.w * 20., rr * 8., 1.)); alb = vec3f(.3, .3, .32) * (1. + sw * .6) * streak2 * mix(1., .35 + .75 * tooth, rim); metal = 1.; rough = .22 + rim * .22; h = 0.; }
+  else if (mat == 24u) { let rr = length(select(P.xz, P.xy, abs(i.on.z) > .5)); let ring = vn(vec3f(rr * 240., 1., 2.)); let pp2 = select(P.xz, P.xy, abs(i.on.z) > .5); let ang = atan2(pp2.y, pp2.x); let sw = pow(.5 + .5 * sin(ang * 2. + F.cam.w * 9.), 3.) + .6 * pow(.5 + .5 * sin(ang * 3. - F.cam.w * 6. + 1.), 4.); let rim = smoothstep(.15, .2, rr); let tooth = smoothstep(-.2, .4, sin(ang * 4. + F.cam.w * 7.)); let streak2 = .85 + .3 * vn(vec3f(ang * 30. + F.cam.w * 20., rr * 8., 1.)); alb = vec3f(.22, .22, .235) * (1. + sw * .8) * streak2 * mix(1., .35 + .75 * tooth, rim); metal = 1.; rough = .15 + rim * .25; h = 0.; }
   else if (mat == 25u) { // estrutura do chassi: montantes, travessa, diagonais soldadas, poucas aberturas
     let g = vec2f(uv.x / .14, uv.y / .1); let c = fract(g) - .5; let cid = floor(g); let st = vn(vec3f(uv.x * 5., uv.y * 180., 3.)); let n = fbm(P * 16.);
     let post = 1. - smoothstep(.06, .09, abs(c.x) ); let rail = 1. - smoothstep(.05, .08, abs(uv.y - .07) / .1); let dg = abs(abs(c.x) - abs(c.y)); let diag = (1. - smoothstep(.03, .06, dg)) * step(h21(cid), .55);
@@ -252,7 +252,7 @@ fn ggx(N: vec3f, V: vec3f, L: vec3f, r: f32, F0: vec3f) -> vec3f {
   // ambiente: cubo de ambiente + reflexo no espaco de tela
   let rj = vec3f(ign(i.pos.xy + 17., fr), ign(i.pos.xy + 41., fr + 3.), ign(i.pos.xy + 73., fr + 7.)) - .5;
   let R = normalize(reflect(-V, N) + rj * rough * rough * .7); let nv = max(dot(N, V), 0.);
-  let irr = textureSampleLevel(envT, smpC, N * vec3f(1., 1., -1.), 5.).rgb * 2.4 + vec3f(.03, .031, .036) * (.6 + .4 * N.y);
+  let irr = textureSampleLevel(envT, smpC, N * vec3f(1., 1., -1.), 5.).rgb * 2.4 + vec3f(.017, .018, .022) * (.6 + .4 * N.y);
   var spec = textureSampleLevel(envT, smpC, R * vec3f(1., 1., -1.), rough * 5.).rgb; var hitc = 0.;
   if (rough < .62 && N.y > .6 && F.misc2.z > .5) {
     var t = .04 + noise * .06; var hit = false; var huv = vec2f(0.); var st = .07; var tp = 0.;
@@ -353,7 +353,7 @@ fn tone(c0: vec3f) -> vec3f { var c = mat3x3f(.59719, .07600, .02840, .35458, .9
   c = max(c, vec3f(0.)) + textureSampleLevel(t1, smpC, i.uv, 0.).rgb * .085;
   let q = i.uv - .5; let vig = 1. - dot(q, q) * .28; c *= F.misc.x * vig * vig;
   { let lh = max(c.r, max(c.g, c.b)); if (lh > 1.) { c *= (1. + (lh - 1.) / (1. + (lh - 1.) * .6)) / lh; } }
-  c = tone(c); c = mix(c, c * c * (3. - 2. * c), .2);
+  c = tone(c); c = mix(c, c * c * (3. - 2. * c), .34);
   let l = dot(c, vec3f(.2126, .7152, .0722)); c = mix(vec3f(l), c, 1.06) * vec3f(1.01, 1., .985);
   c = pow(clamp(c, vec3f(0.), vec3f(1.)), vec3f(1. / 2.2));
   c += (h21(i.pos.xy + F.misc.y * 7.13) - .5) * .005 + (h21(i.pos.xy * 1.7) - .5) / 255.;

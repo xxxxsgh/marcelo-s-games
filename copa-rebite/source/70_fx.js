@@ -41,7 +41,7 @@ const FX = {
     R.nA = na;
     // luzes: primeiro as continuas, depois os pulsos
     const d = R.dl; let n = 0; for (let i = 0; i < this.nfl && n < 6; i++) { const o = i * 7, k = n++ * 8; d[k] = this.fl[o]; d[k + 1] = this.fl[o + 1]; d[k + 2] = this.fl[o + 2]; d[k + 3] = this.fl[o + 3]; d[k + 4] = this.fl[o + 4]; d[k + 5] = this.fl[o + 5]; d[k + 6] = this.fl[o + 6]; }
-    const l = this.pl; for (let i = 0; i < 6; i++) { const o = i * 9; if (l[o + 8] <= 0) continue; l[o + 7] += dt; if (l[o + 7] >= l[o + 8]) { l[o + 8] = 0; continue; } if (n >= 6) continue; const f = 1 - l[o + 7] / l[o + 8], k = n++ * 8; d[k] = l[o]; d[k + 1] = l[o + 1]; d[k + 2] = l[o + 2]; d[k + 3] = l[o + 3]; d[k + 4] = l[o + 4] * f * f; d[k + 5] = l[o + 5] * f * f; d[k + 6] = l[o + 6] * f * f; }
+    const l = this.pl; for (let i = 0; i < 6; i++) { const o = i * 9; if (l[o + 8] <= 0) continue; l[o + 7] += dt; if (l[o + 7] >= l[o + 8]) { l[o + 8] = 0; continue; } if (n >= 6) continue; const f = (1 - l[o + 7] / l[o + 8]) * Math.sqrt(Math.min(1, l[o + 7] * 20)), k = n++ * 8; d[k] = l[o]; d[k + 1] = l[o + 1]; d[k + 2] = l[o + 2]; d[k + 3] = l[o + 3]; d[k + 4] = l[o + 4] * f * f; d[k + 5] = l[o + 5] * f * f; d[k + 6] = l[o + 6] * f * f; }
     R.ndl = n; this.nfl = 0; this.sh[0] = Math.max(0, this.sh[0] - dt * 3);
   },
 };

@@ -198,12 +198,12 @@
   {
    "teste": "vibracao em cada impacto",
    "ok": true,
-   "info": "(11, 13)"
+   "info": "(7, 10)"
   },
   {
    "teste": "vibracao mais forte conforme o dano",
    "ok": true,
-   "info": "((3.27834415435791, 0.1746390692392985), (40.080020904541016, 0.7880003484090169))"
+   "info": "((1.9895498752593994, 0.15315916458765666), (37.610992431640625, 0.746849873860677))"
   },
   {
    "teste": "roteiro: 60 s de luta sem terminar antes",
@@ -213,22 +213,22 @@
   {
    "teste": "roteiro: meu robo acerta o adversario",
    "ok": true,
-   "info": "38"
+   "info": "51"
   },
   {
    "teste": "roteiro: arranca pelo menos uma peca do adversario",
    "ok": true,
-   "info": "(5, [0, 0, 152, 0, 152, 0, 0, 0, 49, 0, 64, 16])"
+   "info": "(4, [0, 0, 131, 0, 131, 0, 0, 0, 46, 8, 3, 74])"
   },
   {
    "teste": "roteiro: nenhum robo atravessa a parede da caixa",
    "ok": true,
-   "info": "maior avanco do casco alem da parede: 0.033 m"
+   "info": "maior avanco do casco alem da parede: 0.009 m"
   },
   {
    "teste": "roteiro: deterministico (duas execucoes iguais e igual ao gravado)",
    "ok": true,
-   "info": "(2042947533, 2042947533, 2042947533)"
+   "info": "(1394981524, 1394981524, 1394981524)"
   },
   {
    "teste": "tempo esgotado -> tres juizes pontuam dano, agressividade e controle (placar na tela)",
@@ -238,7 +238,7 @@
   {
    "teste": "torneio: 8 robos em chave, quartas -> semifinal -> final",
    "ok": true,
-   "info": "semente 2, campeao Rebimboca"
+   "info": "semente 1, campeao Rebimboca"
   },
   {
    "teste": "torneio: jogador vai das quartas a final",
@@ -258,7 +258,7 @@
   {
    "teste": "torneio: conserto entre lutas (dano continua; so duas acoes)",
    "ok": true,
-   "info": "[{'antes': [0.8602118102363918, 0.9987893633992188, 0.9421520063358183, 0.9358908335367838], 'slot': 0, 'depois': 1, 'acoes': [2, 1, 0], 'arma': [0, 1], 'hpArma': 1, 'terceiraBloqueada': True}, {'antes': [0.7293575950290845, 0.9987893633992188, 0.748804535949444, 0.31357666015625], 'slot': 3, 'depoi"
+   "info": "[{'antes': [0.9995779800415039, 1, 0.997995235407391, 0.9863078435262044], 'slot': 3, 'depois': 1, 'acoes': [2, 1, 0], 'arma': [0, 1], 'hpArma': 1, 'terceiraBloqueada': True}, {'antes': [0.8575905393517536, 0.9965749354915834, 0.7954916166161686, 0.6391815863715278], 'slot': 3, 'depois': 1, 'acoes':"
   },
   {
    "teste": "montagem e andamento do torneio ficam salvos entre aberturas",
@@ -268,11 +268,11 @@
   {
    "teste": "zero alocacao de JS por quadro na luta (58 janelas de 60 quadros: simulacao+IA+efeitos+desenho+HUD, sem chamadas de GPU)",
    "ok": true,
-   "info": "58/58 janelas de 1 s com exatamente 0 byte; mediana 0.0 bytes/quadro; janelas com alocacao (bytes em 60 quadros): []; controle: +38808 bytes ao alocar 1000 objetos; 43 impactos em 58 s"
+   "info": "58/58 janelas de 1 s com exatamente 0 byte; mediana 0.0 bytes/quadro; janelas com alocacao (bytes em 60 quadros): []; controle: +38808 bytes ao alocar 1000 objetos; 52 impactos em 58 s"
   }
  ],
  "torneio": {
-  "semente": 2,
+  "semente": 1,
   "jogos": [
    [
     {
@@ -280,8 +280,8 @@
      "b": 1,
      "w": 0,
      "how": "juizes",
-     "pa": 21,
-     "pb": 12,
+     "pa": 18,
+     "pb": 15,
      "next": false
     },
     {
@@ -296,7 +296,7 @@
     {
      "a": 4,
      "b": 5,
-     "w": 4,
+     "w": 5,
      "how": "fosso",
      "pa": 0,
      "pb": 0,
@@ -318,12 +318,12 @@
      "b": 3,
      "w": 0,
      "how": "nocaute",
-     "pa": 21,
-     "pb": 12,
+     "pa": 18,
+     "pb": 15,
      "next": false
     },
     {
-     "a": 4,
+     "a": 5,
      "b": 6,
      "w": 6,
      "how": "nocaute",
@@ -338,8 +338,8 @@
      "b": 6,
      "w": 0,
      "how": "nocaute",
-     "pa": 21,
-     "pb": 12,
+     "pa": 18,
+     "pb": 15,
      "next": false
     }
    ]
@@ -357,12 +357,12 @@
   "consertos": [
    {
     "antes": [
-     0.8602118102363918,
-     0.9987893633992188,
-     0.9421520063358183,
-     0.9358908335367838
+     0.9995779800415039,
+     1,
+     0.997995235407391,
+     0.9863078435262044
     ],
-    "slot": 0,
+    "slot": 3,
     "depois": 1,
     "acoes": [
      2,
@@ -378,10 +378,10 @@
    },
    {
     "antes": [
-     0.7293575950290845,
-     0.9987893633992188,
-     0.748804535949444,
-     0.31357666015625
+     0.8575905393517536,
+     0.9965749354915834,
+     0.7954916166161686,
+     0.6391815863715278
     ],
     "slot": 3,
     "depois": 1,

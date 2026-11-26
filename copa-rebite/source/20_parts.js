@@ -273,10 +273,10 @@ function buildRobotMeshes(mb) {
   // ----- rodas (eixo Z, lado de fora em +Z) -----
   { // pequenas
     const w = RODAS[0];
-    mb.set(MAT.RUBBER, .03, .03, .03, 0); mb.push().rx(PI / 2).ring(w.r, w.r * .62, w.w, 28, .9); mb.pop();
-    mb.set(MAT.STEEL, .34, .34, .36, .25); mb.cy(0, 0, 0, w.r * .63, w.w * .8, 20, 2, { bev: .004 });
-    mb.set(MAT.DARK, .07, .07, .08, .3); mb.cy(0, 0, w.w * .42, w.r * .3, .008, 12, 2);
-    for (let i = 0; i < 5; i++) mb.bolt(Math.cos(i / 5 * TAU) * w.r * .45, Math.sin(i / 5 * TAU) * w.r * .45, w.w * .4, .006, 2, 1);
+    mb.set(MAT.RUBBER, .03, .03, .03, 0); mb.push().rx(PI / 2).ring(w.r, w.r * .48, w.w, 28, .9); mb.pop();
+    mb.set(MAT.STEEL, .34, .34, .36, .25); mb.cy(0, 0, 0, w.r * .49, w.w * .8, 20, 2, { bev: .004 });
+    mb.set(MAT.DARK, .07, .07, .08, .3); mb.cy(0, 0, w.w * .42, w.r * .22, .008, 12, 2);
+    for (let i = 0; i < 5; i++) mb.bolt(Math.cos(i / 5 * TAU) * w.r * .36, Math.sin(i / 5 * TAU) * w.r * .36, w.w * .4, .005, 2, 1);
     mb.set(MAT.STEEL, .5, .5, .52, .3); mb.cy(0, 0, -w.w / 2 - .016, .012, .04, 8, 2);
     mb.end('wh0');
   }
