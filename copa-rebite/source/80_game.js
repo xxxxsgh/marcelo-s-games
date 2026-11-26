@@ -18,7 +18,8 @@ const RIVAIS2 = [
   { nome: 'Chumbo Grosso', b: [2, 1, 1, 2], cor: 5, num: 99, estilo: 0 },
   { nome: 'Saca-Rolha', b: [1, 1, 2, 1], cor: 6, num: 17, estilo: 2 },
 ];
-const CAR = { temp: 1, trofeus: 0, v: 0, d: 0, ko: 0, juiz: 0, pecas: 0, conq: 0, armas: 0, chas: 0, seq: 0, rec: 0, sucata: 0, up0: 0, up1: 0, up2: 0, up3: 0, des: 0 };
+const CAR = { temp: 1, trofeus: 0, v: 0, d: 0, ko: 0, juiz: 0, pecas: 0, conq: 0, armas: 0, chas: 0, seq: 0, rec: 0, sucata: 0, up0: 0, up1: 0, up2: 0, up3: 0, des: 0, dif: 1 };
+const DIFS = ['FÁCIL', 'NORMAL', 'DIFÍCIL'], DIFM = [.78, 1, 1.28];
 // desafios: rival (indice em RIVAIS+RIVAIS2), arena, restricao de montagem e condicao de vitoria
 const DESAFIOS = [
   { nome: 'Relâmpago', desc: 'Vença Vespa 9 em menos de 60 s', r: 1, modo: 0, ok: () => true, cond: (S, G) => S.t < 60 },
@@ -67,7 +68,8 @@ const GAR = {
       if (g.verUp) { if (IN.pUp) { g.upSel = (g.upSel + 3) % 4; ch = true; } if (IN.pDown) { g.upSel = (g.upSel + 1) % 4; ch = true; } if (IN.pBack) { g.verUp = 0; ch = true; } else if (IN.pOk) { const k = 'up' + g.upSel, l = CAR[k]; if (l >= 3) UI.toast('NÍVEL MÁXIMO'); else if (CAR.sucata < upCusto(l)) UI.toast('SUCATA INSUFICIENTE'); else { CAR.sucata -= upCusto(l); CAR[k]++; G.save(); UI.toast('MELHORIA INSTALADA'); } ch = true; } IN.pOk = 0; IN.pUp = 0; IN.pDown = 0; IN.pStart = 0; }
       if (g.verDes) { if (IN.pUp) { g.desSel = (g.desSel + DESAFIOS.length - 1) % DESAFIOS.length; ch = true; } if (IN.pDown) { g.desSel = (g.desSel + 1) % DESAFIOS.length; ch = true; } if (IN.pBack) { g.verDes = 0; ch = true; } else if (IN.pOk) { g.desafio(g.desSel); if (G.st !== 'garagem') return; ch = true; } IN.pOk = 0; IN.pUp = 0; IN.pDown = 0; IN.pStart = 0; }
       if (g.verConq) { if (IN.pOk || IN.pBack) { g.verConq = 0; ch = true; } IN.pOk = 0; IN.pUp = 0; IN.pDown = 0; IN.pStart = 0; }
-      if (IN.pUp) { g.row = (g.row + 12) % 13; ch = true; } if (IN.pDown) { g.row = (g.row + 1) % 13; ch = true; }
+      if (IN.pUp) { g.row = (g.row + 13) % 14; ch = true; } if (IN.pDown) { g.row = (g.row + 1) % 14; ch = true; }
+      if (g.row === 13 && (IN.pLeft || IN.pRight)) { if (TOR && TOR.ativo && TOR.lutas > 0) UI.toast('A DIFICULDADE SÓ MUDA ENTRE TORNEIOS'); else { CAR.dif = (CAR.dif + (IN.pRight ? 1 : 2)) % 3; if (TOR) TOR = null; G.save(); } ch = true; }
       if (g.row === 12 && IN.pOk && !g.repair) { g.verDes = 1; ch = true; }
       if (g.row === 11 && IN.pOk) { g.verUp = 1; ch = true; }
       if (g.row === 9 && IN.pOk) { g.verConq = 1; ch = true; }
@@ -124,7 +126,7 @@ const G = {
     for (let i = 0; pick.length < 7; i++) if (!pick.includes(pool[i])) pick.push(pool[i]);
     for (const r of pick) ent.push({ nome: r.nome, b: r.b.slice(), cor: CORES[r.cor], num: r.num, estilo: r.estilo, hp: null, v: 0, d: 0 });
     const mk = (a, b) => ({ a, b, w: -1, how: '', pa: 0, pb: 0 });
-    TOR = { ativo: true, rodada: 0, ent, jogos: [[mk(0, 1), mk(2, 3), mk(4, 5), mk(6, 7)], [mk(-1, -1), mk(-1, -1)], [mk(-1, -1)]], campeao: -1, vivo: true, seed: seed || (20260 + CAR.temp * 37), lutas: 0, temp: CAR.temp, buff: 1 + Math.min(CAR.temp - 1, 8) * .09 };
+    TOR = { ativo: true, rodada: 0, ent, jogos: [[mk(0, 1), mk(2, 3), mk(4, 5), mk(6, 7)], [mk(-1, -1), mk(-1, -1)], [mk(-1, -1)]], campeao: -1, vivo: true, seed: seed || (20260 + CAR.temp * 37), lutas: 0, temp: CAR.temp, buff: (1 + Math.min(CAR.temp - 1, 8) * .09) * DIFM[CAR.dif] };
     this.save();
   },
   myMatch() { if (!TOR || !TOR.vivo) return null; for (const j of TOR.jogos[TOR.rodada]) if ((j.a === 0 || j.b === 0) && j.w < 0) return j; return null; },
@@ -144,7 +146,7 @@ const G = {
     }
     this.save();
   },
-  record(j, S) { const T = TOR; j.w = S.winner === 0 ? j.a : j.b; j.how = S.koBy; j.pa = S.ptsA; j.pb = S.ptsB; const l = j.w === j.a ? j.b : j.a; T.ent[j.w].v++; T.ent[l].d++; T.ent[j.a].hp = Array.from(S.bots[0].hp); T.ent[j.b].hp = Array.from(S.bots[1].hp); if (l === 0) T.vivo = false; T.lutas++; if (j.a === 0 || j.b === 0) { if (j.w === 0) { CAR.v++; if (S.koBy === 'juizes') CAR.juiz++; else CAR.ko++; } else CAR.d++; CAR.pecas += this.detB || 0; conquistas(S, j.w === 0, (this.detached || 0) - (this.detB || 0)); CAR.sucata += (j.w === 0 ? 100 : 30) + (this.detB || 0) * 25; } },
+  record(j, S) { const T = TOR; j.w = S.winner === 0 ? j.a : j.b; j.how = S.koBy; j.pa = S.ptsA; j.pb = S.ptsB; const l = j.w === j.a ? j.b : j.a; T.ent[j.w].v++; T.ent[l].d++; T.ent[j.a].hp = Array.from(S.bots[0].hp); T.ent[j.b].hp = Array.from(S.bots[1].hp); if (l === 0) T.vivo = false; T.lutas++; if (j.a === 0 || j.b === 0) { if (j.w === 0) { CAR.v++; if (S.koBy === 'juizes') CAR.juiz++; else CAR.ko++; } else CAR.d++; CAR.pecas += this.detB || 0; conquistas(S, j.w === 0, (this.detached || 0) - (this.detB || 0)); CAR.sucata += Math.round(((j.w === 0 ? 100 : 30) + (this.detB || 0) * 25) * DIFM[CAR.dif]); } },
   toBracket(txt) {
     const T = TOR, j = this.myMatch(); for (const r of T.jogos) for (const q of r) q.next = q === j;
     this.st = 'chave'; UI.show('chave'); this.enterArena(); this.cam = 2;
