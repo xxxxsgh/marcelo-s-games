@@ -259,7 +259,8 @@ class Sim {
     B.grounded = anyCon;
     // casco contra piso e paredes
     const kh = 1300 * m, chh = 30 * m, hp = B.hpt; let land = 0, lx_ = 0, ly_ = 0, lz_ = 0, scr = 0, sx_ = 0, sz_ = 0, hcon = 0;
-    for (let q = 0; q < B.nhull; q++) {
+    const nenv = B.hp[P_WP] > 0 ? B.nhp : B.nhull; // a ponta da arma tambem bate nas paredes
+    for (let q = 0; q < nenv; q++) {
       const lx = hp[q * 3], ly = hp[q * 3 + 1], lz = hp[q * 3 + 2], rx = R[0] * lx + R[1] * ly + R[2] * lz, ry = R[3] * lx + R[4] * ly + R[5] * lz, rz = R[6] * lx + R[7] * ly + R[8] * lz, px = s[0] + rx, py = s[1] + ry, pz = s[2] + rz;
       const pen = (_c[32] = px, _c[33] = py, _c[34] = pz, _c[35] = 0, this.envR(), _c[0]); if (pen <= 0) continue; hcon++;
       const nx = _c[1], ny = _c[2], nz = _c[3], vx = s[7] + s[11] * rz - s[12] * ry, vy = s[8] + s[12] * rx - s[10] * rz, vz = s[9] + s[10] * ry - s[11] * rx, vn = vx * nx + vy * ny + vz * nz;

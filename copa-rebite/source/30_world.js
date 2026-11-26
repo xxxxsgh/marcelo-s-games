@@ -11,8 +11,8 @@ const ARENA_LIGHTS = [
   { p: [-5.6, 7.0, -5.6], t: [.8, 0, .8], c: [.82, .9, 1], I: 800, a: 52, s: 1 },
   { p: [5.6, 7.0, -5.6], t: [-.8, 0, .8], c: [1, .96, .9], I: 700, a: 52, s: 1 },
   { p: [-5.6, 7.0, 5.6], t: [.8, 0, -.8], c: [.9, .95, 1], I: 700, a: 52, s: 1 },
-  { p: [-7.6, 6.2, 0], t: [-4.2, 0, 0], c: [1, .12, .06], I: 420, a: 26, s: 0 },
-  { p: [7.6, 6.2, 0], t: [4.2, 0, 0], c: [.08, .25, 1], I: 420, a: 26, s: 0 },
+  { p: [-7.6, 6.2, 0], t: [-4.2, 0, 0], c: [1, .12, .06], I: 620, a: 30, s: 0 },
+  { p: [7.6, 6.2, 0], t: [4.2, 0, 0], c: [.08, .25, 1], I: 620, a: 30, s: 0 },
   { p: [0, 7.3, 9.5], t: [0, 2, 15], c: [1, .8, .6], I: 16, a: 48, s: 0, vol: 0 },
   { p: [0, 7.3, -9.5], t: [0, 2, -15], c: [1, .8, .6], I: 16, a: 48, s: 0, vol: 0 },
   { p: [9.5, 7.3, 0], t: [15, 2, 0], c: [.7, .8, 1], I: 15, a: 48, s: 0, vol: 0 },
@@ -192,7 +192,7 @@ function buildWorldMeshes(mb) {
   mb.set(MAT.SPIN, .3, .3, .32, 0); mb.cy(0, 0, 0, .198, .03, 48, 2, { bev: .004 }); mb.set(MAT.DARK, .07, .07, .08, .3); mb.cy(0, 0, 0, .075, .04, 18, 2); mb.end('blurV');
   // serra (eixo Z, gira), martelo da arena (braco em +X a partir do pivo)
   mb.set(MAT.STEEL, .66, .66, .68, .3); { const poly = [], N = 72; for (let i = 0; i < N; i++) { const t = -i / N * TAU, f = (i / N * 24) % 1, r = SAW_R - .03 + .03 * f; poly.push([Math.cos(t) * r, Math.sin(t) * r]); } mb.extrude(poly, .012, .002); mb.set(MAT.DARK, .1, .1, .11, .3); mb.cy(0, 0, 0, .07, .03, 12, 2); } mb.end('saw');
-  mb.set(MAT.HAZ, 1, .8, 0, 0); mb.bx(AHAM.len / 2, 0, 0, AHAM.len, .12, .12, .012); mb.set(MAT.STEEL, .5, .5, .52, .6); mb.bx(AHAM.len, -.12, 0, .3, .36, .36, .03); mb.cy(AHAM.len, -.36, 0, .1, .14, 10, 1, { r2: .02, bev: 0 }); mb.end('ahammer');
+  mb.set(MAT.HAZ, 1, .8, 0, 0); mb.bx(AHAM.len / 2, 0, 0, AHAM.len, .12, .12, .012); mb.set(MAT.STEEL, .5, .5, .52, .6); mb.bx(AHAM.len, -.1, 0, .24, .28, .28, .03); mb.cy(AHAM.len, -.36, 0, .1, .14, 10, 1, { r2: .02, bev: 0 }); mb.end('ahammer');
 
   // ===================== GARAGEM =====================
   mb.set(MAT.CONC, .2, .2, .21, 0); { const a = mb.v(-6, 0, -3.4, 0, 1, 0), b = mb.v(6, 0, -3.4, 0, 1, 0), c = mb.v(6, 0, 6, 0, 1, 0), d = mb.v(-6, 0, 6, 0, 1, 0); mb.quad(a, b, c, d); }

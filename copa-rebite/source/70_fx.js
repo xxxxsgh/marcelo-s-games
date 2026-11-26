@@ -28,7 +28,7 @@ const FX = {
       if (kind < 2) { if (Math.abs(p[o]) > AR - .03) { p[o] = Math.sign(p[o]) * (AR - .03); p[o + 3] *= -.4; } if (Math.abs(p[o + 2]) > AR - .03) { p[o + 2] = Math.sign(p[o + 2]) * (AR - .03); p[o + 5] *= -.4; } }
       if (p[o + 6] <= 0 || nb >= PMAX_B) continue; const q = nb++ * 12, f = p[o + 6] / p[o + 7];
       B[q] = p[o]; B[q + 1] = p[o + 1]; B[q + 2] = p[o + 2]; B[q + 3] = p[o + 9];
-      if (kind === 0) { B[q + 4] = p[o + 3]; B[q + 5] = p[o + 4]; B[q + 6] = p[o + 5]; B[q + 7] = 0; const h = f * (.6 + .4 * p[o + 10]); B[q + 8] = 30 * h + 1; B[q + 9] = 30 * h * h * .8 + .25; B[q + 10] = 30 * h * h * h * .55; B[q + 11] = Math.min(1, f * 3); }
+      if (kind === 0) { B[q + 4] = p[o + 3]; B[q + 5] = p[o + 4]; B[q + 6] = p[o + 5]; B[q + 7] = 0; const h = f * (.6 + .4 * p[o + 10]); B[q + 8] = 48 * h + 1; B[q + 9] = 48 * h * h * .8 + .25; B[q + 10] = 48 * h * h * h * .55; B[q + 11] = Math.min(1, f * 3); }
       else if (kind === 1) { B[q + 4] = p[o + 3]; B[q + 5] = p[o + 4]; B[q + 6] = p[o + 5]; B[q + 7] = 1; const g = .05 + p[o + 10] * .5; B[q + 8] = g; B[q + 9] = g; B[q + 10] = g * 1.05; B[q + 11] = Math.min(1, f * 4); }
       else { B[q + 3] = p[o + 9] * (.6 + (1 - f) * .9); B[q + 4] = p[o + 11] + (1 - f); B[q + 5] = p[o + 10]; B[q + 6] = 0; B[q + 7] = 3; B[q + 8] = 1; B[q + 9] = 1; B[q + 10] = 1; B[q + 11] = Math.sin(f * 3.1) * .9 + .1; }
     }
