@@ -22,6 +22,8 @@ const CAR = { temp: 1, trofeus: 0, v: 0, d: 0, ko: 0, juiz: 0, pecas: 0, conq: 0
 const desCount = () => { let n = 0; for (let i = 0; i < DESAFIOS.length; i++) if (CAR.des >> i & 1) n++; return n; };
 const COR_REGRA = ['vença uma temporada', 'vença 3 lutas seguidas na sobrevivência', 'cumpra 4 desafios', 'cumpra os 8 desafios'];
 const corLivre = i => i < CORES_BASE || [CAR.trofeus >= 1, CAR.rec >= 3, desCount() >= 4, desCount() >= 8][i - CORES_BASE];
+const RIV = {}; // retrospecto contra cada rival: nome -> [vitorias do jogador, derrotas]
+const rivReg = (nome, ganhou) => { const r = RIV[nome] || (RIV[nome] = [0, 0]); r[ganhou ? 0 : 1]++; };
 const DIFS = ['FÁCIL', 'NORMAL', 'DIFÍCIL'], DIFM = [.78, 1, 1.28];
 // desafios: rival (indice em RIVAIS+RIVAIS2), arena, restricao de montagem e condicao de vitoria
 const DESAFIOS = [
@@ -120,8 +122,8 @@ const G = {
   auto: false, fast: 1, dbg: 0, livreMsg: 0, surv: -1, des: 0, skipRender: false, camFix: null, notes: null, entA: null, entB: null, curMatch: null, cnt: 0, clipFor: -2, rk: 0, rpx: .5, rpy: .5, rpz: .5, rqx: .5, rqy: .5, rqz: .5, script: null, sf: 0, rec: null, lastSk: new Float32Array(2 * 4 * 3).fill(-9), frameLog: null, nlog: 0, lastT: 0, acc: 0, hits: 0, detached: 0, maxPen: 0, rumbleLog: null,
   // replay
   REC_F: 28 + 5 + DEB_N * 8, ring: null, clip: null, clipN: 0, clipHit: 0, cev: new Float32Array(32 * 9), ncev: 0, rev: new Float32Array(64 * 9), nrev: 0, bestAt: -1, rp: null,
-  save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ b: GAR.com, cor: GAR.cor, num: GAR.num, nome: GAR.nome, tor: TOR, car: CAR })); } catch (e) { } },
-  load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return; if (s.car) for (const k in CAR) if (typeof s.car[k] === 'number') CAR[k] = s.car[k]; if (Array.isArray(s.b) && s.b.length === 4) GAR.com = s.b.map((v, i) => Math.min(Math.max(v | 0, 0), [2, 2, 2, 5][i])); GAR.cor = Math.min(Math.max(s.cor | 0, 0), CORES.length - 1); GAR.num = Math.min(Math.max(s.num | 0, 0), 99); GAR.nome = String(s.nome || 'Fagulha').slice(0, 14); if (s.tor && s.tor.ent && s.tor.ent.length === 8) TOR = s.tor; } catch (e) { } },
+  save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ b: GAR.com, cor: GAR.cor, num: GAR.num, nome: GAR.nome, tor: TOR, car: CAR, riv: RIV })); } catch (e) { } },
+  load() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (!s) return; if (s.riv && typeof s.riv === 'object') for (const k in s.riv) if (Array.isArray(s.riv[k])) RIV[k] = [s.riv[k][0] | 0, s.riv[k][1] | 0]; if (s.car) for (const k in CAR) if (typeof s.car[k] === 'number') CAR[k] = s.car[k]; if (Array.isArray(s.b) && s.b.length === 4) GAR.com = s.b.map((v, i) => Math.min(Math.max(v | 0, 0), [2, 2, 2, 5][i])); GAR.cor = Math.min(Math.max(s.cor | 0, 0), CORES.length - 1); GAR.num = Math.min(Math.max(s.num | 0, 0), 99); GAR.nome = String(s.nome || 'Fagulha').slice(0, 14); if (s.tor && s.tor.ent && s.tor.ent.length === 8) TOR = s.tor; } catch (e) { } },
   newTournament(seed) {
     const ent = [{ nome: GAR.nome, b: GAR.com.slice(), cor: CORES[GAR.cor], num: GAR.num, estilo: -1, hp: null, v: 0, d: 0 }];
     // elenco da temporada: 7 rivais sorteados de 14 pela temporada; a cada temporada ficam mais resistentes
@@ -149,7 +151,7 @@ const G = {
     }
     this.save();
   },
-  record(j, S) { const T = TOR; j.w = S.winner === 0 ? j.a : j.b; j.how = S.koBy; j.pa = S.ptsA; j.pb = S.ptsB; const l = j.w === j.a ? j.b : j.a; T.ent[j.w].v++; T.ent[l].d++; T.ent[j.a].hp = Array.from(S.bots[0].hp); T.ent[j.b].hp = Array.from(S.bots[1].hp); if (l === 0) T.vivo = false; T.lutas++; if (j.a === 0 || j.b === 0) { if (j.w === 0) { CAR.v++; if (S.koBy === 'juizes') CAR.juiz++; else CAR.ko++; } else CAR.d++; CAR.pecas += this.detB || 0; conquistas(S, j.w === 0, (this.detached || 0) - (this.detB || 0)); CAR.sucata += Math.round(((j.w === 0 ? 100 : 30) + (this.detB || 0) * 25) * DIFM[CAR.dif]); } },
+  record(j, S) { const T = TOR; j.w = S.winner === 0 ? j.a : j.b; j.how = S.koBy; j.pa = S.ptsA; j.pb = S.ptsB; const l = j.w === j.a ? j.b : j.a; T.ent[j.w].v++; T.ent[l].d++; T.ent[j.a].hp = Array.from(S.bots[0].hp); T.ent[j.b].hp = Array.from(S.bots[1].hp); if (l === 0) T.vivo = false; T.lutas++; if (j.a === 0 || j.b === 0) { rivReg(T.ent[j.a === 0 ? j.b : j.a].nome, j.w === 0); if (j.w === 0) { CAR.v++; if (S.koBy === 'juizes') CAR.juiz++; else CAR.ko++; } else CAR.d++; CAR.pecas += this.detB || 0; conquistas(S, j.w === 0, (this.detached || 0) - (this.detB || 0)); CAR.sucata += Math.round(((j.w === 0 ? 100 : 30) + (this.detB || 0) * 25) * DIFM[CAR.dif]); } },
   toBracket(txt) {
     const T = TOR, j = this.myMatch(); for (const r of T.jogos) for (const q of r) q.next = q === j;
     this.st = 'chave'; UI.show('chave'); this.enterArena(); this.cam = 2;
@@ -180,7 +182,7 @@ const G = {
     this.setupFight(0, o, TOR.seed + TOR.rodada * 100 + 50, LUTA_T); this.curMatch = j;
     this.st = 'intro'; this.intro = 0; this.ft[7] = 0; R.keyDim = .45; UI.show('intro'); this.showIntro();
   },
-  showIntro() { const e = this.intro ? this.entB : this.entA, h = e.v + e.d === 0 ? 'ESTREIA' : `${e.v} VITÓRIA${e.v === 1 ? '' : 'S'}`; UI.intro(e, this.intro, SIM.bots[this.intro].S, h); },
+  showIntro() { const e = this.intro ? this.entB : this.entA, h = e.v + e.d === 0 ? 'ESTREIA' : `${e.v} VITÓRIA${e.v === 1 ? '' : 'S'}`; const rv = this.intro === 1 && RIV[e.nome] ? ` · CONTRA VOCÊ: ${RIV[e.nome][1]}V ${RIV[e.nome][0]}D` + (RIV[e.nome][1] > RIV[e.nome][0] ? ' — REVANCHE!' : '') : ''; UI.intro(e, this.intro, SIM.bots[this.intro].S, h + rv); },
   startFight() { this.st = 'luta'; UI.show('hud'); UI.msg('', ''); R.keyDim = 1; },
   // ---------- quadro ----------
   tick(dt) {
@@ -204,7 +206,7 @@ const G = {
     else if (st === 'replay') { this.replayTick(dt); }
     else if (st === 'livre') { this.camera(dt); this.drawFight(1); FX.update(dt); if (this.round.startsWith('DESAFIO')) { if (!this.livreMsg) { this.livreMsg = 1; const d = DESAFIOS[this.des], ok = SIM.winner === 0 && d.cond(SIM, this); if (ok && !(CAR.des >> this.des & 1)) { CAR.des |= 1 << this.des; CAR.sucata += 120; } this.save(); UI.msg(ok ? 'DESAFIO CUMPRIDO' : 'DESAFIO FALHOU', (ok ? '+120 de sucata · ' : d.desc + ' · ') + 'A / ENTER garagem'); } if (IN.pOk || IN.pStart) { this.livreMsg = 0; GAR.enter(false); } }
       else if (this.surv >= 0 && this.round.startsWith('SOBREV')) { if (!this.livreMsg) { this.livreMsg = 1; const w = SIM.winner === 0; CAR.sucata += (w ? 60 : 15) + (this.detB || 0) * 15; if (w) UI.msg('VENCEU A LUTA ' + (this.surv + 1), 'A / ENTER próxima luta — sem conserto'); else { const n = this.surv; if (n > CAR.rec) CAR.rec = n; this.save(); UI.msg('FIM DA SOBREVIVÊNCIA', n + ' vitória(s) seguida(s) · recorde ' + CAR.rec + ' · A / ENTER garagem'); } } if (IN.pOk || IN.pStart) { this.livreMsg = 0; if (SIM.winner === 0) GAR.sobreviver(this.surv + 1, Array.from(SIM.bots[0].hp)); else { this.surv = -1; GAR.enter(false); } } }
-      else if (this.round.startsWith('AMISTOSO')) { if (!this.livreMsg) { this.livreMsg = 1; CAR.sucata += (SIM.winner === 0 ? 40 : 10) + (this.detB || 0) * 10; this.save(); UI.msg(SIM.winner === 0 ? 'VITÓRIA' : 'DERROTA', 'A / ENTER volta para a garagem'); } if (IN.pOk || IN.pStart) { this.livreMsg = 0; GAR.enter(false); } } }
+      else if (this.round.startsWith('AMISTOSO')) { if (!this.livreMsg) { this.livreMsg = 1; CAR.sucata += (SIM.winner === 0 ? 40 : 10) + (this.detB || 0) * 10; rivReg(SIM.bots[1].nome, SIM.winner === 0); this.save(); UI.msg(SIM.winner === 0 ? 'VITÓRIA' : 'DERROTA', 'A / ENTER volta para a garagem'); } if (IN.pOk || IN.pStart) { this.livreMsg = 0; GAR.enter(false); } } }
     else if (st === 'pausa') { if (IN.pPause || IN.pOk) { this.st = this.prev; UI.show('hud'); } }
   },
   fightStep() {
