@@ -67,7 +67,7 @@ function buildRobotMeshes(mb) {
   // ----- chassis -----
   CHASSIS.forEach((c, ci) => {
     const P = c.prof, W = c.W, t = .006;
-    mb.set(MAT.STEEL, .5, .5, .52, .2);
+    mb.set(MAT.FRAME, .5, .5, .52, .2);
     // paredes seguindo o perfil
     for (let k = 0; k < P.length; k++) {
       const a = P[k], b = P[(k + 1) % P.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]), nx = (b[1] - a[1]) / L, ny = -(b[0] - a[0]) / L;
@@ -79,6 +79,7 @@ function buildRobotMeshes(mb) {
     for (const s of [-1, 1]) mb.bx((P[P.length - 1][0] + c.tops[0][1]) / 2 - (ci === 2 ? -.04 : 0), yT - .012, s * (W / 2 - .02), Math.abs(c.tops[0][1] - P[P.length - 1][0]) - (ci === 2 ? .08 : 0), .024, .03, .004);
     for (const x of [c.win[0], c.win[1]]) mb.bx(x, yT - .012, 0, .03, .024, W - .06, .004);
     // laterais (perfil)
+    mb.set(MAT.FRAME, .5, .5, .52, .2);
     for (const s of [-1, 1]) { mb.push().tr(0, 0, s * (W / 2 - t / 2)); mb.prism(P, t, .002); mb.pop(); }
     // anteparo
     mb.bx(c.win[1] + .02, yT * .5, 0, .006, Math.max(.03, topY(c, c.win[1] + .02) - .02), W - .03, .002);

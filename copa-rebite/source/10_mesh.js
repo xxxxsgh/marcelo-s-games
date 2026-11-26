@@ -1,6 +1,6 @@
 // ---------- construtor de malhas procedurais (so roda na carga) ----------
 // vertice: pos(3) normal(3) cor rgb + material (4 x u8) aux(1 float) = 32 bytes
-const MAT = { PAINT: 0, PAINT2: 1, STEEL: 2, ALU: 3, TITAN: 4, RUBBER: 5, DARK: 6, WIRE: 7, BATT: 8, EMIS: 9, FLOOR: 10, CONC: 11, CLOTH: 12, TRUSS: 13, HAZ: 14, SEAT: 15, SCREEN: 16, BRASS: 17, LENS: 18, WOOD: 19, PEG: 20, ARMOR: 21, SKIN: 22, BANNER: 23, SPIN: 24 };
+const MAT = { PAINT: 0, PAINT2: 1, STEEL: 2, ALU: 3, TITAN: 4, RUBBER: 5, DARK: 6, WIRE: 7, BATT: 8, EMIS: 9, FLOOR: 10, CONC: 11, CLOTH: 12, TRUSS: 13, HAZ: 14, SEAT: 15, SCREEN: 16, BRASS: 17, LENS: 18, WOOD: 19, PEG: 20, ARMOR: 21, SKIN: 22, BANNER: 23, SPIN: 24, FRAME: 25 };
 
 class MB {
   constructor() { this.p = []; this.n = []; this.c = []; this.a = []; this.i = []; this.m = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]; this.st = []; this.col = [1, 1, 1]; this.mat = 0; this.aux = 0; this.meshes = {}; this.i0 = 0; }
