@@ -6,6 +6,16 @@ biblioteca 3D ou de física, sem arquivos de textura/modelo/áudio — tudo é g
 - **Jogar:** abra `index.html` no Chrome atualizado (funciona de `file://`, sem rede).
 - **Montar de novo:** `node build.mjs` (concatena `source/*.js`, `source/ui.css` e `source/shell.html`).
 
+## Modos
+
+- **Torneio / carreira**: chave de 8 robôs; ao vencer, começa uma nova temporada com outro elenco (14 rivais), rivais mais resistentes e outra arena (Clássica, Fornalha, Serraria, Bate-Estaca).
+- **Amistoso**: luta avulsa contra qualquer rival.
+- **Sobrevivência**: lutas em sequência, dano acumulado e sem conserto; guarda o recorde.
+- **Desafios**: nove lutas com regra especial, incluindo o chefão Rei Rebite.
+- **Oficina de melhorias**: sucata ganha em vitórias e peças arrancadas compra até três níveis por encaixe.
+- **Conquistas**, **pinturas desbloqueáveis**, **dificuldade** (Fácil, Normal, Difícil) e **retrospecto** contra cada rival.
+- **Som** procedural (Web Audio); `?mudo=1` desliga.
+
 ## Controles
 
 | | Gamepad (layout padrão) | Teclado |
