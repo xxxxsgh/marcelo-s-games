@@ -294,8 +294,8 @@ class Sim {
       const wx = BR[0] * nx + BR[1] * ny + BR[2] * nz, wy = BR[3] * nx + BR[4] * ny + BR[5] * nz, wz = BR[6] * nx + BR[7] * ny + BR[8] * nz;
       const bx = px - bs[0], by = py - bs[1], bz = pz - bs[2];
       const vx = (as[7] + as[11] * rz - as[12] * ry) - (bs[7] + bs[11] * bz - bs[12] * by), vy = (as[8] + as[12] * rx - as[10] * rz) - (bs[8] + bs[12] * bx - bs[10] * bz), vz = (as[9] + as[10] * ry - as[11] * rx) - (bs[9] + bs[10] * by - bs[11] * bx), vn = vx * wx + vy * wy + vz * wz;
-      let fn = kc * Math.min(pen, .12) * (pen > .03 ? 2.2 : 1) - cc * vn; if (fn < 0) fn = 0; if (fn > mm * 500) fn = mm * 500;
-      if (pen > .012) { const q = (pen - .012) * .55, ia = B.m / (A.m + B.m), ib = 1 - ia; as[0] += wx * q * ia; as[1] += wy * q * ia; as[2] += wz * q * ia; bs[0] -= wx * q * ib; bs[1] -= Math.min(wy * q * ib, 0) ; bs[2] -= wz * q * ib; }
+      let fn = kc * Math.min(pen, .16) * (pen > .03 ? 2.4 : 1) - cc * vn; if (fn < 0) fn = 0; if (fn > mm * 700) fn = mm * 700;
+      if (pen > .01) { const q = (pen - .01) * .8, ia = B.m / (A.m + B.m), ib = 1 - ia; as[0] += wx * q * ia; as[1] += wy * q * ia; as[2] += wz * q * ia; bs[0] -= wx * q * ib; bs[1] -= Math.min(wy * q * ib, 0) ; bs[2] -= wz * q * ib; }
       const tvx = vx - wx * vn, tvy = vy - wy * vn, tvz = vz - wz * vn, tl = Math.sqrt((tvx) * (tvx) + (tvy) * (tvy) + (tvz) * (tvz)), k = Math.min(.35 * fn / (tl + .1), mm * 5), fx = wx * fn - tvx * k, fy = wy * fn - tvy * k, fz = wz * fn - tvz * k;
       (_c[36] = px, _c[37] = py, _c[38] = pz, _c[39] = fx, _c[40] = fy, _c[41] = fz, this.forceR(A)); (_c[36] = px, _c[37] = py, _c[38] = pz, _c[39] = -fx, _c[40] = -fy, _c[41] = -fz, this.forceR(B));
       if (-vn > 2.2 && A.hitcd <= 0 && B.hitcd <= 0) { // trombada

@@ -112,7 +112,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
     let streakd = smoothstep(.55, .9, vn(vec3f(P.x * 30., P.y * 3., P.z * 30.) + 2.)) * (1. - abs(i.on.y)); palb *= 1. - streakd * .35;
     let pm = (1. - chip) * cover;
     alb = mix(bare * (.95 + .07 * streak), palb, pm); alb = mix(alb, vec3f(.5, .47, .42) * (.8 + .3 * nf), prim * cover * .8);
-    metal = 1. - pm * .5; rough = mix(br + .22 * streak + sc * .1, pr * .8, pm);
+    metal = 1. - pm * .36; rough = mix(br + .22 * streak + sc * .1, pr * .66, pm);
     h = pm * .00035 + nf * .00006 + sc * -.0002 + (1. - pm) * streak * .00004;
     if (edge > .95 && mat != 14u) { h += sin(dot(P, vec3f(310., 290., 330.))) * .00012; } // cordao de solda nas arestas
     if (mat == 21u) { // rasgo
@@ -158,7 +158,7 @@ fn shade(i: VO, ff: bool, tearOut: ptr<function, f32>) -> GO {
   else if (mat == 18u) { alb = vec3f(.02, .025, .04); rough = .06; }
   else if (mat == 19u) { let g = vn(vec3f(P.x * 3., P.y * 60., P.z * 60.)); alb = i.col * (.6 + .7 * g); rough = .55 + g * .2; alb = mix(alb, alb * .4, smoothstep(.6, .8, fbm(P * 4.))); h = g * .0003; }
   else if (mat == 20u) { let g = fract(uv * 32.) - .5; let hole = 1. - smoothstep(.12, .16, length(g)); alb = i.col * (.85 + .2 * vn(P * 30.)) * (1. - hole * .85); rough = .8; h = -hole * .001; }
-  else if (mat == 24u) { let rr = length(select(P.xz, P.xy, abs(i.on.z) > .5)); let ring = vn(vec3f(rr * 240., 1., 2.)); let pp2 = select(P.xz, P.xy, abs(i.on.z) > .5); let ang = atan2(pp2.y, pp2.x); let sw = pow(.5 + .5 * sin(ang * 2. + F.cam.w * 47.), 3.) + .6 * pow(.5 + .5 * sin(ang * 3. - F.cam.w * 31. + 1.), 4.); let rim = smoothstep(.15, .2, rr); alb = vec3f(.34, .34, .36) * (1. + sw * 1.1) * mix(1., .7 + .5 * (.5 + .5 * sin(ang * 9. + F.cam.w * 140.)), rim); metal = 1.; rough = .22 + rim * .22; h = 0.; }
+  else if (mat == 24u) { let rr = length(select(P.xz, P.xy, abs(i.on.z) > .5)); let ring = vn(vec3f(rr * 240., 1., 2.)); let pp2 = select(P.xz, P.xy, abs(i.on.z) > .5); let ang = atan2(pp2.y, pp2.x); let sw = pow(.5 + .5 * sin(ang * 2. + F.cam.w * 9.), 3.) + .6 * pow(.5 + .5 * sin(ang * 3. - F.cam.w * 6. + 1.), 4.); let rim = smoothstep(.15, .2, rr); let tooth = smoothstep(-.2, .4, sin(ang * 4. + F.cam.w * 7.)); let streak2 = .85 + .3 * vn(vec3f(ang * 30. + F.cam.w * 20., rr * 8., 1.)); alb = vec3f(.3, .3, .32) * (1. + sw * .6) * streak2 * mix(1., .35 + .75 * tooth, rim); metal = 1.; rough = .22 + rim * .22; h = 0.; }
   else if (mat == 25u) { // estrutura do chassi: montantes, travessa, diagonais soldadas, poucas aberturas
     let g = vec2f(uv.x / .14, uv.y / .1); let c = fract(g) - .5; let cid = floor(g); let st = vn(vec3f(uv.x * 5., uv.y * 180., 3.)); let n = fbm(P * 16.);
     let post = 1. - smoothstep(.06, .09, abs(c.x) ); let rail = 1. - smoothstep(.05, .08, abs(uv.y - .07) / .1); let dg = abs(abs(c.x) - abs(c.y)); let diag = (1. - smoothstep(.03, .06, dg)) * step(h21(cid), .55);
@@ -252,7 +252,7 @@ fn ggx(N: vec3f, V: vec3f, L: vec3f, r: f32, F0: vec3f) -> vec3f {
   // ambiente: cubo de ambiente + reflexo no espaco de tela
   let rj = vec3f(ign(i.pos.xy + 17., fr), ign(i.pos.xy + 41., fr + 3.), ign(i.pos.xy + 73., fr + 7.)) - .5;
   let R = normalize(reflect(-V, N) + rj * rough * rough * .7); let nv = max(dot(N, V), 0.);
-  let irr = textureSampleLevel(envT, smpC, N * vec3f(1., 1., -1.), 5.).rgb * 2.2 + vec3f(.024, .025, .03) * (.6 + .4 * N.y);
+  let irr = textureSampleLevel(envT, smpC, N * vec3f(1., 1., -1.), 5.).rgb * 2.4 + vec3f(.03, .031, .036) * (.6 + .4 * N.y);
   var spec = textureSampleLevel(envT, smpC, R * vec3f(1., 1., -1.), rough * 5.).rgb; var hitc = 0.;
   if (rough < .62 && N.y > .6 && F.misc2.z > .5) {
     var t = .04 + noise * .06; var hit = false; var huv = vec2f(0.); var st = .07; var tp = 0.;
@@ -371,7 +371,7 @@ struct PO { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
   var o: PO; let q = vec2f(f32(vi & 1u), f32((vi >> 1u) & 1u)) * 2. - 1.; let kind = b.w; let toC = normalize(F.cam.xyz - a.xyz);
   var wp = a.xyz; var col = c;
   if (kind < 1.5) { let sp = length(b.xyz); let dir = b.xyz / max(sp, .001); let side = normalize(cross(dir, toC)); let dc = distance(F.cam.xyz, a.xyz); let wd = min(a.w, dc * .0035); let len = min(max(wd, sp * select(.014, .006, kind > .5)), dc * .045 + .02); wp += side * q.x * wd + dir * q.y * len; }
-  else { let r = F.view; let rt = vec3f(r[0][0], r[1][0], r[2][0]); let up = vec3f(r[0][1], r[1][1], r[2][1]); let rot = b.x; let cs = cos(rot); let sn = sin(rot); wp += (rt * (q.x * cs - q.y * sn) + up * (q.x * sn + q.y * cs)) * a.w;
+  else { let r = F.view; let rt = vec3f(r[0][0], r[1][0], r[2][0]); let up = vec3f(r[0][1], r[1][1], r[2][1]); let rot = select(b.x, sin(b.x) * .35, kind > 2.5); let cs = cos(rot); let sn = sin(rot); let qy = q.y * select(1., 1.9, kind > 2.5); wp += (rt * (q.x * cs - qy * sn) + up * (q.x * sn + qy * cs)) * a.w;
     if (kind < 2.5) { var lit = vec3f(.02, .022, .025); for (var k = 0u; k < u32(F.misc2.y); k++) { let L = F.lights[k]; let d = L.pos.xyz - a.xyz; let dl = length(d); var at = 1. / (dl * dl + 1.); if (L.ext.y < .5) { at *= smoothstep(L.dir.w, L.col.w, dot(-d / dl, L.dir.xyz)); } else { let f = clamp(1. - dl / L.pos.w, 0., 1.); at *= f * f; } lit += L.col.rgb * at * .09; } col = vec4f(c.rgb * lit, c.a); } }
   o.pos = F.vp * vec4f(wp, 1.); o.uv = q; o.col = col; o.kind = kind; o.sd = b.y; o.zl = o.pos.w; return o;
 }
@@ -429,7 +429,7 @@ fn fl(q: vec2f) -> array<vec4f, 2> {
   for (var s = -1.; s <= 1.; s += 2.) { let d = sdBox(q - vec2f(s * 5., 0.), vec2f(1.05)); let l = 1. - smoothstep(.04, .046, abs(d)); let col = select(vec3f(.04, .13, .6), vec3f(.6, .04, .025), s < 0.); pc = mix(pc, col, l); pa = max(pa, l); let f = (1. - smoothstep(0., .006, d + .12)) * step(.5, fract((q.x + q.y) * 2.5)) * .85; pc = mix(pc, col, f); pa = max(pa, f); }
   let rc = length(q); let ring = 1. - smoothstep(.04, .046, abs(rc - 1.7)); let ang = atan2(q.y, q.x);
   let gear = 1. - smoothstep(.0, .008, abs(rc - (.95 + .1 * smoothstep(.3, .34, abs(fract(ang * 1.9099) - .5)))) - .035); let hub = 1. - smoothstep(.03, .036, abs(rc - .38));
-  let em = max(ring, hub * 0. + gear * 0.); pc = mix(pc, vec3f(.62, .6, .55), em); pa = max(pa, em);
+  let em = 0.; pc = mix(pc, vec3f(.62, .6, .55), em); pa = max(pa, em);
   let dp = sdBox(q - vec2f(${PIT.x}, ${PIT.z}), vec2f(${PIT.h})); let hz = (1. - smoothstep(.34, .346, dp)) * step(0., dp);
   let dsw = sdBox(q - vec2f(4.3, -4.3), vec2f(1.15, .55)); let hz2 = 1. - smoothstep(.0, .006, abs(dsw) - .07);
   let dfl = length(q - vec2f(${FLAME.x}, ${FLAME.z})) - ${FLAME.r}; let hz3 = 1. - smoothstep(.0, .006, abs(dfl) - .07);
