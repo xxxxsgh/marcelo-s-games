@@ -64,6 +64,7 @@ const UI = {
     h += `<div class="row${g.row === 5 ? ' sel' : ''}"><span class="k">NÚMERO</span><span class="v">◀ ${g.num} ▶</span></div>`;
     h += `<div class="row${g.row === 6 ? ' sel' : ''}"><span class="k">NOME</span><span class="v"><input id="gnome" maxlength="14" value="${esc(g.nome)}"></span><span class="x">A: sortear · Enter: digitar</span></div>`;
     h += `<div class="row go${g.row === 7 ? ' sel' : ''}${st.ok ? '' : ' no'}">${st.ok ? (rep ? 'VOLTAR PARA A ARENA ▶' : 'IR PARA A LUTA ▶') : 'ACIMA DO LIMITE DE PESO'}</div>`;
+    if (!rep) { const rv = RIVAIS.concat(RIVAIS2)[g.rival]; h += `<div class="row${g.row === 8 ? ' sel' : ''}"><span class="k">AMISTOSO</span><span class="v">◀ ${esc(rv.nome)} ▶</span><span class="x">${ARMAS[rv.b[3]].nome} · A: lutar</span></div>`; }
     e.rows.innerHTML = h;
     const inp = $('gnome'); inp.onfocus = () => { IN.typing = true; }; inp.onblur = () => { IN.typing = false; GAR.setNome(inp.value); };
     const part = g.row < 4 ? lists[g.row][b[g.row]] : null;

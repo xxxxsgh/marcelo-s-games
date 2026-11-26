@@ -24,7 +24,7 @@ const SIM = new Sim(), BG = new Sim(), TMPS = new Sim();
 let TOR = null;
 
 const GAR = {
-  com: [1, 1, 1, 0], pre: [1, 1, 1, 0], row: 0, mode: 0, cor: 0, num: 7, nome: 'Fagulha', repair: false, acoes: 2, ang: .6, an: new Float32Array(4), anV: new Float32Array(4), bot: new Bot(0), hp: null, idle: 0, warn: 0,
+  com: [1, 1, 1, 0], pre: [1, 1, 1, 0], row: 0, mode: 0, cor: 0, num: 7, nome: 'Fagulha', repair: false, rival: 0, acoes: 2, ang: .6, an: new Float32Array(4), anV: new Float32Array(4), bot: new Bot(0), hp: null, idle: 0, warn: 0,
   slotHp(r) { const h = this.bot.hp, m = this.bot.hpMax; if (r === 0) return (h[0] / m[0] + h[11] / m[11]) / 2; if (r === 1) return (h[1] + h[2] + h[3] + h[4]) / (4 * m[1]); if (r === 2) return (h[5] + h[6] + h[7] + h[8] + h[9]) / (m[5] + m[6] + m[7] + m[8] + m[9]); return h[10] / m[10]; },
   fixSlot(r) { const h = this.hp, m = this.bot.hpMax; if (!h) return; if (r === 0) { h[0] = m[0]; h[11] = m[11]; } else if (r === 1) { for (let q = 1; q <= 4; q++) h[q] = m[q]; } else if (r === 2) { for (let q = 5; q <= 9; q++) h[q] = m[q]; } else h[10] = m[10]; },
   refresh(slotChanged) { // remonta o robo da bancada
@@ -43,7 +43,8 @@ const GAR = {
   tick(dt) {
     const g = this; let ch = false;
     if (IN.typing) { } else if (g.mode === 0) {
-      if (IN.pUp) { g.row = (g.row + 7) % 8; ch = true; } if (IN.pDown) { g.row = (g.row + 1) % 8; ch = true; }
+      if (IN.pUp) { g.row = (g.row + 8) % 9; ch = true; } if (IN.pDown) { g.row = (g.row + 1) % 9; ch = true; }
+      if (g.row === 8 && (IN.pLeft || IN.pRight)) { g.rival = (g.rival + (IN.pRight ? 1 : 13)) % 14; ch = true; } else if (g.row === 8 && IN.pOk && !g.repair) g.amistoso();
       if (g.row < 4 && (IN.pOk || IN.pRight)) { if (g.repair && g.acoes <= 0) UI.toast('SEM TEMPO: AS DUAS AÇÕES JÁ FORAM USADAS'); else { g.mode = 1; ch = true; } }
       else if (g.row === 4 && (IN.pLeft || IN.pRight) && !g.repair) { g.cor = (g.cor + (IN.pRight ? 1 : CORES.length - 1)) % CORES.length; g.refresh(-1); G.save(); }
       else if (g.row === 5 && (IN.pLeft || IN.pRight) && !g.repair) { g.num = (g.num + (IN.pRight ? 1 : 99)) % 100; g.refresh(-1); G.save(); }
@@ -65,6 +66,8 @@ const GAR = {
     // animacao de encaixe (mola amortecida)
     for (let k = 0; k < 4; k++) { if (g.an[k] === 0 && g.anV[k] === 0) continue; const was = g.an[k]; g.anV[k] += (-g.an[k] * 260 - g.anV[k] * 17) * dt; g.an[k] += g.anV[k] * dt; if (g.an[k] < 0) { g.an[k] = 0; if (g.anV[k] < -.5) { g.anV[k] *= -.25; (_f[0] = Math.sin(g.ang) * .1, _f[1] = BENCH_Y + .12 + k * .03, _f[2] = Math.cos(g.ang) * .1, _f[3] = 0, _f[4] = .6, _f[5] = 0, _f[6] = 26, _f[7] = 2.2, _f[8] = 1, FX.sparksR(0)); (_f[0] = 0, _f[1] = BENCH_Y + .3, _f[2] = 0, _f[3] = 3, _f[4] = 3, _f[5] = 2, _f[6] = .8, _f[7] = .18, FX.lightR()); } else g.anV[k] = 0; } if (Math.abs(g.an[k]) < .0005 && Math.abs(g.anV[k]) < .01) { g.an[k] = 0; g.anV[k] = 0; } }
   },
+  amistoso() { const st = statsOf(this.pre); if (!st.ok) { UI.toast(`PESO ACIMA DO LIMITE (${st.kg} / ${PESO_MAX} kg)`); return; } this.com = this.pre.slice(); G.save(); const r = RIVAIS.concat(RIVAIS2)[this.rival]; G.round = 'AMISTOSO'; G.curMatch = null; G.script = null;
+    G.setupFight(0, 1, 500 + this.rival * 13 + CAR.v, LUTA_T, { nome: this.nome, b: this.com.slice(), cor: CORES[this.cor], num: this.num, estilo: -1, hp: null, v: CAR.v, d: CAR.d }, { nome: r.nome, b: r.b.slice(), cor: CORES[r.cor], num: r.num, estilo: r.estilo, hp: null, v: 0, d: 0 }); G.st = 'intro'; G.intro = 0; G.ft[7] = 0; R.keyDim = .45; UI.show('intro'); G.showIntro(); },
   go() { const st = statsOf(this.pre); if (this.mode === 1) return; if (!st.ok) { UI.toast(`PESO ACIMA DO LIMITE (${st.kg} / ${PESO_MAX} kg)`); this.warn = 1; return false; } this.com = this.pre.slice(); G.save(); if (!TOR || !TOR.ativo) G.newTournament(); else TOR.ent[0].b = this.com.slice(); if (this.repair) G.startIntro(); else G.toBracket('PRÓXIMA LUTA'); return true; },
   draw() {
     const B = this.bot, L = B.L, a = this.ang, I = R.I;
@@ -77,7 +80,7 @@ const GAR = {
 
 const G = {
   st: 'boot', ft: new Float64Array(12), pr: new Float32Array(8), cam: 0, ce: new Float32Array(3), ct: new Float32Array(3), first: 1, round: '', intro: 0, paused: 0, prev: '',
-  auto: false, fast: 1, dbg: 0, skipRender: false, camFix: null, notes: null, entA: null, entB: null, curMatch: null, cnt: 0, clipFor: -2, rk: 0, rpx: .5, rpy: .5, rpz: .5, rqx: .5, rqy: .5, rqz: .5, script: null, sf: 0, rec: null, lastSk: new Float32Array(2 * 4 * 3).fill(-9), frameLog: null, nlog: 0, lastT: 0, acc: 0, hits: 0, detached: 0, maxPen: 0, rumbleLog: null,
+  auto: false, fast: 1, dbg: 0, livreMsg: 0, skipRender: false, camFix: null, notes: null, entA: null, entB: null, curMatch: null, cnt: 0, clipFor: -2, rk: 0, rpx: .5, rpy: .5, rpz: .5, rqx: .5, rqy: .5, rqz: .5, script: null, sf: 0, rec: null, lastSk: new Float32Array(2 * 4 * 3).fill(-9), frameLog: null, nlog: 0, lastT: 0, acc: 0, hits: 0, detached: 0, maxPen: 0, rumbleLog: null,
   // replay
   REC_F: 28 + 5 + DEB_N * 8, ring: null, clip: null, clipN: 0, clipHit: 0, cev: new Float32Array(32 * 9), ncev: 0, rev: new Float32Array(64 * 9), nrev: 0, bestAt: -1, rp: null,
   save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ b: GAR.com, cor: GAR.cor, num: GAR.num, nome: GAR.nome, tor: TOR, car: CAR })); } catch (e) { } },
@@ -121,7 +124,7 @@ const G = {
   },
   enterArena() {
     if (R.scene !== 0) { R.im[SLOT.GLASS] = MESH.glass.id; R.im[SLOT.AUX0] = MESH.saw.id; R.im[SLOT.AUX1] = MESH.saw.id; R.im[SLOT.AUX2] = MESH.ahammer.id; R.bake(0, MESH.arena.id, ARENA_LIGHTS, [0, 1.2, 0]); }
-    R.exposure = .25; R.fog = .0017; R.mblur = .55; R.amb = 1; R.cp[0] = .9;
+    R.exposure = .3; R.fog = .0017; R.mblur = .3; R.amb = 1; R.cp[0] = .9;
   },
   // prepara a luta do jogador (ou uma luta avulsa para teste/roteiro)
   setupFight(ia, ib, seed, dur, ea, eb) {
@@ -162,6 +165,7 @@ const G = {
       if (this.st === 'fim') { this.ft[1] += dt * (this.fast > 1 ? 30 : 1); if (this.ft[1] > 3) this.afterFight(); } }
     else if (st === 'juizes') { this.ft[1] += dt * (this.fast > 1 ? 30 : 1); this.camera(dt); this.drawFight(1); FX.update(dt); if (this.ft[1] > 6 || IN.pOk) this.toReplay(); }
     else if (st === 'replay') { this.replayTick(dt); }
+    else if (st === 'livre') { this.camera(dt); this.drawFight(1); FX.update(dt); if (this.round === 'AMISTOSO') { if (!this.livreMsg) { this.livreMsg = 1; UI.msg(SIM.winner === 0 ? 'VITÓRIA' : 'DERROTA', 'A / ENTER volta para a garagem'); } if (IN.pOk || IN.pStart) { this.livreMsg = 0; GAR.enter(false); } } }
     else if (st === 'pausa') { if (IN.pPause || IN.pOk) { this.st = this.prev; UI.show('hud'); } }
   },
   fightStep() {
@@ -173,13 +177,13 @@ const G = {
     this.sf++;
     if (this.rec && S.frame <= this.rec.length / 3) { const o = (S.frame - 1) * 3; this.rec[o] = Math.round(A.thr * 100); this.rec[o + 1] = Math.round(A.steer * 100); this.rec[o + 2] = (A.fire ? 1 : 0) | (A.flipB ? 2 : 0) | (A.resetB ? 4 : 0); }
     this.events(); this.recFrame();
-    for (let i = 0; i < 2; i++) { const B = S.bots[i], s = B.s, h = B.hpt, Rm = B.R; let p = -9; for (let q = 0; q < B.nhp; q++) { const lx = h[q * 3], ly = h[q * 3 + 1], lz = h[q * 3 + 2], x = s[0] + Rm[0] * lx + Rm[1] * ly + Rm[2] * lz, z = s[2] + Rm[6] * lx + Rm[7] * ly + Rm[8] * lz, e = Math.max(Math.abs(x), Math.abs(z)) - AR; if (e > p) p = e; } if (p > this.maxPen) this.maxPen = p; if (S.bots[i].teleport) { S.bots[i].teleport = 0; this.first = 1; } }
+    for (let i = 0; i < 2; i++) { const B = S.bots[i], s = B.s, h = B.hpt, Rm = B.R; let p = -9; for (let q = 0; q < B.nhull; q++) { const lx = h[q * 3], ly = h[q * 3 + 1], lz = h[q * 3 + 2], x = s[0] + Rm[0] * lx + Rm[1] * ly + Rm[2] * lz, z = s[2] + Rm[6] * lx + Rm[7] * ly + Rm[8] * lz, e = Math.max(Math.abs(x), Math.abs(z)) - AR; if (e > p) p = e; } if (p > this.maxPen) this.maxPen = p; if (S.bots[i].teleport) { S.bots[i].teleport = 0; this.first = 1; } }
     if (S.over && this.st === 'luta') { this.st = 'fim'; this.ft[1] = 0; const w = S.bots[S.winner].nome; if (S.koBy === 'juizes') UI.msg('FIM DO TEMPO', 'A DECISÃO VAI PARA OS JUÍZES'); else UI.msg(S.koBy === 'fosso' ? 'NO FOSSO!' : 'NOCAUTE!', 'VITÓRIA DE ' + w); if (this.curMatch) Atlas.score(this.entA.nome.toUpperCase(), this.entB.nome.toUpperCase(), this.round, 'VITÓRIA: ' + w.toUpperCase(), this.entA.cor, this.entB.cor); }
   },
   events() {
     const S = SIM, e = S.ev;
     for (let k = 0; k < S.nev; k++) { const o = k * 8, ty = e[o], x = e[o + 1], y = e[o + 2], z = e[o + 3], dx = e[o + 4], dy = e[o + 5], dz = e[o + 6], mag = e[o + 7];
-      if (ty === EV.HIT) { const dmg = mag % 1000; this.hits++; if (mag >= 1000) this.hitsB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy, _f[5] = dz, _f[6] = 14 + dmg * 3.5, _f[7] = 3.2 + dmg * .16, _f[8] = .75, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy + .5, _f[5] = dz, _f[6] = 4 + dmg * .5, _f[7] = 3.5, _f[8] = .9, FX.sparksR(1)); (_f[0] = x, _f[1] = y + .25, _f[2] = z, _f[3] = 3 + dmg * .08, _f[4] = 9 + dmg * .7, _f[5] = 5 + dmg * .35, _f[6] = 1.2, _f[7] = .2, FX.lightR()); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 2, _f[4] = .22, _f[5] = .7, FX.smokeR(0)); (_f[0] = x - dz * .2, _f[1] = z + dx * .2, _f[2] = x + dz * .2, _f[3] = z - dx * .2, _f[4] = .012, _f[5] = 1, _f[6] = .6, FX.markR());
+      if (ty === EV.HIT) { const dmg = mag % 1000; this.hits++; if (mag >= 1000) this.hitsB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy, _f[5] = dz, _f[6] = 10 + dmg * 2.4, _f[7] = 3 + dmg * .14, _f[8] = .75, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = dy + .5, _f[5] = dz, _f[6] = 4 + dmg * .5, _f[7] = 3.5, _f[8] = .9, FX.sparksR(1)); (_f[0] = x, _f[1] = y + .25, _f[2] = z, _f[3] = 2.6 + dmg * .05, _f[4] = 4 + dmg * .3, _f[5] = 2.2 + dmg * .15, _f[6] = .5, _f[7] = .18, FX.lightR()); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 2, _f[4] = .22, _f[5] = .7, FX.smokeR(0)); (_f[0] = x - dz * .2, _f[1] = z + dx * .2, _f[2] = x + dz * .2, _f[3] = z - dx * .2, _f[4] = .012, _f[5] = 1, _f[6] = .6, FX.markR());
         FX.sh[0] = Math.min(1, FX.sh[0] + dmg * .03); const st = Math.min(Math.max(.12 + dmg / 60, 0), 1); (_k[8] = st, _k[9] = st * .7, _k[10] = 120 + dmg * 7, IN.rumbleR()); if (this.rumbleLog && this.rumbleLog.length < 400) this.rumbleLog.push(dmg, st);
         if (dmg > S.best) { S.best = dmg; this.bestAt = S.frame; } _k[11] = dmg; this.pushEv(1, o); }
       else if (ty === EV.DETACH) { this.detached++; if (mag >= 100) this.detB++; (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 70, _f[7] = 5, _f[8] = .9, FX.sparksR(0)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = dx, _f[4] = 1, _f[5] = dz, _f[6] = 14, _f[7] = 4, _f[8] = 1, FX.sparksR(1)); (_f[0] = x, _f[1] = y, _f[2] = z, _f[3] = 4, _f[4] = .3, _f[5] = .9, FX.smokeR(1)); (_f[0] = x, _f[1] = y + .3, _f[2] = z, _f[3] = 5, _f[4] = 40, _f[5] = 22, _f[6] = 6, _f[7] = .3, FX.lightR()); (_k[8] = .9, _k[9] = .6, _k[10] = 260, IN.rumbleR()); FX.sh[0] = Math.min(1, FX.sh[0] + .5); _k[11] = 30; this.pushEv(2, o); this.note(this.notes[mag >= 100 ? 1 : 0][mag % 100 | 0]); }
@@ -240,12 +244,12 @@ const G = {
   camera(dt) {
     if (this.camFix) { const c = this.camFix; R.eye[0] = c[0]; R.eye[1] = c[1]; R.eye[2] = c[2]; R.tgt[0] = c[3]; R.tgt[1] = c[4]; R.tgt[2] = c[5]; R.cp[0] = c[6]; R.up[0] = 0; R.up[1] = 1; R.up[2] = 0; if (this.first) { this.first = 0; R.reset = 1; } return; }
     const A = SIM.bots[0], B = SIM.bots[1], s = A.s, R_ = A.R, e = R.eye, t = R.tgt; const sh = FX.sh[0] * FX.sh[0] * .05, jx = Math.sin(this.ft[0] * 71) * sh, jy = Math.sin(this.ft[0] * 93 + 1) * sh;
-    if (this.cam === 0) { let fx = R_[0], fz = R_[6]; const l = Math.sqrt((fx) * (fx) + (fz) * (fz)); if (l > .3) { fx /= l; fz /= l; this.ft[5] = fx; this.ft[6] = fz; } else { fx = this.ft[5] || 1; fz = this.ft[6] || 0; }
+    if (this.cam === 0 || (this.cam === 1 && R_[4] < .45)) { let fx = R_[0], fz = R_[6]; const l = Math.sqrt((fx) * (fx) + (fz) * (fz)); if (l > .3) { fx /= l; fz /= l; this.ft[5] = fx; this.ft[6] = fz; } else { fx = this.ft[5] || 1; fz = this.ft[6] || 0; }
       const kk = this.first ? 1 : 1 - Math.exp(-dt * 3.2); this.ft[3] = (this.ft[3] || fx) + (fx - (this.ft[3] || fx)) * kk; this.ft[4] = (this.ft[4] || 0) + (fz - (this.ft[4] || 0)) * kk; if (this.first) { this.ft[3] = fx; this.ft[4] = fz; }
       const n = Math.sqrt((this.ft[3]) * (this.ft[3]) + (this.ft[4]) * (this.ft[4])) || 1, ux = this.ft[3] / n, uz = this.ft[4] / n;
       (_k[0] = Math.min(Math.max(s[0] - ux * 2.5, -AR + .25), AR - .25) + jx, _k[1] = Math.min(Math.max(s[1] + 1.05, .5), 3) + jy, _k[2] = Math.min(Math.max(s[2] - uz * 2.5, -AR + .25), AR - .25), _k[3] = s[0] + ux * 1.1, _k[4] = Math.max(s[1], 0) + .2, _k[5] = s[2] + uz * 1.1, _k[6] = dt, _k[7] = .95, this.setCamR()); }
     else if (this.cam === 1) { const L = A.L, y = L.hy1 - A.ycm + .3, x = L.mx - .12; (_c[45] = x, _c[46] = y, _c[47] = 0, SIM.wptR(A)); e[0] = _c[0] + jx; e[1] = _c[1] + jy; e[2] = _c[2]; (_c[45] = x + 3, _c[46] = y - .62, _c[47] = 0, SIM.wptR(A)); t[0] = _c[0]; t[1] = _c[1]; t[2] = _c[2]; R.up[0] = R_[1]; R.up[1] = R_[4]; R.up[2] = R_[7]; R.cp[0] = 1.05; if (this.first) { this.first = 0; R.reset = 1; } }
-    else { const mx = (s[0] + B.s[0]) / 2, mz = (s[2] + B.s[2]) / 2, d = Math.sqrt((s[0] - B.s[0]) * (s[0] - B.s[0]) + (s[2] - B.s[2]) * (s[2] - B.s[2])); (_k[0] = mx * .35 + jx, _k[1] = 3.55 + jy, _k[2] = -6.55, _k[3] = mx, _k[4] = .2, _k[5] = mz, _k[6] = dt, _k[7] = Math.min(Math.max(.34 + d * .07, .42), .95), this.setCamR()); }
+    else { const mx = (s[0] + B.s[0]) / 2, mz = (s[2] + B.s[2]) / 2, d = Math.sqrt((s[0] - B.s[0]) * (s[0] - B.s[0]) + (s[2] - B.s[2]) * (s[2] - B.s[2])); (_k[0] = mx * .35 + jx, _k[1] = 3.55 + jy, _k[2] = -6.55, _k[3] = mx, _k[4] = .2, _k[5] = mz, _k[6] = dt, _k[7] = Math.min(Math.max(2 * Math.atan((d * .55 + 1.25) / (1.78 * Math.sqrt((mx * .65) * (mx * .65) + 11.6 + (mz + 6.55) * (mz + 6.55)))), .1), .95), this.setCamR()); }
   },
   drawProps() { // le serras, martelo e tampa do fosso de this.pr (sawH0, sawH1, sawA, ahA, pitY)
     const S = SIM, I = R.I, P = this.pr, h0 = P[0], h1 = P[1], sa = P[2], ah = P[3], py = P[4];

@@ -11,7 +11,7 @@ POSES = [
  ('arena_1_perseguicao', LUTA % 30 + "CR.G.cam=0", 10),
  ('arena_2_tv', LUTA % 420 + "CR.G.cam=2", 10),
  ('arena_3_bordo', LUTA % 150 + "CR.G.cam=1", 10),
- ('arena_4_fixa', LUTA % 1500 + "CR.G.camFix=[CR.SIM.bots[0].s[0]+1.6,0.55,CR.SIM.bots[0].s[2]-1.9,(CR.SIM.bots[0].s[0]+CR.SIM.bots[1].s[0])/2,0.2,(CR.SIM.bots[0].s[2]+CR.SIM.bots[1].s[2])/2,0.75]", 10),
+ ('arena_4_fixa', LUTA % 1500 + "(()=>{const a=CR.SIM.bots[0].s,b=CR.SIM.bots[1].s,mx=(a[0]+b[0])/2,mz=(a[2]+b[2])/2,c=x=>Math.max(-6.2,Math.min(6.2,x)); let dx=-(b[2]-a[2]),dz=(b[0]-a[0]),l=Math.hypot(dx,dz)||1; dx/=l;dz/=l; if(Math.abs(mx+dx*2.6)>6.2||Math.abs(mz+dz*2.6)>6.2){dx=-dx;dz=-dz} CR.G.camFix=[c(mx+dx*2.6),0.6,c(mz+dz*2.6),mx,0.2,mz,0.8]})()", 10),
 ]
 with sync_playwright() as pw:
     for name, pre, n in POSES:

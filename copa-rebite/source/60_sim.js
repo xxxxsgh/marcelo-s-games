@@ -15,7 +15,7 @@ class Bot {
   constructor(id) {
     this.id = id; this.s = new Float64Array(13); this.R = new Float64Array(9); this.hp = new Float32Array(NPART); this.hpMax = new Float32Array(NPART);
     this.dent = new Float32Array(6 * 16); this.dentN = new Uint8Array(6); this.wl = new Float64Array(12); this.wang = new Float32Array(4); this.wcon = new Uint8Array(4); this.wslip = new Float32Array(4);
-    this.F = new Float64Array(3); this.T = new Float64Array(3); this.Ii = new Float64Array(3); this.hpt = new Float64Array(40 * 3);
+    this.F = new Float64Array(3); this.T = new Float64Array(3); this.Ii = new Float64Array(3); this.hpt = new Float64Array(44 * 3);
     this.b = [0, 0, 0, 0]; this.L = {}; this.S = {}; this.cor = [1, 0, 0]; this.nome = ''; this.num = 0;
     this.thr = 0; this.steer = 0; this.fire = 0; this.flipB = 0; this.resetB = 0; this.pfire = 0;
     this.ai = { estilo: 0, t: 0, mode: 0, mt: 0, stuck: 0, sx: 0, sz: 0, jit: 0, side: 1, lastHit: 0 };
@@ -23,7 +23,7 @@ class Bot {
     this.arng = new Rng(1); this.mid = new Int16Array(12);
     this.reset0();
   }
-  reset0() { this.wspin = 0; this.wa = 0; this.wst = 0; this.wt = 0; this.wcd = 0; this.won = 0; this.grab = 0; this.hitcd = 0; this.imm = 0; this.ax = 0; this.az = 0; this.at = 0; this.flipCd = 0; this.resetCd = 0; this.burn = 0; this.fireOn = 0; this.dead = 0; this.ko = 0; this.sawCd = 0; this.heat = 0; this.air = 0; this.lastHitBy = 0; this.pitted = 0; this.glow = 0; this.wav = 0; this.scr = 0; this.scrX = 0; this.scrZ = 0; this.hcon = 0; this.grounded = 0; this.teleport = 0; this.gx = 0; this.gy = 0; this.gz = 0; this.wedge = 0; }
+  reset0() { this.wspin = 0; this.wa = 0; this.wst = 0; this.wt = 0; this.wcd = 0; this.won = 0; this.grab = 0; this.hitcd = 0; this.imm = 0; this.ax = 0; this.az = 0; this.at = 0; this.flipCd = 0; this.resetCd = 0; this.burn = 0; this.fireOn = 0; this.dead = 0; this.ko = 0; this.sawCd = 0; this.heat = 0; this.air = 0; this.lastHitBy = 0; this.pitted = 0; this.glow = 0; this.wav = 0; this.nhull = 0; this.scr = 0; this.scrX = 0; this.scrZ = 0; this.hcon = 0; this.grounded = 0; this.teleport = 0; this.gx = 0; this.gy = 0; this.gz = 0; this.wedge = 0; }
 }
 
 class Sim {
@@ -53,7 +53,9 @@ class Sim {
     let n = 0; const hp_ = B.hpt, y0 = -B.ycm, y1 = L.hy1 - B.ycm;
     for (const yy of [y0, y1]) for (let ix = 0; ix < 5; ix++) for (let iz = 0; iz < 3; iz++) { if (ix > 0 && ix < 4 && iz === 1) continue; hp_[n++] = (ix / 2 - 1) * L.hx; hp_[n++] = yy; hp_[n++] = (iz - 1) * L.hz; }
     for (const xx of [-L.hx, L.hx]) for (const zz of [-L.hz, 0, L.hz]) { hp_[n++] = xx; hp_[n++] = (y0 + y1) / 2; hp_[n++] = zz; } for (const zz of [-L.hz, L.hz]) { hp_[n++] = 0; hp_[n++] = (y0 + y1) / 2; hp_[n++] = zz; }
-    const NH = n / 3;
+    // a arma tambem colide: tres pontos na ponta
+    for (const zz of [-.12, 0, .12]) { hp_[n++] = L.hitx - (build[3] < 3 ? 0 : .06); hp_[n++] = L.hity - B.ycm; hp_[n++] = zz; }
+    const NH = n / 3; B.nhull = NH - 3;
     if (c.wedge) { for (let q = 0; q < NH; q++) if (hp_[q * 3] > .02 && hp_[q * 3 + 1] > y0 + .01) { const f = (hp_[q * 3] - .02) / (L.hx - .02); hp_[q * 3 + 1] = Math.min(hp_[q * 3 + 1], (y1) + ((.045 - B.ycm) - (y1)) * f); } }
     B.nhp = NH; B.wedge = c.wedge;
     const s = B.s; s[0] = START[i][0]; s[1] = L.clear + B.ycm + .01; s[2] = START[i][1]; s[3] = 0; s[4] = i ? 1 : 0; s[5] = 0; s[6] = i ? 0 : 1; for (let q = 7; q < 13; q++) s[q] = 0;
@@ -256,7 +258,7 @@ class Sim {
     B.grounded = anyCon;
     // casco contra piso e paredes
     const kh = 1300 * m, chh = 30 * m, hp = B.hpt; let land = 0, lx_ = 0, ly_ = 0, lz_ = 0, scr = 0, sx_ = 0, sz_ = 0, hcon = 0;
-    for (let q = 0; q < B.nhp; q++) {
+    for (let q = 0; q < B.nhull; q++) {
       const lx = hp[q * 3], ly = hp[q * 3 + 1], lz = hp[q * 3 + 2], rx = R[0] * lx + R[1] * ly + R[2] * lz, ry = R[3] * lx + R[4] * ly + R[5] * lz, rz = R[6] * lx + R[7] * ly + R[8] * lz, px = s[0] + rx, py = s[1] + ry, pz = s[2] + rz;
       const pen = (_c[32] = px, _c[33] = py, _c[34] = pz, _c[35] = 0, this.envR(), _c[0]); if (pen <= 0) continue; hcon++;
       const nx = _c[1], ny = _c[2], nz = _c[3], vx = s[7] + s[11] * rz - s[12] * ry, vy = s[8] + s[12] * rx - s[10] * rz, vz = s[9] + s[10] * ry - s[11] * rx, vn = vx * nx + vy * ny + vz * nz;
@@ -277,7 +279,8 @@ class Sim {
   pair(A, B) {
     const as = A.s, AR_ = A.R, hp = A.hpt, L = B.L, bs = B.s, BR = B.R, mm = (A.m + B.m) * .5, kc = 1000 * mm, cc = 22 * mm, y0 = -B.ycm, y1 = L.hy1 - B.ycm;
     if (Math.sqrt((as[0] - bs[0]) * (as[0] - bs[0]) + (as[1] - bs[1]) * (as[1] - bs[1]) + (as[2] - bs[2]) * (as[2] - bs[2])) > 2.2) return;
-    for (let q = 0; q < A.nhp; q++) {
+    const na = A.hp[P_WP] > 0 ? A.nhp : A.nhull;
+    for (let q = 0; q < na; q++) {
       const ax = hp[q * 3], ay = hp[q * 3 + 1], az = hp[q * 3 + 2], rx = AR_[0] * ax + AR_[1] * ay + AR_[2] * az, ry = AR_[3] * ax + AR_[4] * ay + AR_[5] * az, rz = AR_[6] * ax + AR_[7] * ay + AR_[8] * az, px = as[0] + rx, py = as[1] + ry, pz = as[2] + rz;
       const dx = px - bs[0], dy = py - bs[1], dz = pz - bs[2], lx = BR[0] * dx + BR[3] * dy + BR[6] * dz, ly = BR[1] * dx + BR[4] * dy + BR[7] * dz, lz = BR[2] * dx + BR[5] * dy + BR[8] * dz;
       let top = y1, snx = 0, sny = 1; if (B.wedge && lx > .02) { const f = (lx - .02) / (L.hx - .02); top = ((y1) + ((.03 - B.ycm) - (y1)) * (Math.min(Math.max(f, 0), 1))); snx = .262; sny = .965; }
@@ -289,7 +292,7 @@ class Sim {
       const bx = px - bs[0], by = py - bs[1], bz = pz - bs[2];
       const vx = (as[7] + as[11] * rz - as[12] * ry) - (bs[7] + bs[11] * bz - bs[12] * by), vy = (as[8] + as[12] * rx - as[10] * rz) - (bs[8] + bs[12] * bx - bs[10] * bz), vz = (as[9] + as[10] * ry - as[11] * rx) - (bs[9] + bs[10] * by - bs[11] * bx), vn = vx * wx + vy * wy + vz * wz;
       let fn = kc * Math.min(pen, .12) * (pen > .03 ? 2.2 : 1) - cc * vn; if (fn < 0) fn = 0; if (fn > mm * 500) fn = mm * 500;
-      if (pen > .02) { const q = (pen - .02) * .4, ia = B.m / (A.m + B.m), ib = 1 - ia; as[0] += wx * q * ia; as[1] += wy * q * ia; as[2] += wz * q * ia; bs[0] -= wx * q * ib; bs[1] -= Math.min(wy * q * ib, 0) ; bs[2] -= wz * q * ib; }
+      if (pen > .012) { const q = (pen - .012) * .55, ia = B.m / (A.m + B.m), ib = 1 - ia; as[0] += wx * q * ia; as[1] += wy * q * ia; as[2] += wz * q * ia; bs[0] -= wx * q * ib; bs[1] -= Math.min(wy * q * ib, 0) ; bs[2] -= wz * q * ib; }
       const tvx = vx - wx * vn, tvy = vy - wy * vn, tvz = vz - wz * vn, tl = Math.sqrt((tvx) * (tvx) + (tvy) * (tvy) + (tvz) * (tvz)), k = Math.min(.35 * fn / (tl + .1), mm * 5), fx = wx * fn - tvx * k, fy = wy * fn - tvy * k, fz = wz * fn - tvz * k;
       (_c[36] = px, _c[37] = py, _c[38] = pz, _c[39] = fx, _c[40] = fy, _c[41] = fz, this.forceR(A)); (_c[36] = px, _c[37] = py, _c[38] = pz, _c[39] = -fx, _c[40] = -fy, _c[41] = -fz, this.forceR(B));
       if (-vn > 2.2 && A.hitcd <= 0 && B.hitcd <= 0) { // trombada
