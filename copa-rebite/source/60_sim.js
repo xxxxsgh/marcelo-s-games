@@ -23,7 +23,7 @@ class Bot {
     this.arng = new Rng(1); this.mid = new Int16Array(12);
     this.reset0();
   }
-  reset0() { this.wspin = 0; this.wa = 0; this.wst = 0; this.wt = 0; this.wcd = 0; this.won = 0; this.grab = 0; this.hitcd = 0; this.imm = 0; this.ax = 0; this.az = 0; this.at = 0; this.flipCd = 0; this.resetCd = 0; this.burn = 0; this.fireOn = 0; this.dead = 0; this.ko = 0; this.sawCd = 0; this.heat = 0; this.air = 0; this.lastHitBy = 0; this.pitted = 0; this.glow = 0; this.wav = 0; this.nhull = 0; this.scr = 0; this.scrX = 0; this.scrZ = 0; this.hcon = 0; this.grounded = 0; this.teleport = 0; this.gx = 0; this.gy = 0; this.gz = 0; this.wedge = 0; }
+  reset0() { this.wspin = 0; this.wa = 0; this.wst = 0; this.wt = 0; this.wcd = 0; this.won = 0; this.grab = 0; this.hitcd = 0; this.imm = 0; this.ax = 0; this.az = 0; this.at = 0; this.flipCd = 0; this.resetCd = 0; this.burn = 0; this.fireOn = 0; this.dead = 0; this.ko = 0; this.sawCd = 0; this.heat = 0; this.air = 0; this.lastHitBy = 0; this.pitted = 0; this.glow = 0; this.wav = 0; this.nhull = 0; this.dmgMul = 1; this.scr = 0; this.scrX = 0; this.scrZ = 0; this.hcon = 0; this.grounded = 0; this.teleport = 0; this.gx = 0; this.gy = 0; this.gz = 0; this.wedge = 0; }
 }
 
 class Sim {
@@ -44,6 +44,7 @@ class Sim {
     B.Ii[0] = 1 / (B.m / 12 * (sy * sy + sz * sz) * 1.5); B.Ii[1] = 1 / (B.m / 12 * (sx * sx + sz * sz) * 1.25); B.Ii[2] = 1 / (B.m / 12 * (sx * sx + sy * sy) * 1.5);
     const hm = B.hpMax; hm[0] = c.hp * 1.6; for (let q = 1; q <= 4; q++) hm[q] = w.hp * 1.35; for (let q = 5; q <= 9; q++) hm[q] = a.hp * 1.4; hm[P_AT] = a.hp * 1.25; hm[P_WP] = k.hp * 1.5; hm[P_BAT] = 115;
     const bf = cfg.buff || 1; if (bf !== 1) for (let q = 0; q < NPART; q++) hm[q] *= bf;
+    B.dmgMul = 1; if (cfg.up) { const u = cfg.up; hm[0] *= 1 + .1 * u[0]; hm[P_BAT] *= 1 + .1 * u[0]; for (let q = 1; q <= 4; q++) hm[q] *= 1 + .08 * u[1]; B.S.forca *= 1 + .05 * u[1]; for (let q = 5; q <= 9; q++) hm[q] *= 1 + .1 * u[2]; hm[P_WP] *= 1 + .1 * u[3]; B.dmgMul = 1 + .07 * u[3]; }
     for (let q = 0; q < NPART; q++) B.hp[q] = hp ? Math.min(hp[q], hm[q]) : hm[q];
     if (w.n === 2) { B.hp[3] = B.hp[1]; B.hp[4] = B.hp[2]; } // esteiras: 1 = lado -z, 2 = lado +z
     B.dent.fill(0); B.dentN.fill(0);
@@ -340,7 +341,7 @@ class Sim {
             const Iw = ty === 2 ? .1 : .2, J = Math.min(Iw * A.wspin / k.R * (r.uR(), (.7) + ((1) - (.7)) * _u[0]), 330) * (ty === 2 ? 1.3 : 1);
             (_c[36] = cx, _c[37] = cy, _c[38] = cz, _c[39] = wx * J, _c[40] = wy * J + J * (ty === 0 ? .3 : .1), _c[41] = wz * J, this.impulseR(B)); (_c[36] = cx, _c[37] = cy, _c[38] = cz, _c[39] = -wx * J * .8, _c[40] = -wy * J * .5, _c[41] = -wz * J * .8, this.impulseR(A));
             if (ty === 0) { const kR = J / B.m * 2.0; B.s[10] += -wz * kR; B.s[12] += wx * kR; }
-            const dmg = k.dano * (.35 + .65 * fr * fr) * (r.uR(), (.85) + ((1.15) - (.85)) * _u[0]); (_c[55] = blx, _c[56] = bly, _c[57] = blz, _c[58] = dmg, this.damageR(B, 0, A.id)); (_c[59] = dmg * .05, this.hurtR(A, P_WP, -1));
+            const dmg = (k.dano * A.dmgMul) * (.35 + .65 * fr * fr) * (r.uR(), (.85) + ((1.15) - (.85)) * _u[0]); (_c[55] = blx, _c[56] = bly, _c[57] = blz, _c[58] = dmg, this.damageR(B, 0, A.id)); (_c[59] = dmg * .05, this.hurtR(A, P_WP, -1));
             A.wspin *= ty === 2 ? .45 : .28; A.hitcd = ty === 2 ? .1 : .16; B.lastHitBy = 2; A.ai.lastHit = A.ai.t; A.jd[1] += 2;
             (_c[48] = cx, _c[49] = cy, _c[50] = cz, _c[51] = wx, _c[52] = wy + .3, _c[53] = wz, _c[54] = dmg + B.id * 1000, this.emitR(EV.HIT));
           } else { A.hitcd = .1; (_c[48] = cx, _c[49] = cy, _c[50] = cz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 2, this.emitR(EV.GRIND)); A.wspin *= .9; }
@@ -352,7 +353,7 @@ class Sim {
       if (A.wst === 0) { A.wa = Math.max(0, A.wa - DT * 2.2); if (press && A.wcd <= 0 && alive && A.wa < .05) { A.wst = 1; A.wt = 0; A.wcd = k.cd;
           const d = (_c[42] = hx, _c[43] = hy + .1, _c[44] = hz, this.closestR(B), _c[14]); (_c[48] = hx, _c[49] = hy, _c[50] = hz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = A.id + 10, this.emitR(EV.FLIP));
           if (d < .26 && !this.over) { const cx = _c[8], cy = _c[9], cz = _c[10], blx = _c[11], bly = _c[12], blz = _c[13], J = B.m * 5.4 * (A.hp[P_BAT] < A.hpMax[P_BAT] * .3 ? .7 : 1); (_c[36] = cx, _c[37] = cy, _c[38] = cz, _c[39] = R[1] * J * .9 + R[0] * J * .34, _c[40] = R[4] * J * .9 + R[3] * J * .34, _c[41] = R[7] * J * .9 + R[6] * J * .34, this.impulseR(B)); (_c[36] = hx, _c[37] = hy, _c[38] = hz, _c[39] = 0, _c[40] = -J * .25, _c[41] = 0, this.impulseR(A));
-            (_c[55] = blx, _c[56] = bly, _c[57] = blz, _c[58] = k.dano, this.damageR(B, 2, A.id)); B.lastHitBy = 2; A.ai.lastHit = A.ai.t; A.jd[1] += 2; A.jd[2] += 3; (_c[48] = cx, _c[49] = cy, _c[50] = cz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 18 + B.id * 1000, this.emitR(EV.HIT)); } } }
+            (_c[55] = blx, _c[56] = bly, _c[57] = blz, _c[58] = (k.dano * A.dmgMul), this.damageR(B, 2, A.id)); B.lastHitBy = 2; A.ai.lastHit = A.ai.t; A.jd[1] += 2; A.jd[2] += 3; (_c[48] = cx, _c[49] = cy, _c[50] = cz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 18 + B.id * 1000, this.emitR(EV.HIT)); } } }
       else { A.wt += DT; A.wa = Math.min(1.15, A.wa + DT * 11); if (A.wt > .45) A.wst = 0; }
       return;
     }
@@ -361,7 +362,7 @@ class Sim {
       else { A.wa -= DT * 15; const end = -Math.asin(Math.min(Math.max((L.py + L.clear - .05) / .6, 0), .9));
         // bate no adversario?
         (_c[45] = L.px + Math.cos(A.wa) * .6, _c[46] = L.py - A.ycm + Math.sin(A.wa) * .6 - .08, _c[47] = 0, this.wptR(A)); const mx = _c[0], my = _c[1], mz = _c[2], d = (_c[42] = mx, _c[43] = my, _c[44] = mz, this.closestR(B), _c[14]);
-        if (d < .07 && A.wa < 1.2 && !this.over) { const cx = _c[8], cy = _c[9], cz = _c[10], blx = _c[11], bly = _c[12], blz = _c[13]; A.wst = 0; const dmg = k.dano * (r.uR(), (.9) + ((1.15) - (.9)) * _u[0]); (_c[55] = blx, _c[56] = bly, _c[57] = blz, _c[58] = dmg, this.damageR(B, 1, A.id)); (_c[36] = cx, _c[37] = cy, _c[38] = cz, _c[39] = R[0] * 40, _c[40] = -150, _c[41] = R[6] * 40, this.impulseR(B)); B.lastHitBy = 2; A.ai.lastHit = A.ai.t; A.jd[1] += 2; (_c[48] = cx, _c[49] = cy, _c[50] = cz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = dmg + B.id * 1000, this.emitR(EV.HIT)); }
+        if (d < .07 && A.wa < 1.2 && !this.over) { const cx = _c[8], cy = _c[9], cz = _c[10], blx = _c[11], bly = _c[12], blz = _c[13]; A.wst = 0; const dmg = (k.dano * A.dmgMul) * (r.uR(), (.9) + ((1.15) - (.9)) * _u[0]); (_c[55] = blx, _c[56] = bly, _c[57] = blz, _c[58] = dmg, this.damageR(B, 1, A.id)); (_c[36] = cx, _c[37] = cy, _c[38] = cz, _c[39] = R[0] * 40, _c[40] = -150, _c[41] = R[6] * 40, this.impulseR(B)); B.lastHitBy = 2; A.ai.lastHit = A.ai.t; A.jd[1] += 2; (_c[48] = cx, _c[49] = cy, _c[50] = cz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = dmg + B.id * 1000, this.emitR(EV.HIT)); }
         else if (A.wa <= end) { A.wa = end; A.wst = 0; (_c[48] = mx, _c[49] = .02, _c[50] = mz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 6, this.emitR(EV.HAMMER)); } }
       return;
     }
@@ -374,7 +375,7 @@ class Sim {
       (_c[45] = A.gx, _c[46] = A.gy, _c[47] = A.gz, this.wptR(B)); const gx = _c[0], gy = _c[1], gz = _c[2], ex = hx - gx, ey = hy - gy, ez = hz - gz, el = Math.sqrt((ex) * (ex) + (ey) * (ey) + (ez) * (ez));
       const kk = Math.min(A.m, B.m) * 9; (_c[36] = gx, _c[37] = gy, _c[38] = gz, _c[39] = ex * kk, _c[40] = ey * kk * .4, _c[41] = ez * kk, this.impulseR(B)); (_c[36] = hx, _c[37] = hy, _c[38] = hz, _c[39] = -ex * kk, _c[40] = -ey * kk * .4, _c[41] = -ez * kk, this.impulseR(A));
       const rvx = B.s[7] - s[7], rvz = B.s[9] - s[9], km = Math.min(A.m, B.m) * .12; (_c[36] = gx, _c[37] = gy, _c[38] = gz, _c[39] = -rvx * km, _c[40] = 0, _c[41] = -rvz * km, this.impulseR(B)); (_c[36] = hx, _c[37] = hy, _c[38] = hz, _c[39] = rvx * km, _c[40] = 0, _c[41] = rvz * km, this.impulseR(A));
-      (_c[55] = A.gx, _c[56] = A.gy, _c[57] = A.gz, _c[58] = k.dano * DT, this.damageR(B, 1, A.id)); A.jd[2] += DT * 2; if ((this.rng.uR(), _u[0]) < .25) (_c[48] = gx, _c[49] = gy, _c[50] = gz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 3, this.emitR(EV.GRIND));
+      (_c[55] = A.gx, _c[56] = A.gy, _c[57] = A.gz, _c[58] = (k.dano * A.dmgMul) * DT, this.damageR(B, 1, A.id)); A.jd[2] += DT * 2; if ((this.rng.uR(), _u[0]) < .25) (_c[48] = gx, _c[49] = gy, _c[50] = gz, _c[51] = 0, _c[52] = 1, _c[53] = 0, _c[54] = 3, this.emitR(EV.GRIND));
       if (A.wt > 2.6 || el > .45 || press || !alive || this.over) { A.wst = 0; A.grab = 0; A.wcd = k.cd; } }
   }
   hazards(B, A) {

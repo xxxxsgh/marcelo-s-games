@@ -18,7 +18,8 @@ const RIVAIS2 = [
   { nome: 'Chumbo Grosso', b: [2, 1, 1, 2], cor: 5, num: 99, estilo: 0 },
   { nome: 'Saca-Rolha', b: [1, 1, 2, 1], cor: 6, num: 17, estilo: 2 },
 ];
-const CAR = { temp: 1, trofeus: 0, v: 0, d: 0, ko: 0, juiz: 0, pecas: 0, conq: 0, armas: 0, chas: 0, seq: 0, rec: 0 };
+const CAR = { temp: 1, trofeus: 0, v: 0, d: 0, ko: 0, juiz: 0, pecas: 0, conq: 0, armas: 0, chas: 0, seq: 0, rec: 0, sucata: 0, up0: 0, up1: 0, up2: 0, up3: 0 };
+const upCusto = l => 150 * (l + 1), upList = () => [CAR.up0, CAR.up1, CAR.up2, CAR.up3];
 const ARENAS = ['CLÁSSICA', 'FORNALHA', 'SERRARIA', 'BATE-ESTACA'];
 const CONQ = [['Primeira vitória', 'Vença uma luta de torneio'], ['Nocaute', 'Vença por nocaute'], ['Nas mãos dos juízes', 'Vença por decisão'], ['Buraco negro', 'Mande um adversário para o fosso'], ['Campeão', 'Vença uma temporada'], ['Bicampeão', 'Vença duas temporadas'],
   ['Ferro-velho', 'Arranque 10 peças na carreira'], ['Desmanche', 'Arranque 30 peças na carreira'], ['Intacto', 'Vença sem perder nenhuma peça'], ['Arsenal completo', 'Vença com as 6 armas'], ['Três carcaças', 'Vença com os 3 chassis'], ['Embalado', 'Vença 5 lutas seguidas']];
@@ -33,7 +34,7 @@ const SIM = new Sim(), BG = new Sim(), TMPS = new Sim();
 let TOR = null;
 
 const GAR = {
-  com: [1, 1, 1, 0], pre: [1, 1, 1, 0], row: 0, mode: 0, cor: 0, num: 7, nome: 'Fagulha', repair: false, rival: 0, verConq: 0, acoes: 2, ang: .6, an: new Float32Array(4), anV: new Float32Array(4), bot: new Bot(0), hp: null, idle: 0, warn: 0,
+  com: [1, 1, 1, 0], pre: [1, 1, 1, 0], row: 0, mode: 0, cor: 0, num: 7, nome: 'Fagulha', repair: false, rival: 0, verConq: 0, verUp: 0, upSel: 0, acoes: 2, ang: .6, an: new Float32Array(4), anV: new Float32Array(4), bot: new Bot(0), hp: null, idle: 0, warn: 0,
   slotHp(r) { const h = this.bot.hp, m = this.bot.hpMax; if (r === 0) return (h[0] / m[0] + h[11] / m[11]) / 2; if (r === 1) return (h[1] + h[2] + h[3] + h[4]) / (4 * m[1]); if (r === 2) return (h[5] + h[6] + h[7] + h[8] + h[9]) / (m[5] + m[6] + m[7] + m[8] + m[9]); return h[10] / m[10]; },
   fixSlot(r) { const h = this.hp, m = this.bot.hpMax; if (!h) return; if (r === 0) { h[0] = m[0]; h[11] = m[11]; } else if (r === 1) { for (let q = 1; q <= 4; q++) h[q] = m[q]; } else if (r === 2) { for (let q = 5; q <= 9; q++) h[q] = m[q]; } else h[10] = m[10]; },
   refresh(slotChanged) { // remonta o robo da bancada
@@ -52,8 +53,10 @@ const GAR = {
   tick(dt) {
     const g = this; let ch = false;
     if (IN.typing) { } else if (g.mode === 0) {
+      if (g.verUp) { if (IN.pUp) { g.upSel = (g.upSel + 3) % 4; ch = true; } if (IN.pDown) { g.upSel = (g.upSel + 1) % 4; ch = true; } if (IN.pBack) { g.verUp = 0; ch = true; } else if (IN.pOk) { const k = 'up' + g.upSel, l = CAR[k]; if (l >= 3) UI.toast('NÍVEL MÁXIMO'); else if (CAR.sucata < upCusto(l)) UI.toast('SUCATA INSUFICIENTE'); else { CAR.sucata -= upCusto(l); CAR[k]++; G.save(); UI.toast('MELHORIA INSTALADA'); } ch = true; } IN.pOk = 0; IN.pUp = 0; IN.pDown = 0; IN.pStart = 0; }
       if (g.verConq) { if (IN.pOk || IN.pBack) { g.verConq = 0; ch = true; } IN.pOk = 0; IN.pUp = 0; IN.pDown = 0; IN.pStart = 0; }
-      if (IN.pUp) { g.row = (g.row + 10) % 11; ch = true; } if (IN.pDown) { g.row = (g.row + 1) % 11; ch = true; }
+      if (IN.pUp) { g.row = (g.row + 11) % 12; ch = true; } if (IN.pDown) { g.row = (g.row + 1) % 12; ch = true; }
+      if (g.row === 11 && IN.pOk) { g.verUp = 1; ch = true; }
       if (g.row === 9 && IN.pOk) { g.verConq = 1; ch = true; }
       if (g.row === 10 && IN.pOk && !g.repair) { g.sobreviver(0, null); return; }
       if (g.row === 8 && (IN.pLeft || IN.pRight)) { g.rival = (g.rival + (IN.pRight ? 1 : 13)) % 14; ch = true; } else if (g.row === 8 && IN.pOk && !g.repair) g.amistoso();
@@ -126,7 +129,7 @@ const G = {
     }
     this.save();
   },
-  record(j, S) { const T = TOR; j.w = S.winner === 0 ? j.a : j.b; j.how = S.koBy; j.pa = S.ptsA; j.pb = S.ptsB; const l = j.w === j.a ? j.b : j.a; T.ent[j.w].v++; T.ent[l].d++; T.ent[j.a].hp = Array.from(S.bots[0].hp); T.ent[j.b].hp = Array.from(S.bots[1].hp); if (l === 0) T.vivo = false; T.lutas++; if (j.a === 0 || j.b === 0) { if (j.w === 0) { CAR.v++; if (S.koBy === 'juizes') CAR.juiz++; else CAR.ko++; } else CAR.d++; CAR.pecas += this.detB || 0; conquistas(S, j.w === 0, (this.detached || 0) - (this.detB || 0)); } },
+  record(j, S) { const T = TOR; j.w = S.winner === 0 ? j.a : j.b; j.how = S.koBy; j.pa = S.ptsA; j.pb = S.ptsB; const l = j.w === j.a ? j.b : j.a; T.ent[j.w].v++; T.ent[l].d++; T.ent[j.a].hp = Array.from(S.bots[0].hp); T.ent[j.b].hp = Array.from(S.bots[1].hp); if (l === 0) T.vivo = false; T.lutas++; if (j.a === 0 || j.b === 0) { if (j.w === 0) { CAR.v++; if (S.koBy === 'juizes') CAR.juiz++; else CAR.ko++; } else CAR.d++; CAR.pecas += this.detB || 0; conquistas(S, j.w === 0, (this.detached || 0) - (this.detB || 0)); CAR.sucata += (j.w === 0 ? 100 : 30) + (this.detB || 0) * 25; } },
   toBracket(txt) {
     const T = TOR, j = this.myMatch(); for (const r of T.jogos) for (const q of r) q.next = q === j;
     this.st = 'chave'; UI.show('chave'); this.enterArena(); this.cam = 2;
@@ -143,7 +146,7 @@ const G = {
   // prepara a luta do jogador (ou uma luta avulsa para teste/roteiro)
   setupFight(ia, ib, seed, dur, ea, eb) {
     const A = ea || TOR.ent[ia], B = eb || TOR.ent[ib]; this.entA = A; this.entB = B;
-    SIM.setupBot(0, A.b, A.hp, { nome: A.nome, cor: A.cor, num: A.num, estilo: Math.max(0, A.estilo) }); SIM.setupBot(1, B.b, B.hp, { nome: B.nome, cor: B.cor, num: B.num, estilo: Math.max(0, B.estilo), buff: eb ? (eb.buff || 1) : (TOR && TOR.buff || 1) });
+    SIM.setupBot(0, A.b, A.hp, { nome: A.nome, cor: A.cor, num: A.num, estilo: Math.max(0, A.estilo), up: A.estilo < 0 ? upList() : null }); SIM.setupBot(1, B.b, B.hp, { nome: B.nome, cor: B.cor, num: B.num, estilo: Math.max(0, B.estilo), buff: eb ? (eb.buff || 1) : (TOR && TOR.buff || 1) });
     SIM.bots[0].isAI = this.auto; SIM.bots[1].isAI = true; SIM.start(seed, dur); SIM.modo = this.script || !ea ? (this.script ? 0 : ((TOR && TOR.temp || 1) - 1) % 4) : (this.surv >= 0 ? this.surv % 4 : (GAR.rival % 4)); if (!this.script && SIM.modo) this.round += ' · ARENA ' + ARENAS[SIM.modo];
     Atlas.robot(0, A.nome, A.num, A.cor); Atlas.robot(1, B.nome, B.num, B.cor); Atlas.score(A.nome.toUpperCase(), B.nome.toUpperCase(), this.round, 'AO VIVO', A.cor, B.cor);
     this.enterArena(); R.clearMarks(); FX.reset(); this.lastSk.fill(-9); this.hits = 0; this.hitsB = 0; this.detB = 0; this.detached = 0; this.maxPen = -9; this.bestAt = -1; this.clipN = 0; this.ncev = 0; this.nrev = 0; this.sf = 0;
@@ -179,8 +182,8 @@ const G = {
       if (this.st === 'fim') { this.ft[1] += dt * (this.fast > 1 ? 30 : 1); if (this.ft[1] > 3) this.afterFight(); } }
     else if (st === 'juizes') { this.ft[1] += dt * (this.fast > 1 ? 30 : 1); this.camera(dt); this.drawFight(1); FX.update(dt); if (this.ft[1] > 6 || IN.pOk) this.toReplay(); }
     else if (st === 'replay') { this.replayTick(dt); }
-    else if (st === 'livre') { this.camera(dt); this.drawFight(1); FX.update(dt); if (this.surv >= 0 && this.round.startsWith('SOBREV')) { if (!this.livreMsg) { this.livreMsg = 1; const w = SIM.winner === 0; if (w) UI.msg('VENCEU A LUTA ' + (this.surv + 1), 'A / ENTER próxima luta — sem conserto'); else { const n = this.surv; if (n > CAR.rec) CAR.rec = n; this.save(); UI.msg('FIM DA SOBREVIVÊNCIA', n + ' vitória(s) seguida(s) · recorde ' + CAR.rec + ' · A / ENTER garagem'); } } if (IN.pOk || IN.pStart) { this.livreMsg = 0; if (SIM.winner === 0) GAR.sobreviver(this.surv + 1, Array.from(SIM.bots[0].hp)); else { this.surv = -1; GAR.enter(false); } } }
-      else if (this.round === 'AMISTOSO') { if (!this.livreMsg) { this.livreMsg = 1; UI.msg(SIM.winner === 0 ? 'VITÓRIA' : 'DERROTA', 'A / ENTER volta para a garagem'); } if (IN.pOk || IN.pStart) { this.livreMsg = 0; GAR.enter(false); } } }
+    else if (st === 'livre') { this.camera(dt); this.drawFight(1); FX.update(dt); if (this.surv >= 0 && this.round.startsWith('SOBREV')) { if (!this.livreMsg) { this.livreMsg = 1; const w = SIM.winner === 0; CAR.sucata += (w ? 60 : 15) + (this.detB || 0) * 15; if (w) UI.msg('VENCEU A LUTA ' + (this.surv + 1), 'A / ENTER próxima luta — sem conserto'); else { const n = this.surv; if (n > CAR.rec) CAR.rec = n; this.save(); UI.msg('FIM DA SOBREVIVÊNCIA', n + ' vitória(s) seguida(s) · recorde ' + CAR.rec + ' · A / ENTER garagem'); } } if (IN.pOk || IN.pStart) { this.livreMsg = 0; if (SIM.winner === 0) GAR.sobreviver(this.surv + 1, Array.from(SIM.bots[0].hp)); else { this.surv = -1; GAR.enter(false); } } }
+      else if (this.round === 'AMISTOSO') { if (!this.livreMsg) { this.livreMsg = 1; CAR.sucata += (SIM.winner === 0 ? 40 : 10) + (this.detB || 0) * 10; this.save(); UI.msg(SIM.winner === 0 ? 'VITÓRIA' : 'DERROTA', 'A / ENTER volta para a garagem'); } if (IN.pOk || IN.pStart) { this.livreMsg = 0; GAR.enter(false); } } }
     else if (st === 'pausa') { if (IN.pPause || IN.pOk) { this.st = this.prev; UI.show('hud'); } }
   },
   fightStep() {
